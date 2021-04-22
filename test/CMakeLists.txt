@@ -3,6 +3,7 @@ project(lunatic-test CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 set(SOURCES
   arm/tablegen/tablegen.cpp
@@ -21,5 +22,9 @@ set(HEADERS
   arm/util/meta.hpp
   arm/util/punning.hpp)
 
+include(FindSDL2)
+find_package(SDL2 REQUIRED)
+
 add_executable(test ${SOURCES} ${HEADERS})
-target_link_libraries(test lunatic)
+target_link_libraries(test lunatic fmt ${SDL2_LIBRARY})
+target_include_directories(test PRIVATE . ${SDL2_INCLUDE_DIR})
