@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
   auto event = SDL_Event{};
 
   for (;;) {
-    g_cpu_interp.Run(10000);
+    g_cpu_interp.Run(279620);
 
     render_frame();
 
