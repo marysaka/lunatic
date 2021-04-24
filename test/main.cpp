@@ -9,6 +9,9 @@
 #include <cstring>
 #include <SDL.h>
 
+// This is just a test
+#include "frontend/ir/emitter.hpp"
+
 using namespace lunatic::test;
 
 struct Memory final : arm::MemoryBase {
