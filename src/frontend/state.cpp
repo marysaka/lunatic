@@ -72,13 +72,13 @@ void State::InitializeLookupTable() {
   }
 
   for (int i = 0; i < 2; i++) {
-    table[static_cast<int>(Mode::User)].gpr[13 + i] = &sys.reg[6 + i];
-    table[static_cast<int>(Mode::FIQ)].gpr[13 + i] = &fiq.reg[6 + i];
+    table[static_cast<int>(Mode::User)].gpr[13 + i] = &sys.reg[5 + i];
+    table[static_cast<int>(Mode::FIQ)].gpr[13 + i] = &fiq.reg[5 + i];
     table[static_cast<int>(Mode::IRQ)].gpr[13 + i] = &irq.reg[i];
     table[static_cast<int>(Mode::Supervisor)].gpr[13 + i] = &svc.reg[i];
     table[static_cast<int>(Mode::Abort)].gpr[13 + i] = &abt.reg[i];
     table[static_cast<int>(Mode::Undefined)].gpr[13 + i] = &und.reg[i];
-    table[static_cast<int>(Mode::System)].gpr[13 + i] = &sys.reg[6 + i];
+    table[static_cast<int>(Mode::System)].gpr[13 + i] = &sys.reg[5 + i];
   }
 
   table[static_cast<int>(Mode::User)].spsr = nullptr;
