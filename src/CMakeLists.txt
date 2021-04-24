@@ -6,12 +6,15 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SOURCES
+  backend/x86_64/backend.cpp
   frontend/ir/emitter.cpp
   frontend/state.cpp
   jit.cpp)
 
 set(HEADERS
   common/bit.hpp
+  backend/x86_64/backend.hpp
+  backend/backend.hpp
   frontend/ir/emitter.hpp
   frontend/ir/opcode.hpp
   frontend/ir/register.hpp

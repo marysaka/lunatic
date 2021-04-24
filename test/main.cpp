@@ -10,9 +10,11 @@
 #include <SDL.h>
 
 // This is just a test
+#include "backend/x86_64/backend.hpp"
 #include "frontend/ir/emitter.hpp"
 
 void ir_test() {
+  using namespace lunatic::backend;
   using namespace lunatic::frontend;
 
   using GPR = State::GPR;
@@ -21,13 +23,23 @@ void ir_test() {
   IREmitter code;
 
   auto var0 = code.CreateVar(IRDataType::UInt32, "mov_rs");
-  code.StoreGPR(IRGuestReg{GPR::R0, Mode::IRQ}, IRConstant{u32(0xDEADBEEF)});
+  // code.StoreGPR(IRGuestReg{GPR::R0, Mode::IRQ}, IRConstant{u32(0xDEADBEEF)});
+  // code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, var0);
+  // code.StoreGPR(IRGuestReg{GPR::R8, Mode::FIQ}, var0);
+  code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, IRConstant{u32(0xDEADBEEF)});
   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, var0);
-  code.StoreGPR(IRGuestReg{GPR::R8, Mode::FIQ}, var0);
-  
+  code.StoreGPR(IRGuestReg{GPR::R8, Mode::User}, var0);
 
   fmt::print(code.ToString());
   fmt::print("\n");
+
+  auto state = State{};
+  auto backend = X64Backend{};
+  backend.Run(state, code);
+
+  for (int i = 0; i < 16; i++) {
+    fmt::print("r{} = 0x{:08X}\n", i, state.GetGPR(Mode::User, static_cast<GPR>(i)));
+  }
 }
 
 using namespace lunatic::test;
