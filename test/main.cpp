@@ -12,6 +12,24 @@
 // This is just a test
 #include "frontend/ir/emitter.hpp"
 
+void ir_test() {
+  using namespace lunatic::frontend;
+
+  using GPR = State::GPR;
+  using Mode = State::Mode;
+
+  IREmitter code;
+
+  auto var0 = code.CreateVar(IRDataType::UInt32, "mov_rs");
+  code.StoreGPR(IRGuestReg{GPR::R0, Mode::IRQ}, IRConstant{u32(0xDEADBEEF)});
+  code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, var0);
+  code.StoreGPR(IRGuestReg{GPR::R8, Mode::FIQ}, var0);
+  
+
+  fmt::print(code.ToString());
+  fmt::print("\n");
+}
+
 using namespace lunatic::test;
 
 struct Memory final : arm::MemoryBase {
@@ -120,6 +138,8 @@ int main(int argc, char** argv) {
     fmt::print("Failed to read the ROM into memory.\n");
     return -3;
   }
+
+  ir_test();
 
   SDL_Init(SDL_INIT_VIDEO);
 

@@ -4,12 +4,31 @@
 
 #pragma once
 
+#include <list>
+#include <memory>
+#include <vector>
+
 #include "opcode.hpp"
 
 namespace lunatic {
-namespace lunatic::frontend {
+namespace frontend {
 
 struct IREmitter {
+  auto Code() const -> std::list<std::unique_ptr<IROpcode>> const& { return code; }
+  auto Vars() const -> std::vector<std::unique_ptr<IRVariable>> const& { return variables; }
+  auto ToString() const -> std::string;
+
+  auto CreateVar(IRDataType data_type, char const* label = nullptr) -> IRVariable&;
+
+  void LoadGPR(IRGuestReg reg, IRVariable const& result);
+  void StoreGPR(IRGuestReg reg, IRValue value);
+
+private:
+  /// List of emitted IR opcodes
+  std::list<std::unique_ptr<IROpcode>> code;
+
+  /// List of allocated variables
+  std::vector<std::unique_ptr<IRVariable>> variables;
 };
 
 } // namespace lunatic::frontend

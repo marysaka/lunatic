@@ -18,7 +18,7 @@ enum class IRDataType {
 /// Represents an immutable variable
 struct IRVariable {
   /// ID that is unique inside the IREmitter instance.
-  const u16 id;
+  const u32 id;
 
   /// The underlying data type
   const IRDataType data_type;
@@ -30,7 +30,7 @@ private:
   friend struct IREmitter;
 
   IRVariable(
-    u16 id,
+    u32 id,
     IRDataType data_type,
     char const* label
   ) : id(id), data_type(data_type), label(label) {}
@@ -49,6 +49,10 @@ struct IRConstant {
 
 /// Represents a constant or variable IR opcode argument
 struct IRValue {
+  IRValue() {}
+  IRValue(IRVariable const& variable) : type(Type::Variable), variable(&variable) {}
+  IRValue(IRConstant const& constant) : type(Type::Constant), constant( constant) {}
+
   bool IsNull() const { return type == Type::Null; }
   bool IsVariable() const { return type == Type::Variable; }
   bool IsConstant() const { return type == Type::Constant; }
@@ -68,17 +72,11 @@ struct IRValue {
   }
 
 private:
-  friend struct IREmitter;
-
   enum class Type {
     Null,
     Variable,
     Constant
   };
-
-  IRValue() {}
-  IRValue(IRVariable const* variable) : type(Type::Variable), variable(variable) {}
-  IRValue(IRConstant const& constant) : type(Type::Constant), constant(constant) {}
 
   Type type = Type::Null;
 
@@ -92,6 +90,15 @@ private:
 } // namespace lunatic
 
 namespace std {
+
+inline auto to_string(lunatic::frontend::IRDataType data_type) -> std::string {
+  switch (data_type) {
+    case lunatic::frontend::IRDataType::UInt32:
+      return "u32";
+    default:
+      return "???";
+  }
+}
 
 inline auto to_string(lunatic::frontend::IRVariable const& variable) -> std::string {
   if (variable.label) {
@@ -109,9 +116,9 @@ inline auto to_string(lunatic::frontend::IRValue const& value) -> std::string {
     return "(null)";
   }
   if (value.IsConstant()) {
-    return std::to_string(value.GetVar());
+    return std::to_string(value.GetConst());
   }
-  return std::to_string(value.GetConst());
+  return std::to_string(value.GetVar());
 }
 
 } // namespace std
