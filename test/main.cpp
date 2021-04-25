@@ -36,6 +36,14 @@ void ir_test() {
   code.LoadGPR(IRGuestReg{GPR::R4, Mode::User}, var2);
   code.StoreGPR(IRGuestReg{GPR::R5, Mode::User}, var2);
 
+  // Make the register allocator use a callee saved register
+  auto& var3 = code.CreateVar(IRDataType::UInt32);
+  auto& var4 = code.CreateVar(IRDataType::UInt32);
+  auto& var5 = code.CreateVar(IRDataType::UInt32);
+  code.LoadGPR(IRGuestReg{GPR::R6, Mode::User}, var3);
+  code.LoadGPR(IRGuestReg{GPR::R7, Mode::User}, var4);
+  code.LoadGPR(IRGuestReg{GPR::R8, Mode::User}, var5);
+
   fmt::print(code.ToString());
   fmt::print("\n");
 

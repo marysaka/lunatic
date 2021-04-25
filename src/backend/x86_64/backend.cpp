@@ -27,8 +27,9 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
     switch (op_->GetClass()) {
       case IROpcodeClass::LoadGPR: {
         auto op = lunatic_cast<IRLoadGPR>(op_.get());
-        auto address = rax + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
-        code.mov(reg_alloc.GetReg32(op->result), dword[address]);
+        auto address  = rax + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
+        auto host_reg = reg_alloc.GetReg32(op->result);
+        code.mov(host_reg, dword[address]);
         break;
       }
       case IROpcodeClass::StoreGPR: {
@@ -37,12 +38,16 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
         if (op->value.IsConstant()) {
           code.mov(dword[address], op->value.GetConst().value);
         } else {
-          code.mov(dword[address], reg_alloc.GetReg32(op->value.GetVar()));
+          auto host_reg = reg_alloc.GetReg32(op->value.GetVar());
+          code.mov(dword[address], host_reg);
         }
         break;
       }
     }
   }
+
+  // Restore any callee-saved registers.
+  reg_alloc.Finalize();
 
   // code.int3();
   code.ret();
