@@ -22,13 +22,19 @@ void ir_test() {
 
   IREmitter code;
 
-  auto var0 = code.CreateVar(IRDataType::UInt32, "mov_rs");
-  // code.StoreGPR(IRGuestReg{GPR::R0, Mode::IRQ}, IRConstant{u32(0xDEADBEEF)});
-  // code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, var0);
-  // code.StoreGPR(IRGuestReg{GPR::R8, Mode::FIQ}, var0);
-  code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, IRConstant{u32(0xDEADBEEF)});
+  auto var0 = code.CreateVar(IRDataType::UInt32);
+  auto var1 = code.CreateVar(IRDataType::UInt32);
+  auto var2 = code.CreateVar(IRDataType::UInt32);
+
+  code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, IRConstant{u32(0xAABBCCDD)});
   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, var0);
-  code.StoreGPR(IRGuestReg{GPR::R8, Mode::User}, var0);
+  code.StoreGPR(IRGuestReg{GPR::R2, Mode::User}, IRConstant{u32(0x11223344)});
+  code.LoadGPR(IRGuestReg{GPR::R2, Mode::User}, var1);
+  code.StoreGPR(IRGuestReg{GPR::R1, Mode::User}, var0);
+  code.StoreGPR(IRGuestReg{GPR::R4, Mode::User}, IRConstant{u32(0xC0DEC0DE)});
+  code.StoreGPR(IRGuestReg{GPR::R3, Mode::User}, var1);
+  code.LoadGPR(IRGuestReg{GPR::R4, Mode::User}, var2);
+  code.StoreGPR(IRGuestReg{GPR::R5, Mode::User}, var2);
 
   fmt::print(code.ToString());
   fmt::print("\n");

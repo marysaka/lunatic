@@ -17,13 +17,13 @@ using namespace lunatic::frontend;
 void X64Backend::Run(State& state, IREmitter const& emitter) {
   using namespace Xbyak::util;
 
-  std::list<Xbyak::Reg64> host_regs {
-    rax, rcx, rdx, r8, r9
+  std::list<Xbyak::Reg32> host_regs {
+    eax, ecx, edx, r8d, r9d
   };
 
-  std::unordered_map<u32, Xbyak::Reg64> reg_map;
+  std::unordered_map<u32, Xbyak::Reg32> reg_map;
 
-  auto alloc_reg = [&]() -> Xbyak::Reg64 {
+  auto alloc_reg = [&]() -> Xbyak::Reg32 {
     if (host_regs.size() == 0) {
       throw std::runtime_error("X64Backend: ran out of registers to allocate");
     }
@@ -32,7 +32,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
     return reg;
   };
 
-  auto get_var_reg = [&](IRVariable const& var) -> Xbyak::Reg64 {
+  auto get_var_reg = [&](IRVariable const& var) -> Xbyak::Reg32 {
     auto match = reg_map.find(var.id);
 
     if (match != reg_map.end()) {
@@ -61,6 +61,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
           auto tmp_reg = alloc_reg();
           code.mov(tmp_reg, op->value.GetConst().value);
           code.mov(dword[address], tmp_reg);
+          host_regs.push_front(tmp_reg);
         } else {
           code.mov(dword[address], get_var_reg(op->value.GetVar()));
         }
