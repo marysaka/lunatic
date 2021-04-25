@@ -26,7 +26,7 @@ auto IREmitter::ToString() const -> std::string {
   return source;
 }
 
-auto IREmitter::CreateVar(IRDataType data_type, char const* label) -> IRVariable& {
+auto IREmitter::CreateVar(IRDataType data_type, char const* label) -> IRVariable const& {
   auto id = u32(variables.size());
   auto var = new IRVariable{id, data_type, label};
 

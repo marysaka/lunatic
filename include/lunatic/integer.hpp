@@ -20,6 +20,7 @@ using u64 = std::uint64_t;
 using s64 = std::int64_t;
 
 using uint = unsigned int;
+using uintptr = std::uintptr_t;
 
 #ifdef LUNATIC_NO_CUSTOM_INT_TYPES
 } // namespace lunatic

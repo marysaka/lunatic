@@ -17,6 +17,8 @@ enum class IRDataType {
 
 /// Represents an immutable variable
 struct IRVariable {
+  IRVariable(IRVariable const& other) = delete;
+
   /// ID that is unique inside the IREmitter instance.
   const u32 id;
 

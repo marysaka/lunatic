@@ -51,6 +51,10 @@ auto State::GetPointerToCPSR() -> StatusRegister* {
   return &common.cpsr;
 }
 
+auto State::GetOffsetToGPR(Mode mode, GPR reg) -> uintptr {
+  return uintptr(GetPointerToGPR(mode, reg)) - uintptr(this);
+}
+
 void State::InitializeLookupTable() {
   Mode modes[] = {
     Mode::User,

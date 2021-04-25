@@ -80,6 +80,9 @@ struct State {
   /// \returns pointer to the current program status register (cpsr).
   auto GetPointerToCPSR() -> StatusRegister*;
 
+  /// \returns for a given processor mode the offset of a general-purpose register.
+  auto GetOffsetToGPR(Mode mode, GPR reg) -> uintptr;
+
 private:
   void InitializeLookupTable();
 

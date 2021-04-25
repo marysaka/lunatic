@@ -18,7 +18,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
   using namespace Xbyak::util;
 
   std::list<Xbyak::Reg32> host_regs {
-    eax, ecx, edx, r8d, r9d
+    ecx, edx, r8d, r9d
   };
 
   std::unordered_map<u32, Xbyak::Reg32> reg_map;
@@ -45,23 +45,21 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
 
   Xbyak::CodeGenerator code;
 
+  code.mov(rax, u64(&state));
+
   for (auto const& op_ : emitter.Code()) {
     switch (op_->GetClass()) {
       case IROpcodeClass::LoadGPR: {
         auto op = lunatic_cast<IRLoadGPR>(op_.get());
-        auto address = (void*)(state.GetPointerToGPR(op->reg.mode, op->reg.reg));
+        auto address = rax + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
         code.mov(get_var_reg(op->result), dword[address]);
         break;
       }
       case IROpcodeClass::StoreGPR: {
         auto op = lunatic_cast<IRStoreGPR>(op_.get());
-        auto address = (void*)(state.GetPointerToGPR(op->reg.mode, op->reg.reg));
+        auto address = rax + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
         if (op->value.IsConstant()) {
-          // ugh this is horrible, how to fix?
-          auto tmp_reg = alloc_reg();
-          code.mov(tmp_reg, op->value.GetConst().value);
-          code.mov(dword[address], tmp_reg);
-          host_regs.push_front(tmp_reg);
+          code.mov(dword[address], op->value.GetConst().value);
         } else {
           code.mov(dword[address], get_var_reg(op->value.GetVar()));
         }
@@ -72,6 +70,32 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
 
   code.ret();
   code.getCode<void (*)()>()();
+
+  // Analyze variable lifetimes
+  for (auto const& var : emitter.Vars()) {
+    int start = -1;
+    int end = -1;
+
+    int location = 0;
+
+    for (auto const& op : emitter.Code()) {
+      if (op->Writes(*var)) {
+        // if (start != -1) {
+        //   throw std::runtime_error("SSA form violation: variable written more than once");
+        // }
+        start = location;
+      } else if (op->Reads(*var)) {
+        // if (start == -1) {
+        //   throw std::runtime_error("SSA form violation: variable read before it was written");
+        // }
+        end = location;
+      }
+
+      location++;
+    }
+
+    fmt::print("{}: {:03} - {:03}\n", std::to_string(*var), start, end);
+  }
 }
 
 } // namespace lunatic::backend

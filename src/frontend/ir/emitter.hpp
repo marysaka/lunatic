@@ -18,7 +18,7 @@ struct IREmitter {
   auto Vars() const -> std::vector<std::unique_ptr<IRVariable>> const& { return variables; }
   auto ToString() const -> std::string;
 
-  auto CreateVar(IRDataType data_type, char const* label = nullptr) -> IRVariable&;
+  auto CreateVar(IRDataType data_type, char const* label = nullptr) -> IRVariable const&;
 
   void LoadGPR(IRGuestReg reg, IRVariable const& result);
   void StoreGPR(IRGuestReg reg, IRValue value);

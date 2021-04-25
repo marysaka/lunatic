@@ -22,9 +22,9 @@ void ir_test() {
 
   IREmitter code;
 
-  auto var0 = code.CreateVar(IRDataType::UInt32);
-  auto var1 = code.CreateVar(IRDataType::UInt32);
-  auto var2 = code.CreateVar(IRDataType::UInt32);
+  auto& var0 = code.CreateVar(IRDataType::UInt32);
+  auto& var1 = code.CreateVar(IRDataType::UInt32);
+  auto& var2 = code.CreateVar(IRDataType::UInt32);
 
   code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, IRConstant{u32(0xAABBCCDD)});
   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, var0);
