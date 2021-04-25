@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SOURCES
   backend/x86_64/backend.cpp
+  backend/x86_64/register_allocator.cpp
   frontend/ir/emitter.cpp
   frontend/state.cpp
   jit.cpp)
@@ -14,6 +15,7 @@ set(SOURCES
 set(HEADERS
   common/bit.hpp
   backend/x86_64/backend.hpp
+  backend/x86_64/register_allocator.hpp
   backend/backend.hpp
   frontend/ir/emitter.hpp
   frontend/ir/opcode.hpp

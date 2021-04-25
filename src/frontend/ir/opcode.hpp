@@ -22,8 +22,8 @@ struct IROpcode {
   virtual ~IROpcode() = default;
 
   virtual auto GetClass() const -> IROpcodeClass = 0;
-  virtual bool Reads (IRVariable const& var) const = 0;
-  virtual bool Writes(IRVariable const& var) const = 0;
+  virtual auto Reads (IRVariable const& var) const -> bool = 0;
+  virtual auto Writes(IRVariable const& var) const -> bool = 0;
   virtual auto ToString() const -> std::string = 0;
 };
 
@@ -43,11 +43,11 @@ struct IRLoadGPR final : IROpcodeBase<IROpcodeClass::LoadGPR> {
   /// The variable to load the GPR into
   IRVariable const& result;
 
-  bool Reads(IRVariable const& var) const override {
+  auto Reads(IRVariable const& var) const -> bool override {
     return false;
   }
 
-  bool Writes(IRVariable const& var) const override {
+  auto Writes(IRVariable const& var) const -> bool override {
     return &var == &result;
   }
 
@@ -65,14 +65,14 @@ struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
   /// The variable or constant to write to the GPR (must be non-null)
   IRValue value;
 
-  bool Reads(IRVariable const& var) const override {
+  auto Reads(IRVariable const& var) const -> bool override {
     if (value.IsVariable()) {
       return &var == &value.GetVar();
     }
     return false;
   }
 
-  bool Writes(IRVariable const& var) const override {
+  auto Writes(IRVariable const& var) const -> bool override {
     return false;
   }
 
