@@ -53,7 +53,7 @@ void ir_test() {
   auto& result = code.CreateVar(IRDataType::UInt32, "add_result");
   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, lhs);
   code.LoadGPR(IRGuestReg{GPR::R2, Mode::User}, rhs);
-  code.Add(result, lhs, rhs);
+  code.Add(result, lhs, rhs, true);
   code.StoreGPR(IRGuestReg{GPR::R12, Mode::User}, result);
 
   fmt::print(code.ToString());

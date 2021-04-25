@@ -21,7 +21,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
   Xbyak::CodeGenerator code;
   X64RegisterAllocator reg_alloc { emitter, code };
 
-  code.mov(rax, u64(&state));
+  code.mov(rcx, u64(&state));
 
   int location = 0;
 
@@ -29,14 +29,14 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
     switch (op_->GetClass()) {
       case IROpcodeClass::LoadGPR: {
         auto op = lunatic_cast<IRLoadGPR>(op_.get());
-        auto address  = rax + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
+        auto address  = rcx + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
         auto host_reg = reg_alloc.GetReg32(op->result, location);
         code.mov(host_reg, dword[address]);
         break;
       }
       case IROpcodeClass::StoreGPR: {
         auto op = lunatic_cast<IRStoreGPR>(op_.get());
-        auto address = rax + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
+        auto address = rcx + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
         if (op->value.IsConstant()) {
           code.mov(dword[address], op->value.GetConst().value);
         } else {
@@ -60,6 +60,10 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
         } else {
           auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
           code.add(result_reg, rhs_reg);
+        }
+        if (op->update_host_flags) {
+          code.lahf();
+          code.seto(al);
         }
         break;
       }

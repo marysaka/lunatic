@@ -14,7 +14,7 @@ X64RegisterAllocator::X64RegisterAllocator(IREmitter const& emitter, Xbyak::Code
     : emitter(emitter)
     , code(code) {
   Xbyak::Reg32 regs[] = {
-    ecx,
+    // ecx,
     edx,
     ebx,
     esi,

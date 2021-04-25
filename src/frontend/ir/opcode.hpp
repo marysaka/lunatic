@@ -86,8 +86,9 @@ struct IRAdd final : IROpcodeBase<IROpcodeClass::Add> {
   IRAdd(
     IRVariable const& result,
     IRVariable const& lhs,
-    IRValue rhs
-  ) : result(result), lhs(lhs), rhs(rhs) {}
+    IRValue rhs,
+    bool update_host_flags
+  ) : result(result), lhs(lhs), rhs(rhs), update_host_flags(update_host_flags) {}
 
   /// The variable to store the result in
   IRVariable const& result;
@@ -98,6 +99,9 @@ struct IRAdd final : IROpcodeBase<IROpcodeClass::Add> {
   /// The right-hand side operand (variable or constant)
   IRValue rhs;
 
+  /// Whether to update/cache the host system flags
+  bool update_host_flags;
+
   auto Reads(IRVariable const& var) const -> bool override {
     return &lhs == &var || (rhs.IsVariable() && &rhs.GetVar() == &var);
   }
@@ -107,7 +111,11 @@ struct IRAdd final : IROpcodeBase<IROpcodeClass::Add> {
   }
 
   auto ToString() const -> std::string override {
-    return fmt::format("add {}, {}, {}", std::to_string(result), std::to_string(lhs), std::to_string(rhs));
+    return fmt::format("add{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
   }
 };
 
