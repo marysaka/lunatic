@@ -22,6 +22,7 @@ struct IREmitter {
 
   void LoadGPR(IRGuestReg reg, IRVariable const& result);
   void StoreGPR(IRGuestReg reg, IRValue value);
+  void Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs);
 
 private:
   /// List of emitted IR opcodes

@@ -15,7 +15,8 @@ namespace frontend {
 
 enum class IROpcodeClass {
   LoadGPR,
-  StoreGPR
+  StoreGPR,
+  Add
 };
 
 struct IROpcode {
@@ -78,6 +79,35 @@ struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
 
   auto ToString() const -> std::string override {
     return fmt::format("stgpr {}, {}", std::to_string(reg), std::to_string(value));
+  }
+};
+
+struct IRAdd final : IROpcodeBase<IROpcodeClass::Add> {
+  IRAdd(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRValue rhs
+  ) : result(result), lhs(lhs), rhs(rhs) {}
+
+  /// The variable to store the result in
+  IRVariable const& result;
+
+  /// The left-hand side operand (variable)
+  IRVariable const& lhs;
+
+  /// The right-hand side operand (variable or constant)
+  IRValue rhs;
+
+  auto Reads(IRVariable const& var) const -> bool override {
+    return &lhs == &var || (rhs.IsVariable() && &rhs.GetVar() == &var);
+  }
+
+  auto Writes(IRVariable const& var) const -> bool override {
+    return &result == &var;
+  }
+
+  auto ToString() const -> std::string override {
+    return fmt::format("add {}, {}, {}", std::to_string(result), std::to_string(lhs), std::to_string(rhs));
   }
 };
 

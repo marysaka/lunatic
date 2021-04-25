@@ -45,6 +45,27 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
         }
         break;
       }
+      case IROpcodeClass::Add: {
+        auto op = lunatic_cast<IRAdd>(op_.get());
+        auto result_reg = reg_alloc.GetReg32(op->result, location);
+        auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
+        /* TODO: if the LHS variable expires in this very same instruction,
+         * then it would be safe to accumulate into the LHS register directly.
+         */
+        code.mov(result_reg, lhs_reg);
+        if (op->rhs.IsConstant()) {
+          // TODO: handle different data types, once we have them...?
+          auto imm = op->rhs.GetConst().value;
+          code.add(result_reg, imm);
+        } else {
+          auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
+          code.add(result_reg, rhs_reg);
+        }
+        break;
+      }
+      default: {
+        throw std::runtime_error(fmt::format("X64Backend: unhandled IR opcode: {}", op_->ToString()));
+      }
     }
 
     location++;

@@ -45,5 +45,12 @@ void IREmitter::StoreGPR(IRGuestReg reg, IRValue value) {
   code.push_back(std::make_unique<IRStoreGPR>(reg, value));
 }
 
+void IREmitter::Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs) {
+  if (rhs.IsNull()) {
+    throw std::runtime_error("Add: rhs operand must not be null");
+  }
+  code.push_back(std::make_unique<IRAdd>(result, lhs, rhs));
+}
+
 } // namespace lunatic::frontend
 } // namespace lunatic

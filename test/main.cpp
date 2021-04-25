@@ -37,12 +37,24 @@ void ir_test() {
   code.StoreGPR(IRGuestReg{GPR::R5, Mode::User}, var2);
 
   // Make the register allocator use a callee saved register
-  auto& var3 = code.CreateVar(IRDataType::UInt32);
-  auto& var4 = code.CreateVar(IRDataType::UInt32);
-  auto& var5 = code.CreateVar(IRDataType::UInt32);
-  code.LoadGPR(IRGuestReg{GPR::R6, Mode::User}, var3);
-  code.LoadGPR(IRGuestReg{GPR::R7, Mode::User}, var4);
-  code.LoadGPR(IRGuestReg{GPR::R8, Mode::User}, var5);
+  // auto& var3 = code.CreateVar(IRDataType::UInt32);
+  // auto& var4 = code.CreateVar(IRDataType::UInt32);
+  // auto& var5 = code.CreateVar(IRDataType::UInt32);
+  // code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, var3);
+  // code.LoadGPR(IRGuestReg{GPR::R2, Mode::User}, var4);
+  // code.LoadGPR(IRGuestReg{GPR::R4, Mode::User}, var5);
+  // code.StoreGPR(IRGuestReg{GPR::R6, Mode::User}, var3);
+  // code.StoreGPR(IRGuestReg{GPR::R7, Mode::User}, var4);
+  // code.StoreGPR(IRGuestReg{GPR::R8, Mode::User}, var5);
+
+  // Add instruction test
+  auto& lhs = code.CreateVar(IRDataType::UInt32, "add_lhs");
+  auto& rhs = code.CreateVar(IRDataType::UInt32, "add_rhs");
+  auto& result = code.CreateVar(IRDataType::UInt32, "add_result");
+  code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, lhs);
+  code.LoadGPR(IRGuestReg{GPR::R2, Mode::User}, rhs);
+  code.Add(result, lhs, rhs);
+  code.StoreGPR(IRGuestReg{GPR::R12, Mode::User}, result);
 
   fmt::print(code.ToString());
   fmt::print("\n");
