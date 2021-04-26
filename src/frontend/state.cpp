@@ -51,6 +51,10 @@ auto State::GetPointerToCPSR() -> StatusRegister* {
   return &common.cpsr;
 }
 
+auto State::GetOffsetToCPSR() -> uintptr {
+  return uintptr(GetPointerToCPSR()) - uintptr(this);
+}
+
 auto State::GetOffsetToGPR(Mode mode, GPR reg) -> uintptr {
   return uintptr(GetPointerToGPR(mode, reg)) - uintptr(this);
 }

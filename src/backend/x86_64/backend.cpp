@@ -45,6 +45,24 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
         }
         break;
       }
+      case IROpcodeClass::LoadCPSR: {
+        auto op = lunatic_cast<IRLoadCPSR>(op_.get());
+        auto address = rcx + state.GetOffsetToCPSR();
+        auto host_reg = reg_alloc.GetReg32(op->result, location);
+        code.mov(host_reg, dword[address]);
+        break;
+      }
+      case IROpcodeClass::StoreCPSR: {
+        auto op = lunatic_cast<IRStoreCPSR>(op_.get());
+        auto address = rcx + state.GetOffsetToCPSR();
+        if (op->value.IsConstant()) {
+          code.mov(dword[address], op->value.GetConst().value);
+        } else {
+          auto host_reg = reg_alloc.GetReg32(op->value.GetVar(), location);
+          code.mov(dword[address], host_reg);
+        }
+        break;
+      }
       case IROpcodeClass::Add: {
         auto op = lunatic_cast<IRAdd>(op_.get());
         auto result_reg = reg_alloc.GetReg32(op->result, location);
@@ -65,6 +83,31 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
           code.lahf();
           code.seto(al);
         }
+        break;
+      }
+      case IROpcodeClass::UpdateFlags: {
+        auto op  = lunatic_cast<IRUpdateFlags>(op_.get());
+        u32 mask = 0;
+        u32 pext_mask = 0;
+        auto result_reg = reg_alloc.GetReg32(op->result, location);
+        auto input_reg = reg_alloc.GetReg32(op->input, location);
+
+        if (op->flag_n) { mask |= 0x80000000; pext_mask |= 0x8000; }
+        if (op->flag_z) { mask |= 0x40000000; pext_mask |= 0x4000; }
+        if (op->flag_c) { mask |= 0x20000000; pext_mask |= 0x0100; }
+        if (op->flag_v) { mask |= 0x10000000; pext_mask |= 0x0001; }
+
+        // TODO: likewise to Add, optimize case when input variable is last used in this instruction.
+
+        // TODO: assumes UpdateFlags will not be called again before updating the host flags.
+        code.push(rcx);
+        code.mov(result_reg, input_reg);
+        code.and_(result_reg, ~mask);
+        code.mov(ecx, pext_mask);
+        code.pext(eax, eax, ecx);
+        code.shl(eax, 28);
+        code.or_(result_reg, eax);
+        code.pop(rcx);
         break;
       }
       default: {

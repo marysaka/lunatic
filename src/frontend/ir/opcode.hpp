@@ -16,6 +16,9 @@ namespace frontend {
 enum class IROpcodeClass {
   LoadGPR,
   StoreGPR,
+  LoadCPSR,
+  StoreCPSR,
+  UpdateFlags,
   Add
 };
 
@@ -79,6 +82,81 @@ struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
 
   auto ToString() const -> std::string override {
     return fmt::format("stgpr {}, {}", std::to_string(reg), std::to_string(value));
+  }
+};
+
+struct IRLoadCPSR final : IROpcodeBase<IROpcodeClass::LoadCPSR> {
+  IRLoadCPSR(IRVariable const& result) : result(result) {}
+
+  /// The variable to load CPSR into
+  IRVariable const& result;
+
+  auto Reads(IRVariable const& var) const -> bool override {
+    return false;
+  }
+
+  auto Writes(IRVariable const& var) const -> bool override {
+    return &var == &result;
+  }
+
+  auto ToString() const -> std::string override {
+    return fmt::format("ldcpsr {}", std::to_string(result));
+  }  
+};
+
+struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {
+  IRStoreCPSR(IRValue value) : value(value) {}
+
+  /// The variable or constant to write to CPSR
+  IRValue value;
+
+  auto Reads(IRVariable const& var) const -> bool override {
+    return value.IsVariable() && &var == &value.GetVar();
+  }
+
+  auto Writes(IRVariable const& var) const -> bool override {
+    return false;
+  }
+
+  auto ToString() const -> std::string override {
+    return fmt::format("stcpsr {}", std::to_string(value));
+  }  
+};
+
+struct IRUpdateFlags final : IROpcodeBase<IROpcodeClass::UpdateFlags> {
+  // TODO: take care of the sticky overflow flag
+  IRUpdateFlags(
+    IRVariable const& result,
+    IRVariable const& input,
+    bool flag_n,
+    bool flag_z,
+    bool flag_c,
+    bool flag_v
+  ) : result(result), input(input), flag_n(flag_n), flag_z(flag_z), flag_c(flag_c), flag_v(flag_v) {}
+
+  IRVariable const& result;
+  IRVariable const& input;
+  bool flag_n;
+  bool flag_z;
+  bool flag_c;
+  bool flag_v;
+
+  auto Reads(IRVariable const& var) const -> bool override {
+    return &input == &var;
+  }
+
+  auto Writes(IRVariable const& var) const -> bool override {
+    return &result == &var;
+  }
+
+  auto ToString() const -> std::string override {
+    return fmt::format("update.{}{}{}{} {}, {}",
+      flag_n ? 'n' : '-',
+      flag_z ? 'z' : '-',
+      flag_c ? 'c' : '-',
+      flag_v ? 'v' : '-',
+      std::to_string(result),
+      std::to_string(input));
   }
 };
 

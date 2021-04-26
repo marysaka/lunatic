@@ -51,9 +51,14 @@ void ir_test() {
   auto& lhs = code.CreateVar(IRDataType::UInt32, "add_lhs");
   auto& rhs = code.CreateVar(IRDataType::UInt32, "add_rhs");
   auto& result = code.CreateVar(IRDataType::UInt32, "add_result");
+  auto& flags_in  = code.CreateVar(IRDataType::UInt32, "add_flags_in");
+  auto& flags_out = code.CreateVar(IRDataType::UInt32, "add_flags_out");
   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, lhs);
   code.LoadGPR(IRGuestReg{GPR::R2, Mode::User}, rhs);
+  code.LoadCPSR(flags_in);
   code.Add(result, lhs, rhs, true);
+  code.UpdateFlags(flags_out, flags_in, true, true, true, true);
+  code.StoreCPSR(flags_out);
   code.StoreGPR(IRGuestReg{GPR::R12, Mode::User}, result);
 
   fmt::print(code.ToString());
@@ -66,6 +71,8 @@ void ir_test() {
   for (int i = 0; i < 16; i++) {
     fmt::print("r{} = 0x{:08X}\n", i, state.GetGPR(Mode::User, static_cast<GPR>(i)));
   }
+
+  fmt::print("cpsr = 0x{:08X}\n", state.GetCPSR().v);
 }
 
 using namespace lunatic::test;

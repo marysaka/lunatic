@@ -22,7 +22,17 @@ struct IREmitter {
 
   void LoadGPR(IRGuestReg reg, IRVariable const& result);
   void StoreGPR(IRGuestReg reg, IRValue value);
+  void LoadCPSR(IRVariable const& result);
+  void StoreCPSR(IRValue value);
   void Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
+  void UpdateFlags(
+    IRVariable const& result,
+    IRVariable const& input,
+    bool flag_n,
+    bool flag_z,
+    bool flag_c,
+    bool flag_v
+  );
 
 private:
   /// List of emitted IR opcodes

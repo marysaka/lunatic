@@ -45,11 +45,33 @@ void IREmitter::StoreGPR(IRGuestReg reg, IRValue value) {
   code.push_back(std::make_unique<IRStoreGPR>(reg, value));
 }
 
+void IREmitter::LoadCPSR(IRVariable const& result) {
+  code.push_back(std::make_unique<IRLoadCPSR>(result));
+}
+
+void IREmitter::StoreCPSR(IRValue value) {
+  if (value.IsNull()) {
+    throw std::runtime_error("StoreCPSR: value must not be null");
+  }
+  code.push_back(std::make_unique<IRStoreCPSR>(value));
+}
+
 void IREmitter::Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
   if (rhs.IsNull()) {
     throw std::runtime_error("Add: rhs operand must not be null");
   }
   code.push_back(std::make_unique<IRAdd>(result, lhs, rhs, update_host_flags));
+}
+
+void IREmitter::UpdateFlags(
+  IRVariable const& result,
+  IRVariable const& input,
+  bool flag_n,
+  bool flag_z,
+  bool flag_c,
+  bool flag_v
+) {
+  code.push_back(std::make_unique<IRUpdateFlags>(result, input, flag_n, flag_z, flag_c, flag_v));
 }
 
 } // namespace lunatic::frontend
