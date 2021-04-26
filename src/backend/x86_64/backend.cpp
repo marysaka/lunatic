@@ -4,7 +4,6 @@
 
 #include <list>
 #include <stdexcept>
-// #include <unordered_map>
 #include <xbyak/xbyak.h>
 
 #include "backend.hpp"
@@ -14,6 +13,13 @@ namespace lunatic {
 namespace backend {
 
 using namespace lunatic::frontend;
+
+// TODO: implement spilling to the stack
+
+// TODO: optimize cases where an operand variable expires during the IR opcode we're currently compiling.
+// In that case the host register that is assigned to it might be reused for the result variable to do some optimization.
+
+// TODO: right now we only have UInt32 but how to deal with different variable or constant data types?
 
 void X64Backend::Run(State& state, IREmitter const& emitter) {
   using namespace Xbyak::util;
@@ -67,12 +73,8 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
         auto op = lunatic_cast<IRAdd>(op_.get());
         auto result_reg = reg_alloc.GetReg32(op->result, location);
         auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
-        /* TODO: if the LHS variable expires in this very same instruction,
-         * then it would be safe to accumulate into the LHS register directly.
-         */
         code.mov(result_reg, lhs_reg);
         if (op->rhs.IsConstant()) {
-          // TODO: handle different data types, once we have them...?
           auto imm = op->rhs.GetConst().value;
           code.add(result_reg, imm);
         } else {
@@ -96,8 +98,6 @@ void X64Backend::Run(State& state, IREmitter const& emitter) {
         if (op->flag_z) { mask |= 0x40000000; pext_mask |= 0x4000; }
         if (op->flag_c) { mask |= 0x20000000; pext_mask |= 0x0100; }
         if (op->flag_v) { mask |= 0x10000000; pext_mask |= 0x0001; }
-
-        // TODO: likewise to Add, optimize case when input variable is last used in this instruction.
 
         // TODO: assumes UpdateFlags will not be called again before updating the host flags.
         code.push(rcx);
