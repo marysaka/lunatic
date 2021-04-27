@@ -20,59 +20,113 @@ void ir_test() {
   using GPR = State::GPR;
   using Mode = State::Mode;
 
-  IREmitter code;
-
-  auto& var0 = code.CreateVar(IRDataType::UInt32);
-  auto& var1 = code.CreateVar(IRDataType::UInt32);
-  auto& var2 = code.CreateVar(IRDataType::UInt32);
-
-  code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, IRConstant{u32(0xAABBCCDD)});
-  code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, var0);
-  code.StoreGPR(IRGuestReg{GPR::R2, Mode::User}, IRConstant{u32(0x11223344)});
-  code.LoadGPR(IRGuestReg{GPR::R2, Mode::User}, var1);
-  code.StoreGPR(IRGuestReg{GPR::R1, Mode::User}, var0);
-  code.StoreGPR(IRGuestReg{GPR::R4, Mode::User}, IRConstant{u32(0xC0DEC0DE)});
-  code.StoreGPR(IRGuestReg{GPR::R3, Mode::User}, var1);
-  code.LoadGPR(IRGuestReg{GPR::R4, Mode::User}, var2);
-  code.StoreGPR(IRGuestReg{GPR::R5, Mode::User}, var2);
-
-  // Make the register allocator use a callee saved register
-  // auto& var3 = code.CreateVar(IRDataType::UInt32);
-  // auto& var4 = code.CreateVar(IRDataType::UInt32);
-  // auto& var5 = code.CreateVar(IRDataType::UInt32);
-  // code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, var3);
-  // code.LoadGPR(IRGuestReg{GPR::R2, Mode::User}, var4);
-  // code.LoadGPR(IRGuestReg{GPR::R4, Mode::User}, var5);
-  // code.StoreGPR(IRGuestReg{GPR::R6, Mode::User}, var3);
-  // code.StoreGPR(IRGuestReg{GPR::R7, Mode::User}, var4);
-  // code.StoreGPR(IRGuestReg{GPR::R8, Mode::User}, var5);
-
-  // Add instruction test
-  auto& lhs = code.CreateVar(IRDataType::UInt32, "add_lhs");
-  auto& rhs = code.CreateVar(IRDataType::UInt32, "add_rhs");
-  auto& result = code.CreateVar(IRDataType::UInt32, "add_result");
-  auto& flags_in  = code.CreateVar(IRDataType::UInt32, "add_flags_in");
-  auto& flags_out = code.CreateVar(IRDataType::UInt32, "add_flags_out");
-  code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, lhs);
-  code.LoadGPR(IRGuestReg{GPR::R2, Mode::User}, rhs);
-  code.LoadCPSR(flags_in);
-  code.Add(result, lhs, rhs, true);
-  code.UpdateFlags(flags_out, flags_in, true, true, true, true);
-  code.StoreCPSR(flags_out);
-  code.StoreGPR(IRGuestReg{GPR::R12, Mode::User}, result);
-
-  fmt::print(code.ToString());
-  fmt::print("\n");
-
   auto state = State{};
   auto backend = X64Backend{};
-  backend.Run(state, code);
 
-  for (int i = 0; i < 16; i++) {
-    fmt::print("r{} = 0x{:08X}\n", i, state.GetGPR(Mode::User, static_cast<GPR>(i)));
+  auto run = [&](IREmitter const& code, bool int3 = false) {
+    fmt::print(code.ToString());
+    fmt::print("\n");
+
+    backend.Run(state, code, int3);
+
+    for (int i = 0; i < 16; i++) {
+      fmt::print("r{} = 0x{:08X}\n", i, state.GetGPR(Mode::User, static_cast<GPR>(i)));
+    }
+
+    fmt::print("cpsr = 0x{:08X}\n", state.GetCPSR().v);
+  };
+
+  // Test #0 - operand = 0x11223344, amount = 0, carry_in = 1
+  // Expected r0 = 0x11223344, carry_out = 1
+  {
+    auto code = IREmitter{};  
+    state.GetGPR(Mode::User, GPR::R0) = 0x11223344;
+    state.GetCPSR().f.c = 1;
+
+    auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+    auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+    auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+    auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+    code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+    code.LSL(result, operand, IRConstant{u32(0)}, true);
+    code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+    code.LoadCPSR(cpsr_in);
+    code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+    code.StoreCPSR(cpsr_out);
+
+    run(code);
   }
 
-  fmt::print("cpsr = 0x{:08X}\n", state.GetCPSR().v);
+  // Test #1 - operand = 0x80000000, amount = 1, carry_in = 0
+  // Expected r0 = 0x00000000, carry_out = 1
+  {
+    auto code = IREmitter{};  
+    state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
+    state.GetCPSR().f.c = 0;
+
+    auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+    auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+    auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+    auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+    code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+    code.LSL(result, operand, IRConstant{u32(1)}, true);
+    code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+    code.LoadCPSR(cpsr_in);
+    code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+    code.StoreCPSR(cpsr_out);
+
+    run(code);
+  }
+
+  // Test #2 - operand = 0x00000001, amount = 31, carry_in = 1
+  // Expected r0 = 0x80000000, carry_out = 0
+  {
+    auto code = IREmitter{};  
+    state.GetGPR(Mode::User, GPR::R0) = 0x00000001;
+    state.GetCPSR().f.c = 1;
+
+    auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+    auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+    auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+    auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+    code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+    code.LSL(result, operand, IRConstant{u32(31)}, true);
+    code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+    code.LoadCPSR(cpsr_in);
+    code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+    code.StoreCPSR(cpsr_out);
+
+    run(code);
+  }
+
+  // Test #3 - operand = 0x00000001, amount = 32, carry_in = 0
+  // Expected r0 = 0x00000000, carry_out = 1
+  // !!! random bug, sometimes this works and other times not !!!
+  // note: after a reboot this doesn't seem to reproduce anymore?!?
+  // possibly ASLR related?!?
+  {
+    auto code = IREmitter{};  
+    state.GetGPR(Mode::User, GPR::R0) = 0x00000001;
+    state.GetCPSR().f.c = 0;
+
+    auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+    auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+    auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+    auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+    code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+    code.LSL(result, operand, IRConstant{u32(32)}, true);
+    code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+    code.LoadCPSR(cpsr_in);
+    code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+    code.StoreCPSR(cpsr_out);
+
+    // run(code, true);
+    run(code);
+  }
 }
 
 using namespace lunatic::test;

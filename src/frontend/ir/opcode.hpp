@@ -19,6 +19,10 @@ enum class IROpcodeClass {
   LoadCPSR,
   StoreCPSR,
   UpdateFlags,
+  LogicalShiftLeft,
+  LogicalShiftRight,
+  ArithmeticShiftRight,
+  RotateRight,
   Add
 };
 
@@ -157,6 +161,39 @@ struct IRUpdateFlags final : IROpcodeBase<IROpcodeClass::UpdateFlags> {
       flag_v ? 'v' : '-',
       std::to_string(result),
       std::to_string(input));
+  }
+};
+
+struct IRLogicalShiftLeft final : IROpcodeBase<IROpcodeClass::LogicalShiftLeft> {
+  IRLogicalShiftLeft(
+    IRVariable const& result,
+    IRVariable const& operand,
+    IRValue amount,
+    bool update_host_flags
+  ) : result(result), operand(operand), amount(amount) {}
+
+  /// The variable to store the result in
+  IRVariable const& result;
+
+  /// The operand to be shifted
+  IRVariable const& operand;
+
+  /// The variable or constant shift amount
+  IRValue amount;
+
+  /// Whether to update/cache the host system flags
+  bool update_host_flags;
+
+  auto Reads(IRVariable const& var) const -> bool override {
+    return &var == &operand || (amount.IsVariable() && &var == &amount.GetVar());
+  }
+
+  auto Writes(IRVariable const& var) const -> bool override {
+    return &var == &result;
+  }
+
+  auto ToString() const -> std::string override {
+    return fmt::format("lsl {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
   }
 };
 

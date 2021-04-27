@@ -12,7 +12,7 @@ namespace lunatic {
 namespace backend {
 
 struct X64Backend : Backend {
-  void Run(lunatic::frontend::State& state, lunatic::frontend::IREmitter const& emitter);
+  void Run(lunatic::frontend::State& state, lunatic::frontend::IREmitter const& emitter, bool int3);
 };
 
 } // namespace lunatic::backend
