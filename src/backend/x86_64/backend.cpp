@@ -160,6 +160,56 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
+      case IROpcodeClass::ArithmeticShiftRight: {
+        auto op = lunatic_cast<IRArithmeticShiftRight>(op_.get());
+        auto amount = op->amount;
+        auto result_reg = reg_alloc.GetReg32(op->result, location);
+        auto operand_reg = reg_alloc.GetReg32(op->operand, location);
+
+        // Mirror sign-bit in the upper 32-bit of the full 64-bit register.
+        code.movsxd(result_reg.cvt64(), operand_reg);
+
+        // TODO: change shift amount saturation from 33 to 32 for ASR? 32 would also work I guess?
+
+        if (amount.IsConstant()) {
+          auto amount_value = amount.GetConst().value;
+
+          // ASR #0 equals to ASR #32
+          if (amount_value == 0) {
+            amount_value = 32;
+          }
+
+          if (op->update_host_flags) {
+            code.sahf();
+          }
+
+          code.sar(result_reg.cvt64(), u8(std::min(amount_value, 33U)));
+        } else {
+          auto amount_reg = reg_alloc.GetReg32(op->amount.GetVar(), location);
+          // TODO: is there a better way that avoids push/pop rcx?
+          code.push(rcx);
+
+          code.mov(ecx, 33);
+          code.cmp(amount_reg, u8(33));
+          code.cmovl(ecx, amount_reg);
+
+          if (op->update_host_flags) {
+            code.sahf();
+          }
+
+          code.sar(result_reg.cvt64(), cl);
+
+          code.pop(rcx);
+        }
+
+        if (op->update_host_flags) {
+          code.lahf();
+        }
+
+        // Clear upper 32-bit of the result
+        code.mov(result_reg, result_reg);
+        break;
+      }
       case IROpcodeClass::Add: {
         auto op = lunatic_cast<IRAdd>(op_.get());
         auto result_reg = reg_alloc.GetReg32(op->result, location);
