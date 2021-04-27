@@ -164,8 +164,9 @@ struct IRUpdateFlags final : IROpcodeBase<IROpcodeClass::UpdateFlags> {
   }
 };
 
-struct IRLogicalShiftLeft final : IROpcodeBase<IROpcodeClass::LogicalShiftLeft> {
-  IRLogicalShiftLeft(
+template<IROpcodeClass _klass>
+struct IRShifterBase : IROpcodeBase<_klass> {
+  IRShifterBase(
     IRVariable const& result,
     IRVariable const& operand,
     IRValue amount,
@@ -191,9 +192,37 @@ struct IRLogicalShiftLeft final : IROpcodeBase<IROpcodeClass::LogicalShiftLeft> 
   auto Writes(IRVariable const& var) const -> bool override {
     return &var == &result;
   }
+};
+
+struct IRLogicalShiftLeft final : IRShifterBase<IROpcodeClass::LogicalShiftLeft> {
+  using IRShifterBase::IRShifterBase;
 
   auto ToString() const -> std::string override {
     return fmt::format("lsl {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
+  }
+};
+
+struct IRLogicalShiftRight final : IRShifterBase<IROpcodeClass::LogicalShiftRight> {
+  using IRShifterBase::IRShifterBase;
+
+  auto ToString() const -> std::string override {
+    return fmt::format("lsr {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
+  }
+};
+
+struct IRArithmeticShiftRight final : IRShifterBase<IROpcodeClass::ArithmeticShiftRight> {
+  using IRShifterBase::IRShifterBase;
+
+  auto ToString() const -> std::string override {
+    return fmt::format("asr {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
+  }
+};
+
+struct IRRotateRight final : IRShifterBase<IROpcodeClass::RotateRight> {
+  using IRShifterBase::IRShifterBase;
+
+  auto ToString() const -> std::string override {
+    return fmt::format("ror {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
   }
 };
 

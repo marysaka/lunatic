@@ -25,6 +25,9 @@ struct IREmitter {
   void LoadCPSR(IRVariable const& result);
   void StoreCPSR(IRValue value);
   void LSL(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
+  void LSR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
+  void ASR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
+  void ROR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
   void Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
   void UpdateFlags(
     IRVariable const& result,

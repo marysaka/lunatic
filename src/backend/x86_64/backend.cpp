@@ -93,26 +93,71 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
           code.shl(result_reg.cvt64(), u8(std::min(amount.GetConst().value, 33U)));
         } else {
           auto amount_reg = reg_alloc.GetReg32(op->amount.GetVar(), location);
-          // TODO: properly allocate a temporary register instead of push/pop.
-          code.push(rax);
-          code.mov(eax, 33);
+          // TODO: is there a better way that avoids push/pop rcx?
+          code.push(rcx);
+
+          code.mov(ecx, 33);
           code.cmp(amount_reg, u8(33));
-          code.cmovl(eax, amount_reg);
+          code.cmovl(ecx, amount_reg);
+
           if (op->update_host_flags) {
             code.sahf();
           }
-          code.shl(result_reg.cvt64(), al);
-          code.pop(rax);
+
+          code.shl(result_reg.cvt64(), cl);
+
+          code.pop(rcx);
         }
 
         if (op->update_host_flags) {
           code.lahf();
-          if (int3) {
-            code.int3();
-          }
         }
 
         code.shr(result_reg.cvt64(), 32);
+        break;
+      }
+      case IROpcodeClass::LogicalShiftRight: {
+        auto op = lunatic_cast<IRLogicalShiftRight>(op_.get());
+        auto amount = op->amount;
+        auto result_reg = reg_alloc.GetReg32(op->result, location);
+        auto operand_reg = reg_alloc.GetReg32(op->operand, location);
+
+        code.mov(result_reg, operand_reg);
+
+        if (amount.IsConstant()) {
+          auto amount_value = amount.GetConst().value;
+
+          // LSR #0 equals to LSR #32
+          if (amount_value == 0) {
+            amount_value = 32;
+          }
+
+          if (op->update_host_flags) {
+            code.sahf();
+          }
+
+          code.shr(result_reg.cvt64(), u8(std::min(amount_value, 33U)));
+        } else {
+          auto amount_reg = reg_alloc.GetReg32(op->amount.GetVar(), location);
+          // TODO: is there a better way that avoids push/pop rcx?
+          code.push(rcx);
+
+          code.mov(ecx, 33);
+          code.cmp(amount_reg, u8(33));
+          code.cmovl(ecx, amount_reg);
+
+          if (op->update_host_flags) {
+            code.sahf();
+          }
+
+          code.shr(result_reg.cvt64(), cl);
+
+          code.pop(rcx);
+        }
+
+        if (op->update_host_flags) {
+          code.lahf();
+        }
         break;
       }
       case IROpcodeClass::Add: {
@@ -155,9 +200,6 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         code.pext(eax, eax, ecx);
         code.shl(eax, 28);
         code.and_(eax, mask);
-        if (int3) {
-          code.int3();
-        }
 
         // Clear the bits to be updated, then OR the new values.
         code.mov(result_reg, input_reg);

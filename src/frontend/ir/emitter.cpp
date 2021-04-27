@@ -63,6 +63,27 @@ void IREmitter::LSL(IRVariable const& result, IRVariable const& operand, IRValue
   code.push_back(std::make_unique<IRLogicalShiftLeft>(result, operand, amount, update_host_flags));
 }
 
+void IREmitter::LSR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags) {
+  if (amount.IsNull()) {
+    throw std::runtime_error("LSR: amount must not be null");
+  }
+  code.push_back(std::make_unique<IRLogicalShiftRight>(result, operand, amount, update_host_flags));
+}
+
+void IREmitter::ASR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags) {
+  if (amount.IsNull()) {
+    throw std::runtime_error("ASR: amount must not be null");
+  }
+  code.push_back(std::make_unique<IRArithmeticShiftRight>(result, operand, amount, update_host_flags));
+}
+
+void IREmitter::ROR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags) {
+  if (amount.IsNull()) {
+    throw std::runtime_error("ROR: amount must not be null");
+  }
+  code.push_back(std::make_unique<IRRotateRight>(result, operand, amount, update_host_flags));
+}
+
 void IREmitter::Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
   if (rhs.IsNull()) {
     throw std::runtime_error("Add: rhs operand must not be null");
