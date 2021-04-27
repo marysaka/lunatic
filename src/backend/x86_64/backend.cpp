@@ -210,6 +210,63 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         code.mov(result_reg, result_reg);
         break;
       }
+      case IROpcodeClass::RotateRight: {
+        auto op = lunatic_cast<IRRotateRight>(op_.get());
+        auto amount = op->amount;
+        auto result_reg = reg_alloc.GetReg32(op->result, location);
+        auto operand_reg = reg_alloc.GetReg32(op->operand, location);
+
+        code.mov(result_reg, operand_reg);
+
+        if (!amount.IsConstant() || amount.GetConst().value != 0) {
+          // Mirror lower 32-bit in the upper 32-bit
+          // 0xAABBCCDD -> 0xAABBCCDDAABBCCDD
+          code.shl(result_reg.cvt64(), 32);
+          code.or_(result_reg.cvt64(), operand_reg);
+        }
+
+        if (amount.IsConstant()) {
+          auto amount_value = amount.GetConst().value;
+
+          // ROR #0 equals to RRX #1
+          if (amount_value == 0) {
+            if (op->update_host_flags) {
+              code.sahf();
+            }
+
+            // Note: we explicitly do not use the 64-bit version of the register.
+            code.rcr(result_reg, 1);
+          } else {
+            if (op->update_host_flags) {
+              code.sahf();
+            }
+
+            code.shr(result_reg.cvt64(), u8(amount_value));
+          }
+        } else {
+          auto amount_reg = reg_alloc.GetReg32(op->amount.GetVar(), location);
+          // TODO: is there a better way that avoids push/pop rcx?
+          code.push(rcx);
+
+          code.mov(cl, amount_reg.cvt8());
+
+          if (op->update_host_flags) {
+            code.sahf();
+          }
+
+          code.shr(result_reg.cvt64(), cl);
+
+          code.pop(rcx);
+        }
+
+        if (op->update_host_flags) {
+          code.lahf();
+        }
+
+        // Clear upper 32-bit of the result
+        code.mov(result_reg, result_reg);
+        break;
+      }
       case IROpcodeClass::Add: {
         auto op = lunatic_cast<IRAdd>(op_.get());
         auto result_reg = reg_alloc.GetReg32(op->result, location);

@@ -275,45 +275,161 @@ void ir_test() {
 
 // --------------------------------------------------------------------
 
-  // Test #0 - operand = 0x80000000, amount = 0 (immediate), carry_in = 0
-  // Expected r0 = 0xFFFFFFFF, carry_out = 1
+  // // Test #0 - operand = 0x80000000, amount = 0 (immediate), carry_in = 0
+  // // Expected r0 = 0xFFFFFFFF, carry_out = 1
+  // {
+  //   auto code = IREmitter{};  
+  //   state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
+  //   state.GetCPSR().f.c = 0;
+
+  //   auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+  //   auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+  //   auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+  //   auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  //   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+  //   code.ASR(result, operand, IRConstant{u32(0)}, true);
+  //   code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+  //   code.LoadCPSR(cpsr_in);
+  //   code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+  //   code.StoreCPSR(cpsr_out);
+
+  //   run(code);
+  // }
+
+  // // Test #1 - operand = 0x80000000, amount = 0 (register), carry_in = 1
+  // // Expected r0 = 0x80000000, carry_out = 1
+  // {
+  //   auto code = IREmitter{};  
+  //   state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
+  //   state.GetGPR(Mode::User, GPR::R1) = 0;
+  //   state.GetCPSR().f.c = 1;
+
+  //   auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+  //   auto& amount   = code.CreateVar(IRDataType::UInt32, "amount");
+  //   auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+  //   auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+  //   auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  //   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+  //   code.LoadGPR(IRGuestReg{GPR::R1, Mode::User}, amount);
+  //   code.ASR(result, operand, amount, true);
+  //   code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+  //   code.LoadCPSR(cpsr_in);
+  //   code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+  //   code.StoreCPSR(cpsr_out);
+
+  //   run(code);
+  // }
+
+  // // Test #2 - operand = 0x80000000, amount = 31 (immediate), carry_in = 1
+  // // Expected r0 = 0xFFFFFFFF, carry_out = 0
+  // {
+  //   auto code = IREmitter{};  
+  //   state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
+  //   state.GetCPSR().f.c = 1;
+
+  //   auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+  //   auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+  //   auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+  //   auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  //   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+  //   code.ASR(result, operand, IRConstant{u32(31)}, true);
+  //   code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+  //   code.LoadCPSR(cpsr_in);
+  //   code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+  //   code.StoreCPSR(cpsr_out);
+
+  //   run(code);
+  // }
+
+  // // Test #3 - operand = 0x80000000, amount = 31 (register), carry_in = 1
+  // // Expected r0 = 0xFFFFFFFF, carry_out = 0
+  // {
+  //   auto code = IREmitter{};  
+  //   state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
+  //   state.GetGPR(Mode::User, GPR::R1) = 31;
+  //   state.GetCPSR().f.c = 1;
+
+  //   auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+  //   auto& amount   = code.CreateVar(IRDataType::UInt32, "amount");
+  //   auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+  //   auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+  //   auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  //   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+  //   code.LoadGPR(IRGuestReg{GPR::R1, Mode::User}, amount);
+  //   code.ASR(result, operand, amount, true);
+  //   code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+  //   code.LoadCPSR(cpsr_in);
+  //   code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+  //   code.StoreCPSR(cpsr_out);
+
+  //   run(code);
+  // }
+
+  // // Test #4 - operand = 0x80000000, amount = 32 (immediate), carry_in = 0
+  // // Expected r0 = 0xFFFFFFFF, carry_out = 1
+  // {
+  //   auto code = IREmitter{};  
+  //   state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
+  //   state.GetCPSR().f.c = 0;
+
+  //   auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+  //   auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+  //   auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+  //   auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  //   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+  //   code.ASR(result, operand, IRConstant{u32(32)}, true);
+  //   code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+  //   code.LoadCPSR(cpsr_in);
+  //   code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+  //   code.StoreCPSR(cpsr_out);
+
+  //   run(code);
+  // }
+
+  // // Test #5 - operand = 0x80000000, amount = 32 (register), carry_in = 0
+  // // Expected r0 = 0xFFFFFFFF, carry_out = 1
+  // {
+  //   auto code = IREmitter{};  
+  //   state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
+  //   state.GetGPR(Mode::User, GPR::R1) = 32;
+  //   state.GetCPSR().f.c = 0;
+
+  //   auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
+  //   auto& amount   = code.CreateVar(IRDataType::UInt32, "amount");
+  //   auto& result   = code.CreateVar(IRDataType::UInt32, "result");
+  //   auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
+  //   auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  //   code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
+  //   code.LoadGPR(IRGuestReg{GPR::R1, Mode::User}, amount);
+  //   code.ASR(result, operand, amount, true);
+  //   code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
+  //   code.LoadCPSR(cpsr_in);
+  //   code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
+  //   code.StoreCPSR(cpsr_out);
+
+  //   run(code);
+  // }
+
+// ---------------------------------------------------------------------------
+
   {
     auto code = IREmitter{};  
-    state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
-    state.GetCPSR().f.c = 0;
-
-    auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
-    auto& result   = code.CreateVar(IRDataType::UInt32, "result");
-    auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
-    auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
-
-    code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
-    code.ASR(result, operand, IRConstant{u32(0)}, true);
-    code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
-    code.LoadCPSR(cpsr_in);
-    code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
-    code.StoreCPSR(cpsr_out);
-
-    run(code);
-  }
-
-  // Test #1 - operand = 0x80000000, amount = 0 (register), carry_in = 1
-  // Expected r0 = 0x80000000, carry_out = 1
-  {
-    auto code = IREmitter{};  
-    state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
-    state.GetGPR(Mode::User, GPR::R1) = 0;
+    state.GetGPR(Mode::User, GPR::R0) = 0xAABBCCDD;
     state.GetCPSR().f.c = 1;
 
     auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
-    auto& amount   = code.CreateVar(IRDataType::UInt32, "amount");
     auto& result   = code.CreateVar(IRDataType::UInt32, "result");
     auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
     auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
 
     code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
-    code.LoadGPR(IRGuestReg{GPR::R1, Mode::User}, amount);
-    code.ASR(result, operand, amount, true);
+    code.ROR(result, operand, IRConstant{u32(0)}, true);
     code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
     code.LoadCPSR(cpsr_in);
     code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
@@ -322,11 +438,9 @@ void ir_test() {
     run(code);
   }
 
-  // Test #2 - operand = 0x80000000, amount = 31 (immediate), carry_in = 1
-  // Expected r0 = 0xFFFFFFFF, carry_out = 0
   {
     auto code = IREmitter{};  
-    state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
+    state.GetGPR(Mode::User, GPR::R0) = 0xAABBCCDD;
     state.GetCPSR().f.c = 1;
 
     auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
@@ -335,79 +449,7 @@ void ir_test() {
     auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
 
     code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
-    code.ASR(result, operand, IRConstant{u32(31)}, true);
-    code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
-    code.LoadCPSR(cpsr_in);
-    code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
-    code.StoreCPSR(cpsr_out);
-
-    run(code);
-  }
-
-  // Test #3 - operand = 0x80000000, amount = 31 (register), carry_in = 1
-  // Expected r0 = 0xFFFFFFFF, carry_out = 0
-  {
-    auto code = IREmitter{};  
-    state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
-    state.GetGPR(Mode::User, GPR::R1) = 31;
-    state.GetCPSR().f.c = 1;
-
-    auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
-    auto& amount   = code.CreateVar(IRDataType::UInt32, "amount");
-    auto& result   = code.CreateVar(IRDataType::UInt32, "result");
-    auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
-    auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
-
-    code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
-    code.LoadGPR(IRGuestReg{GPR::R1, Mode::User}, amount);
-    code.ASR(result, operand, amount, true);
-    code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
-    code.LoadCPSR(cpsr_in);
-    code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
-    code.StoreCPSR(cpsr_out);
-
-    run(code);
-  }
-
-  // Test #4 - operand = 0x80000000, amount = 32 (immediate), carry_in = 0
-  // Expected r0 = 0xFFFFFFFF, carry_out = 1
-  {
-    auto code = IREmitter{};  
-    state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
-    state.GetCPSR().f.c = 0;
-
-    auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
-    auto& result   = code.CreateVar(IRDataType::UInt32, "result");
-    auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
-    auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
-
-    code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
-    code.ASR(result, operand, IRConstant{u32(32)}, true);
-    code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
-    code.LoadCPSR(cpsr_in);
-    code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
-    code.StoreCPSR(cpsr_out);
-
-    run(code);
-  }
-
-  // Test #5 - operand = 0x80000000, amount = 32 (register), carry_in = 0
-  // Expected r0 = 0xFFFFFFFF, carry_out = 1
-  {
-    auto code = IREmitter{};  
-    state.GetGPR(Mode::User, GPR::R0) = 0x80000000;
-    state.GetGPR(Mode::User, GPR::R1) = 32;
-    state.GetCPSR().f.c = 0;
-
-    auto& operand  = code.CreateVar(IRDataType::UInt32, "operand");
-    auto& amount   = code.CreateVar(IRDataType::UInt32, "amount");
-    auto& result   = code.CreateVar(IRDataType::UInt32, "result");
-    auto& cpsr_in  = code.CreateVar(IRDataType::UInt32, "cpsr_in");
-    auto& cpsr_out = code.CreateVar(IRDataType::UInt32, "cpsr_out");
-
-    code.LoadGPR(IRGuestReg{GPR::R0, Mode::User}, operand);
-    code.LoadGPR(IRGuestReg{GPR::R1, Mode::User}, amount);
-    code.ASR(result, operand, amount, true);
+    code.ROR(result, operand, IRConstant{u32(16)}, true);
     code.StoreGPR(IRGuestReg{GPR::R0, Mode::User}, result);
     code.LoadCPSR(cpsr_in);
     code.UpdateFlags(cpsr_out, cpsr_in, false, false, true, false);
