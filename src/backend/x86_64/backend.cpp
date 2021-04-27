@@ -218,13 +218,6 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
 
         code.mov(result_reg, operand_reg);
 
-        if (!amount.IsConstant() || amount.GetConst().value != 0) {
-          // Mirror lower 32-bit in the upper 32-bit
-          // 0xAABBCCDD -> 0xAABBCCDDAABBCCDD
-          code.shl(result_reg.cvt64(), 32);
-          code.or_(result_reg.cvt64(), operand_reg);
-        }
-
         if (amount.IsConstant()) {
           auto amount_value = amount.GetConst().value;
 
@@ -234,10 +227,9 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
 
           // ROR #0 equals to RRX #1
           if (amount_value == 0) {
-            // Note: we explicitly do not use the 64-bit version of the register.
             code.rcr(result_reg, 1);
           } else {
-            code.shr(result_reg.cvt64(), u8(amount_value));
+            code.ror(result_reg, u8(amount_value));
           }
         } else {
           auto amount_reg = reg_alloc.GetReg32(op->amount.GetVar(), location);
@@ -250,7 +242,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
             code.sahf();
           }
 
-          code.shr(result_reg.cvt64(), cl);
+          code.ror(result_reg, cl);
 
           code.pop(rcx);
         }
@@ -258,9 +250,6 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         if (op->update_host_flags) {
           code.lahf();
         }
-
-        // Clear upper 32-bit of the result
-        code.mov(result_reg, result_reg);
         break;
       }
       case IROpcodeClass::Add: {
