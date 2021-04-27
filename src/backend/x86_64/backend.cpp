@@ -228,19 +228,15 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         if (amount.IsConstant()) {
           auto amount_value = amount.GetConst().value;
 
+          if (op->update_host_flags) {
+            code.sahf();
+          }
+
           // ROR #0 equals to RRX #1
           if (amount_value == 0) {
-            if (op->update_host_flags) {
-              code.sahf();
-            }
-
             // Note: we explicitly do not use the 64-bit version of the register.
             code.rcr(result_reg, 1);
           } else {
-            if (op->update_host_flags) {
-              code.sahf();
-            }
-
             code.shr(result_reg.cvt64(), u8(amount_value));
           }
         } else {
