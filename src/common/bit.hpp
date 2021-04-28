@@ -14,14 +14,14 @@ constexpr auto number_of_bits() -> uint {
   return CHAR_BIT * sizeof(T);
 }
 
-template<typename T>
-constexpr auto get_bit(T value, uint bit) -> T {
-  return (value >> bit) & 1;
+template<typename T, typename U = T>
+constexpr auto get_bit(T value, uint bit) -> U {
+  return static_cast<U>((value >> bit) & 1);
 }
 
-template<typename T>
-constexpr auto get_field(T value, uint lowest_bit, uint count) -> T {
-  return (value >> lowest_bit) & ~(static_cast<T>(-1) << count);
+template<typename T, typename U = T>
+constexpr auto get_field(T value, uint lowest_bit, uint count) -> U {
+  return static_cast<U>((value >> lowest_bit) & ~(static_cast<T>(-1) << count));
 }
 
 template<typename T>
