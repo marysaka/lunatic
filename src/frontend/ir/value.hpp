@@ -43,10 +43,10 @@ struct IRConstant {
   IRConstant(u32 value) : data_type(IRDataType::UInt32), value(value) {}
 
   /// The underlying data type
-  const IRDataType data_type;
+  IRDataType data_type;
 
   /// The underlying constant value
-  const u32 value;
+  u32 value;
 };
 
 /// Represents a constant or variable IR opcode argument
@@ -54,6 +54,16 @@ struct IRValue {
   IRValue() {}
   IRValue(IRVariable const& variable) : type(Type::Variable), variable(&variable) {}
   IRValue(IRConstant const& constant) : type(Type::Constant), constant( constant) {}
+
+  auto operator=(IRValue const& other) -> IRValue& {
+    type = other.type;
+    if (IsConstant()) {
+      constant = other.constant;
+    } else {
+      variable = other.variable;
+    }
+    return *this;
+  }
 
   bool IsNull() const { return type == Type::Null; }
   bool IsVariable() const { return type == Type::Variable; }
@@ -84,7 +94,7 @@ private:
 
   union {
     IRVariable const* variable;
-    IRConstant const  constant;
+    IRConstant constant;
   };
 };
 

@@ -15,6 +15,9 @@ auto Translator::translate(BasicBlock& block, Memory& memory) -> bool {
     return false;
   }
 
+  mode = block.key.field.mode;
+  emitter = &block.emitter;
+
   auto instruction = memory.FastRead<u32, Memory::Bus::Code>(address);
 
   return decode_arm(instruction, *this);

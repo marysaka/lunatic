@@ -17,6 +17,9 @@ struct Translator final : ARMDecodeClient<bool> {
 
   auto handle(ARMDataProcessing const& opcode) -> bool override;
   auto undefined(u32 opcode) -> bool override;
+
+  Mode mode;
+  IREmitter* emitter = nullptr;
 };
 
 } // namespace lunatic::frontend
