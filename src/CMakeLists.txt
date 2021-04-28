@@ -9,6 +9,7 @@ set(SOURCES
   backend/x86_64/backend.cpp
   backend/x86_64/register_allocator.cpp
   frontend/ir/emitter.cpp
+  frontend/basic_block.cpp
   frontend/state.cpp
   jit.cpp)
 
@@ -17,10 +18,14 @@ set(HEADERS
   backend/x86_64/backend.hpp
   backend/x86_64/register_allocator.hpp
   backend/backend.hpp
+  frontend/decode/definition/common.hpp
+  frontend/decode/definition/data_processing.hpp
+  frontend/decode/arm.hpp
   frontend/ir/emitter.hpp
   frontend/ir/opcode.hpp
   frontend/ir/register.hpp
   frontend/ir/value.hpp
+  frontend/basic_block.hpp
   frontend/state.hpp)
 
 set(HEADERS_PUBLIC
