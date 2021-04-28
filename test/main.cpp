@@ -13,6 +13,8 @@
 #include "backend/x86_64/backend.hpp"
 #include "frontend/ir/emitter.hpp"
 
+#include "frontend/decode/arm.hpp"
+
 void ir_test() {
   using namespace lunatic::backend;
   using namespace lunatic::frontend;
