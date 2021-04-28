@@ -26,9 +26,9 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
 
   if (opcode.immediate) {
     // TODO: update the carry flag in CPSR!
-    op2 = IRValue{IRConstant{
+    op2 = IRConstant{
       bit::rotate_right<u32>(opcode.op2_imm.value, opcode.op2_imm.shift)
-    }};
+    };
   } else {
     return false;
   }
