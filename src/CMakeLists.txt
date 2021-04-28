@@ -29,6 +29,8 @@ set(HEADERS
   frontend/state.hpp)
 
 set(HEADERS_PUBLIC
+  ../include/lunatic/detail/meta.hpp
+  ../include/lunatic/detail/punning.hpp
   ../include/lunatic/integer.hpp
   ../include/lunatic/jit.hpp
   ../include/lunatic/memory.hpp)
