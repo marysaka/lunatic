@@ -3,15 +3,65 @@
  */
 
 #include <lunatic/integer.hpp>
+#include <lunatic/memory.hpp>
 #include <arm/arm.hpp>
 #include <fmt/format.h>
 #include <fstream>
 #include <cstring>
 #include <SDL.h>
 
+#include "backend/x86_64/backend.hpp"
+#include "frontend/translator/translator.hpp"
+#include "frontend/state.hpp"
+
 using namespace lunatic::test;
 
-struct Memory final : arm::MemoryBase {
+struct JIT {
+  using GPR = lunatic::frontend::State::GPR;
+  using Mode = lunatic::frontend::State::Mode;
+
+  JIT(lunatic::Memory& memory) : memory(memory) {
+  }
+
+  bool Run() {
+    using namespace lunatic::backend;
+    using namespace lunatic::frontend;
+
+    auto basic_block = BasicBlock{BasicBlock::Key{state}};
+    auto success = translator.translate(basic_block, memory);
+
+    if (success) {
+      backend.Run(state, basic_block.emitter, false);
+    }
+
+    return success;
+  }
+
+  void SaveState(lunatic::test::arm::State& other_state) {
+    // TODO: take care of other CPU modes!
+    other_state.cpsr.v = state.GetCPSR().v;
+
+    for (uint i = 0; i < 16; i++) {
+      other_state.reg[i] = state.GetGPR(state.GetCPSR().f.mode, static_cast<GPR>(i));
+    }
+  }
+
+  void LoadState(lunatic::test::arm::State const& other_state) {
+    // TODO: take care of other CPU modes!
+    state.GetCPSR().v = other_state.cpsr.v;
+
+    for (uint i = 0; i < 16; i++) {
+      state.GetGPR(state.GetCPSR().f.mode, static_cast<GPR>(i)) = other_state.reg[i];
+    }
+  }
+
+  lunatic::backend::X64Backend backend;
+  lunatic::frontend::State state;
+  lunatic::Memory& memory;
+  lunatic::frontend::Translator translator;
+};
+
+struct Memory final : lunatic::Memory {
   Memory() {
     std::memset(pram, 0, sizeof(pram));
     std::memset(vram, 0, sizeof(vram));
@@ -86,6 +136,7 @@ struct Memory final : arm::MemoryBase {
 
 static Memory g_memory;
 static arm::ARM g_cpu_interp { arm::ARM::Architecture::ARMv5TE, &g_memory };
+static JIT g_cpu_jit { g_memory };
 static u16 frame[240 * 160];
 
 void render_frame() {
@@ -137,12 +188,26 @@ int main(int argc, char** argv) {
   state.bank[arm::BANK_SVC][arm::BANK_R13] = 0x03007FE0;
   state.bank[arm::BANK_IRQ][arm::BANK_R13] = 0x03007FA0;
   state.r13 = 0x03007F00;
-  state.r15 = 0x08000000;
+  g_cpu_interp.SetPC(0x08000000);
+
+  // Derp, just initialize the JIT state instead...
+  g_cpu_jit.LoadState(state);
 
   auto event = SDL_Event{};
 
   for (;;) {
-    g_cpu_interp.Run(279620);
+    for (uint i = 0; i < 279620; i++) {
+      if (!g_cpu_jit.Run()) {
+        g_cpu_jit.SaveState(state);
+
+        // TODO: just remove pipeline emulation from the interpreter instead.
+        g_cpu_interp.SetPC(state.r15 - (state.cpsr.f.thumb ? 4 : 8));
+        g_cpu_interp.Run(1);
+
+        g_cpu_jit.LoadState(state);
+      }
+    }
+    // g_cpu_interp.Run(279620);
 
     render_frame();
 

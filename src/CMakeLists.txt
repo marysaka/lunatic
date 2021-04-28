@@ -2,13 +2,17 @@ cmake_minimum_required(VERSION 3.2)
 
 project(lunatic CXX)
 
-set(CMAKE_CXX_STANDARD 14)
+# TODO: consider going back to C++14 eventually.
+# set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SOURCES
   backend/x86_64/backend.cpp
   backend/x86_64/register_allocator.cpp
   frontend/ir/emitter.cpp
+  frontend/translator/handle/data_processing.cpp
+  frontend/translator/translator.cpp
   frontend/basic_block.cpp
   frontend/state.cpp
   jit.cpp)
@@ -25,6 +29,7 @@ set(HEADERS
   frontend/ir/opcode.hpp
   frontend/ir/register.hpp
   frontend/ir/value.hpp
+  frontend/translator/translator.hpp
   frontend/basic_block.hpp
   frontend/state.hpp)
 

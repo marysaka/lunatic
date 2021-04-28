@@ -25,7 +25,7 @@ struct ARMDecodeClient {
 
 namespace detail {
 
-template<typename T, typename U>
+template<typename T, typename U = typename T::return_type>
 inline auto decode_data_processing_reg(Condition condition, u32 opcode, T& client) -> U {
   return client.handle(ARMDataProcessing{
     .condition = condition,
@@ -46,7 +46,7 @@ inline auto decode_data_processing_reg(Condition condition, u32 opcode, T& clien
   });
 }
 
-template<typename T, typename U>
+template<typename T, typename U = typename T::return_type>
 inline auto decode_data_processing_imm(Condition condition, u32 opcode, T& client) -> U {
   return client.handle(ARMDataProcessing{
     .condition = condition,
