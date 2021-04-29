@@ -91,15 +91,19 @@ void IREmitter::Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs
   code.push_back(std::make_unique<IRAdd>(result, lhs, rhs, update_host_flags));
 }
 
-void IREmitter::UpdateFlags(
-  IRVariable const& result,
-  IRVariable const& input,
-  bool flag_n,
-  bool flag_z,
-  bool flag_c,
-  bool flag_v
-) {
-  code.push_back(std::make_unique<IRUpdateFlags>(result, input, flag_n, flag_z, flag_c, flag_v));
+// void IREmitter::UpdateFlags(
+//   IRVariable const& result,
+//   IRVariable const& input,
+//   bool flag_n,
+//   bool flag_z,
+//   bool flag_c,
+//   bool flag_v
+// ) {
+//   code.push_back(std::make_unique<IRUpdateFlags>(result, input, flag_n, flag_z, flag_c, flag_v));
+// }
+
+void IREmitter::UpdateNZCV(IRVariable const& result, IRVariable const& input) {
+  code.push_back(std::make_unique<IRUpdateFlags>(result, input, true, true, true, true));
 }
 
 } // namespace lunatic::frontend

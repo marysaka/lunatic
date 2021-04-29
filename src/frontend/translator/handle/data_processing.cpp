@@ -87,9 +87,9 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
       if (opcode.set_flags) {
         auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
         auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
-        // TODO: create and use emitter->UpdateNZCV() instead
+
         emitter->LoadCPSR(cpsr_in);
-        emitter->UpdateFlags(cpsr_out, cpsr_in, true, true, true, true);
+        emitter->UpdateNZCV(cpsr_out, cpsr_in);
         emitter->StoreCPSR(cpsr_out);
       }
       break;
