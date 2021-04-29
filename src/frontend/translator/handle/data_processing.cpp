@@ -9,6 +9,8 @@
 namespace lunatic {
 namespace frontend {
 
+// TODO: handle R15 and SPSR loading special cases
+
 auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
   using Opcode = ARMDataProcessing::Opcode;
 
@@ -22,6 +24,7 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
 
   auto op2 = IRValue{};
 
+  // TODO: do not update the carry flag if it will be overwritten.
   if (opcode.immediate) {
     auto value = opcode.op2_imm.value;
     auto shift = opcode.op2_imm.shift;
@@ -72,6 +75,25 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
 
   // TODO: fix the naming... this is atrocious...
   switch (opcode.opcode) {
+    case Opcode::ADD: {
+      auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
+      auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
+      
+      emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
+      emitter->Add(result, op1, op2, opcode.set_flags);
+      emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+      
+      // TODO: put this into a helper method since it will be pretty common.
+      if (opcode.set_flags) {
+        auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
+        auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
+        // TODO: create and use emitter->UpdateNZCV() instead
+        emitter->LoadCPSR(cpsr_in);
+        emitter->UpdateFlags(cpsr_out, cpsr_in, true, true, true, true);
+        emitter->StoreCPSR(cpsr_out);
+      }
+      break;
+    }
     case Opcode::MOV: {
       // TODO: update flags and all...
       emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, op2);
