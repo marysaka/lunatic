@@ -177,20 +177,6 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
       }
 
       // return ARMInstrType::DataProcessing;
-      // return client.handle(ARMDataProcessing{
-      // });
-      return client.handle(ARMDataProcessing{
-        .condition = condition,
-        .opcode = static_cast<ARMDataProcessing::Opcode>(bit::get_field(opcode, 21, 4)),
-        .immediate = true,
-        .set_flags = bit::get_bit<u32, bool>(opcode, 20),
-        .reg_dst = bit::get_field<u32, GPR>(opcode, 12, 4),
-        .reg_op1 = bit::get_field<u32, GPR>(opcode, 16, 4),
-        .op2_imm = {
-          .value = bit::get_field<u32, u8>(opcode, 0, 8),
-          .shift = bit::get_field(opcode, 8, 4) * 2
-        }
-      });
       return decode_data_processing_imm(condition, opcode, client);
     }
     case 0b010: {
