@@ -111,7 +111,7 @@ struct Memory final : lunatic::Memory {
     }
 
     if (address == 0x04000130) {
-      return 0xFFFF; // stubbed key input
+      return keyinput;
     }
 
     fmt::print("Memory: invalid read16 @ 0x{:08X}\n", address);
@@ -134,6 +134,7 @@ struct Memory final : lunatic::Memory {
   u8 iwram[0x8000];
 
   int vblank_flag;
+  u16 keyinput = 0xFFFF;
 };
 
 static Memory g_memory;
@@ -221,6 +222,32 @@ int main(int argc, char** argv) {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT)
         goto done;
+
+      if (event.type == SDL_KEYUP || event.type == SDL_KEYDOWN) {
+        auto bit  = -1;
+        bool down = event.type == SDL_KEYDOWN;
+
+        switch (reinterpret_cast<SDL_KeyboardEvent*>(&event)->keysym.sym) {
+          case SDLK_a: bit = 0; break;
+          case SDLK_s: bit = 1; break;
+          case SDLK_BACKSPACE: bit = 2; break;
+          case SDLK_RETURN: bit = 3; break;
+          case SDLK_RIGHT: bit = 4; break;
+          case SDLK_LEFT: bit = 5; break;
+          case SDLK_UP: bit = 6; break;
+          case SDLK_DOWN: bit = 7; break;
+          case SDLK_f: bit = 8; break;
+          case SDLK_d: bit = 9; break;
+        }
+
+        if (bit != -1) {
+          if (down) {
+            g_memory.keyinput &= ~(1 << bit);
+          } else {
+            g_memory.keyinput |=  (1 << bit);
+          }
+        }
+      }
     }
   }
 
