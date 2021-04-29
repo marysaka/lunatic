@@ -20,17 +20,54 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
     return false;
   }
 
-  // Do not load GPR if we're not going to use it (e.g. MOV)
-  // auto op1 = emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode});
   auto op2 = IRValue{};
 
   if (opcode.immediate) {
-    // TODO: update the carry flag in CPSR!
-    op2 = IRConstant{
-      bit::rotate_right<u32>(opcode.op2_imm.value, opcode.op2_imm.shift)
-    };
+    auto value = opcode.op2_imm.value;
+    auto shift = opcode.op2_imm.shift;
+
+    op2 = IRConstant{bit::rotate_right<u32>(value, shift)};
+
+    if (opcode.set_flags && shift != 0) {
+      bool carry = bit::get_bit<u32, bool>(value, shift - 1);
+      // TODO: update the carry flag in host flags!
+    }
   } else {
-    return false;
+    auto& shift = opcode.op2_reg.shift;
+
+    auto  amount = IRValue{};
+    auto& source = emitter->CreateVar(IRDataType::UInt32, "shift_source");
+    auto& result = emitter->CreateVar(IRDataType::UInt32, "shift_result");
+
+    emitter->LoadGPR(IRGuestReg{opcode.op2_reg.reg, mode}, source);
+
+    if (shift.immediate) {
+      amount = IRConstant(u32(shift.amount_imm));
+    } else {
+      amount = emitter->CreateVar(IRDataType::UInt32, "shift_amount");
+      emitter->LoadGPR(IRGuestReg{shift.amount_reg, mode}, amount.GetVar());
+    }
+
+    switch (shift.type) {
+      case Shift::LSL: {
+        emitter->LSL(result, source, amount, opcode.set_flags);
+        break;
+      }
+      case Shift::LSR: {
+        emitter->LSR(result, source, amount, opcode.set_flags);
+        break;
+      }
+      case Shift::ASR: {
+        emitter->ASR(result, source, amount, opcode.set_flags);
+        break;
+      }
+      case Shift::ROR: {
+        emitter->ROR(result, source, amount, opcode.set_flags);
+        break;
+      }
+    }
+
+    op2 = result;
   }
 
   // TODO: fix the naming... this is atrocious...
@@ -41,17 +78,16 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
       break;
     }
     default: {
-      fmt::print("DataProcessing: unhandled opcode 0x{:X}\n", opcode.opcode);
       return false;
     }
   }
 
   if (opcode.reg_dst == GPR::PC) {
-    fmt::print("DataProcessing: unhandled write to R15");
+    // Hmm... this really gets spammed a lot in ARMWrestler right now.
+    // fmt::print("DataProcessing: unhandled write to R15\n");
     return false;
   }
 
-  fmt::print("Successfully compiled one data processing opcode! ^-^\n");
   return true;
 }
 
