@@ -18,7 +18,7 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
     return false;
   }
 
-  if (opcode.set_flags) {
+  if (opcode.set_flags && opcode.opcode != Opcode::ADD) {
     return false;
   }
 
