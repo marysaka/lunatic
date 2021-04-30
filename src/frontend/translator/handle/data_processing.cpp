@@ -11,7 +11,7 @@ namespace frontend {
 
 // TODO: handle R15 and SPSR loading special cases
 
-auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
+auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
   using Opcode = ARMDataProcessing::Opcode;
 
   if (opcode.condition != Condition::AL) {
@@ -75,11 +75,28 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
 
   // TODO: fix the naming... this is atrocious...
   switch (opcode.opcode) {
+    case Opcode::SUB:
+    case Opcode::CMP: {
+      auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
+      auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
+
+      // TODO: do not require a result variable for CMP
+      emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
+      emitter->Sub(result, op1, op2, opcode.set_flags);
+      if (opcode.opcode == Opcode::SUB) {
+        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+      }
+
+      if (opcode.set_flags) {
+        EmitUpdateNZCV();
+      }
+      break;
+    }
     case Opcode::ADD:
     case Opcode::CMN: {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
       auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
-      
+
       // TODO: do not require a result variable for CMN
       emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
       emitter->Add(result, op1, op2, opcode.set_flags);
@@ -87,14 +104,8 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
       }
 
-      // TODO: put this into a helper method since it will be pretty common.
       if (opcode.set_flags) {
-        auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
-        auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
-
-        emitter->LoadCPSR(cpsr_in);
-        emitter->UpdateNZCV(cpsr_out, cpsr_in);
-        emitter->StoreCPSR(cpsr_out);
+        EmitUpdateNZCV();
       }
       break;
     }

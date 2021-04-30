@@ -28,7 +28,7 @@ struct JIT {
     using namespace lunatic::frontend;
 
     auto basic_block = BasicBlock{BasicBlock::Key{state}};
-    auto success = translator.translate(basic_block, memory);
+    auto success = translator.Translate(basic_block, memory);
 
     if (success) {
       backend.Run(state, basic_block.emitter, false);

@@ -15,19 +15,19 @@ namespace frontend {
 /// Receives decoded opcode data
 template<typename T>
 struct ARMDecodeClient {
-  /// Return type for handle() methods.
+  /// Return type for Handle() methods.
   /// Utilized by decode_arm to inter its return type.
   using return_type = T;
 
-  virtual auto handle(ARMDataProcessing const& opcode) -> T = 0;
-  virtual auto undefined(u32 opcode) -> T = 0;
+  virtual auto Handle(ARMDataProcessing const& opcode) -> T = 0;
+  virtual auto Undefined(u32 opcode) -> T = 0;
 };
 
 namespace detail {
 
 template<typename T, typename U = typename T::return_type>
 inline auto decode_data_processing_reg(Condition condition, u32 opcode, T& client) -> U {
-  return client.handle(ARMDataProcessing{
+  return client.Handle(ARMDataProcessing{
     .condition = condition,
     .opcode = bit::get_field<u32, ARMDataProcessing::Opcode>(opcode, 21, 4),
     .immediate = false,
@@ -48,7 +48,7 @@ inline auto decode_data_processing_reg(Condition condition, u32 opcode, T& clien
 
 template<typename T, typename U = typename T::return_type>
 inline auto decode_data_processing_imm(Condition condition, u32 opcode, T& client) -> U {
-  return client.handle(ARMDataProcessing{
+  return client.Handle(ARMDataProcessing{
     .condition = condition,
     .opcode = bit::get_field<u32, ARMDataProcessing::Opcode>(opcode, 21, 4),
     .immediate = true,
@@ -90,63 +90,63 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         // Extra load/stores (A3-5)
         if ((opcode & 0x60) != 0) {
           // return ARMInstrType::HalfwordSignedTransfer;
-          return client.undefined(instruction);
+          return client.Undefined(instruction);
         } else {
           switch ((opcode >> 23) & 3) {
             case 0b00:
             case 0b01:
               // return ARMInstrType::Multiply;
-              return client.undefined(instruction);
+              return client.Undefined(instruction);
             case 0b10:
               // return ARMInstrType::SingleDataSwap;
-              return client.undefined(instruction);
+              return client.Undefined(instruction);
             case 0b11:
               // return ARMInstrType::LoadStoreExclusive;
-              return client.undefined(instruction);
+              return client.Undefined(instruction);
           }
         }
       } else if (!set_flags && opcode2 >= 0b1000 && opcode2 <= 0b1011) {
         // Miscellaneous instructions (A3-4)
         if ((opcode & 0xF0) == 0) {
           // return ARMInstrType::StatusTransfer;
-          return client.undefined(instruction);
+          return client.Undefined(instruction);
         }
 
         if ((opcode & 0x6000F0) == 0x200010) {
           // return ARMInstrType::BranchAndExchange;
-          return client.undefined(instruction);
+          return client.Undefined(instruction);
         }
 
         if ((opcode & 0x6000F0) == 0x200020) {
           // return ARMInstrType::BranchAndExchangeJazelle;
-          return client.undefined(instruction);
+          return client.Undefined(instruction);
         }
 
         if ((opcode & 0x6000F0) == 0x600010) {
           // return ARMInstrType::CountLeadingZeros;
-          return client.undefined(instruction);
+          return client.Undefined(instruction);
         }
 
         if ((opcode & 0x6000F0) == 0x200030) {
           // return ARMInstrType::BranchLinkExchange;
-          return client.undefined(instruction);
+          return client.Undefined(instruction);
         }
 
         if ((opcode & 0xF0) == 0x50) {
           // return ARMInstrType::SaturatingAddSubtract;
-          return client.undefined(instruction);
+          return client.Undefined(instruction);
         }
 
         if ((opcode & 0x6000F0) == 0x200070) {
           // return ARMInstrType::Breakpoint;
-          return client.undefined(instruction);
+          return client.Undefined(instruction);
         }
         
         if ((opcode & 0x90) == 0x80) {
           // Signed halfword multiply (ARMv5 upwards): 
           // SMLAxy, SMLAWy, SMULWy, SMLALxy, SMULxy
           // return ARMInstrType::SignedHalfwordMultiply;
-          return client.undefined(instruction);
+          return client.Undefined(instruction);
         }
       }
       
@@ -168,11 +168,11 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
           case 0b1000:
           case 0b1010:
             // return ARMInstrType::Undefined;
-            return client.undefined(instruction);
+            return client.Undefined(instruction);
           case 0b1001:
           case 0b1011:
             // return ARMInstrType::StatusTransfer;
-            return client.undefined(instruction);
+            return client.Undefined(instruction);
         }
       }
 
@@ -182,35 +182,35 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
     case 0b010: {
       // Load/store immediate offset
       // return ARMInstrType::SingleDataTransfer;
-      return client.undefined(instruction);
+      return client.Undefined(instruction);
     }
     case 0b011: {
       // Load/store register offset
       // Media instructions
-      // Architecturally undefined
+      // Architecturally Undefined
       if (opcode & 0x10) {
         // return ARMInstrType::Media;
-        return client.undefined(instruction);
+        return client.Undefined(instruction);
       }
 
       // return ARMInstrType::SingleDataTransfer;
-      return client.undefined(instruction);
+      return client.Undefined(instruction);
     }
     case 0b100: {
       // Load/store multiple
       // return ARMInstrType::BlockDataTransfer;
-      return client.undefined(instruction);
+      return client.Undefined(instruction);
     }
     case 0b101: {
       // Branch and branch with link
       // return ARMInstrType::BranchAndLink;
-      return client.undefined(instruction);
+      return client.Undefined(instruction);
     }
     case 0b110: {
       // Coprocessor load/store and double register transfers
       // TODO: differentiate between load/store and double reg transfer instructions.
       // return ARMInstrType::CoprocessorLoadStoreAndDoubleRegXfer;
-      return client.undefined(instruction);
+      return client.Undefined(instruction);
     }
     case 0b111: {
       // Coprocessor data processing
@@ -218,20 +218,20 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
       // Software interrupt
       if ((opcode & 0x1000010) == 0) {
         // return ARMInstrType::CoprocessorDataProcessing;
-        return client.undefined(instruction);
+        return client.Undefined(instruction);
       }
 
       if ((opcode & 0x1000010) == 0x10) {
         // return ARMInstrType::CoprocessorRegisterXfer;
-        return client.undefined(instruction);
+        return client.Undefined(instruction);
       }
       
       // return ARMInstrType::SoftwareInterrupt;
-      return client.undefined(instruction);
+      return client.Undefined(instruction);
     }
   }
 
-  return client.undefined(instruction);
+  return client.Undefined(instruction);
 }
 
 } // namespace lunatic::frontend

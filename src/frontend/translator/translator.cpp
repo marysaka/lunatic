@@ -7,7 +7,7 @@
 namespace lunatic {
 namespace frontend {
 
-auto Translator::translate(BasicBlock& block, Memory& memory) -> bool {
+auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
   auto address = block.key.field.address;
 
   if (address & 1) {
@@ -23,8 +23,17 @@ auto Translator::translate(BasicBlock& block, Memory& memory) -> bool {
   return decode_arm(instruction, *this);
 }
 
-auto Translator::undefined(u32 opcode) -> bool {
+auto Translator::Undefined(u32 opcode) -> bool {
   return false;
+}
+
+void Translator::EmitUpdateNZCV() {
+  auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
+  auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  emitter->LoadCPSR(cpsr_in);
+  emitter->UpdateNZCV(cpsr_out, cpsr_in);
+  emitter->StoreCPSR(cpsr_out);
 }
 
 } // namespace lunatic::frontend

@@ -91,6 +91,13 @@ void IREmitter::Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs
   code.push_back(std::make_unique<IRAdd>(result, lhs, rhs, update_host_flags));
 }
 
+void IREmitter::Sub(IRVariable const& result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
+  if (rhs.IsNull()) {
+    throw std::runtime_error("Sub: rhs operand must not be null");
+  }
+  code.push_back(std::make_unique<IRSub>(result, lhs, rhs, update_host_flags));
+}
+
 // void IREmitter::UpdateFlags(
 //   IRVariable const& result,
 //   IRVariable const& input,

@@ -23,7 +23,8 @@ enum class IROpcodeClass {
   LogicalShiftRight,
   ArithmeticShiftRight,
   RotateRight,
-  Add
+  Add,
+  Sub
 };
 
 struct IROpcode {
@@ -226,8 +227,9 @@ struct IRRotateRight final : IRShifterBase<IROpcodeClass::RotateRight> {
   }
 };
 
-struct IRAdd final : IROpcodeBase<IROpcodeClass::Add> {
-  IRAdd(
+template<IROpcodeClass _klass>
+struct IRBinaryOpBase : IROpcodeBase<_klass> {
+  IRBinaryOpBase(
     IRVariable const& result,
     IRVariable const& lhs,
     IRValue rhs,
@@ -252,10 +254,26 @@ struct IRAdd final : IROpcodeBase<IROpcodeClass::Add> {
 
   auto Writes(IRVariable const& var) const -> bool override {
     return &result == &var;
-  }
+  }  
+};
+
+struct IRAdd final : IRBinaryOpBase<IROpcodeClass::Add> {
+  using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() const -> std::string override {
     return fmt::format("add{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
+  }
+};
+
+struct IRSub final : IRBinaryOpBase<IROpcodeClass::Sub> {
+  using IRBinaryOpBase::IRBinaryOpBase;
+
+  auto ToString() const -> std::string override {
+    return fmt::format("sub{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),

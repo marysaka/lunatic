@@ -13,10 +13,12 @@ namespace lunatic {
 namespace frontend {
 
 struct Translator final : ARMDecodeClient<bool> {
-  auto translate(BasicBlock& block, Memory& memory) -> bool;
+  auto Translate(BasicBlock& block, Memory& memory) -> bool;
 
-  auto handle(ARMDataProcessing const& opcode) -> bool override;
-  auto undefined(u32 opcode) -> bool override;
+  auto Handle(ARMDataProcessing const& opcode) -> bool override;
+  auto Undefined(u32 opcode) -> bool override;
+
+  void EmitUpdateNZCV();
 
   Mode mode;
   IREmitter* emitter = nullptr;
