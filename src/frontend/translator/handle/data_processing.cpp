@@ -18,7 +18,7 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
     return false;
   }
 
-  if (opcode.set_flags && opcode.opcode != Opcode::ADD) {
+  if (opcode.set_flags && opcode.opcode == Opcode::MOV) {
     return false;
   }
 
@@ -75,14 +75,18 @@ auto Translator::handle(ARMDataProcessing const& opcode) -> bool {
 
   // TODO: fix the naming... this is atrocious...
   switch (opcode.opcode) {
-    case Opcode::ADD: {
+    case Opcode::ADD:
+    case Opcode::CMN: {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
       auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
       
+      // TODO: do not require a result variable for CMN
       emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
       emitter->Add(result, op1, op2, opcode.set_flags);
-      emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
-      
+      if (opcode.opcode == Opcode::ADD) {
+        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+      }
+
       // TODO: put this into a helper method since it will be pretty common.
       if (opcode.set_flags) {
         auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
