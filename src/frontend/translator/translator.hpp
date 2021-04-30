@@ -18,6 +18,7 @@ struct Translator final : ARMDecodeClient<bool> {
   auto Handle(ARMDataProcessing const& opcode) -> bool override;
   auto Undefined(u32 opcode) -> bool override;
 
+  void EmitUpdateNZC();
   void EmitUpdateNZCV();
 
   Mode mode;

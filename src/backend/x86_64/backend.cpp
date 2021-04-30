@@ -252,40 +252,89 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
-      case IROpcodeClass::Add: {
-        auto op = lunatic_cast<IRAdd>(op_.get());
+      case IROpcodeClass::AND: {
+        auto op = lunatic_cast<IRBitwiseAND>(op_.get());
         auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
 
         if (op->rhs.IsConstant()) {
           auto imm = op->rhs.GetConst().value;
 
           if (op->result.IsNull()) {
-            code.cmp(lhs_reg, -imm);
-            code.cmc();
+            code.test(lhs_reg, imm);
           } else {
             auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
 
             code.mov(result_reg, lhs_reg);
-            code.add(result_reg, imm); 
+            code.and_(result_reg, imm);
           }
         } else {
           auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
 
           if (op->result.IsNull()) {
-            // eax will be trashed by lahf anyways
-            code.mov(eax, lhs_reg);
-            code.add(eax, rhs_reg);
+            code.test(lhs_reg, rhs_reg);
           } else {
             auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
 
             code.mov(result_reg, lhs_reg);
-            code.add(result_reg, rhs_reg);
+            code.and_(result_reg, rhs_reg);
           }
         }
 
         if (op->update_host_flags) {
+          // load flags but preserve carry
+          code.bt(ax, 8); // CF = value of bit8
           code.lahf();
-          code.seto(al);
+        }
+        break;
+      }
+      case IROpcodeClass::EOR: {
+        auto op = lunatic_cast<IRBitwiseEOR>(op_.get());
+        auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
+
+        if (op->rhs.IsConstant()) {
+          auto imm = op->rhs.GetConst().value;
+
+          if (op->result.IsNull()) {
+            /* TODO: possible optimization when lhs_reg != rhs_reg
+             *   xor lhs_reg, rhs_reg
+             *   bt ax, 8
+             *   lahf
+             *   xor lhs_reg, rhs_reg
+             */
+            code.push(lhs_reg.cvt64());
+            code.xor_(lhs_reg, imm);
+            code.pop(lhs_reg.cvt64());
+          } else {
+            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+
+            code.mov(result_reg, lhs_reg);
+            code.xor_(result_reg, imm);
+          }
+        } else {
+          auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
+
+          if (op->result.IsNull()) {
+            /* TODO: possible optimization when lhs_reg != rhs_reg
+             *   xor lhs_reg, rhs_reg
+             *   bt ax, 8
+             *   lahf
+             *   xor lhs_reg, rhs_reg
+             */
+            code.push(lhs_reg.cvt64());
+            code.xor_(lhs_reg, rhs_reg);
+            code.pop(lhs_reg.cvt64());
+          } else {
+            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+
+            code.mov(result_reg, lhs_reg);
+            code.xor_(result_reg, rhs_reg);
+          }
+        }
+
+        if (op->update_host_flags) {
+          // load flags but preserve carry
+          code.bt(ax, 8); // CF = value of bit8
+          code.lahf();
         }
         break;
       }
@@ -321,6 +370,43 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
           }
         }
     
+        if (op->update_host_flags) {
+          code.lahf();
+          code.seto(al);
+        }
+        break;
+      }
+      case IROpcodeClass::Add: {
+        auto op = lunatic_cast<IRAdd>(op_.get());
+        auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
+
+        if (op->rhs.IsConstant()) {
+          auto imm = op->rhs.GetConst().value;
+
+          if (op->result.IsNull()) {
+            code.cmp(lhs_reg, -imm);
+            code.cmc();
+          } else {
+            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+
+            code.mov(result_reg, lhs_reg);
+            code.add(result_reg, imm); 
+          }
+        } else {
+          auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
+
+          if (op->result.IsNull()) {
+            // eax will be trashed by lahf anyways
+            code.mov(eax, lhs_reg);
+            code.add(eax, rhs_reg);
+          } else {
+            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+
+            code.mov(result_reg, lhs_reg);
+            code.add(result_reg, rhs_reg);
+          }
+        }
+
         if (op->update_host_flags) {
           code.lahf();
           code.seto(al);

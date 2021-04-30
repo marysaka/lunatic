@@ -23,8 +23,14 @@ enum class IROpcodeClass {
   LogicalShiftRight,
   ArithmeticShiftRight,
   RotateRight,
+  AND,
+  EOR,
+  Sub,
   Add,
-  Sub
+  AddWithCarry,
+  SubWithCarry,
+  ORR,
+  BIC
 };
 
 struct IROpcode {
@@ -257,11 +263,23 @@ struct IRBinaryOpBase : IROpcodeBase<_klass> {
   }  
 };
 
-struct IRAdd final : IRBinaryOpBase<IROpcodeClass::Add> {
+struct IRBitwiseAND final : IRBinaryOpBase<IROpcodeClass::AND> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() const -> std::string override {
-    return fmt::format("add{} {}, {}, {}",
+    return fmt::format("and{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
+  }
+};
+
+struct IRBitwiseEOR final : IRBinaryOpBase<IROpcodeClass::EOR> {
+  using IRBinaryOpBase::IRBinaryOpBase;
+
+  auto ToString() const -> std::string override {
+    return fmt::format("eor{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
@@ -274,6 +292,18 @@ struct IRSub final : IRBinaryOpBase<IROpcodeClass::Sub> {
 
   auto ToString() const -> std::string override {
     return fmt::format("sub{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
+  }
+};
+
+struct IRAdd final : IRBinaryOpBase<IROpcodeClass::Add> {
+  using IRBinaryOpBase::IRBinaryOpBase;
+
+  auto ToString() const -> std::string override {
+    return fmt::format("add{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
