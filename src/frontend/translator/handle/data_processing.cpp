@@ -133,14 +133,14 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
       emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
       emitter->AND({}, op1, op2, opcode.set_flags);
-      EmitUpdateNZCV();
+      EmitUpdateNZC();
       break;
     }
     case Opcode::TEQ: {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
       emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
       emitter->EOR({}, op1, op2, opcode.set_flags);
-      EmitUpdateNZCV();
+      EmitUpdateNZC();
       break;
     }
     case Opcode::CMP: {
@@ -159,7 +159,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
     }
 
     case Opcode::MOV: {
-      // TODO: update flags and all...
+      // TODO: update NZC flags
       emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, op2);
       break;
     }
