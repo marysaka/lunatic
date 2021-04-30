@@ -28,8 +28,8 @@ struct IREmitter {
   void LSR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
   void ASR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
   void ROR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
-  void Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
-  void Sub(IRVariable const& result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
+  void Add(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
+  void Sub(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
   // void UpdateFlags(
   //   IRVariable const& result,
   //   IRVariable const& input,

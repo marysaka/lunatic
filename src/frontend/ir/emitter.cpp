@@ -84,14 +84,20 @@ void IREmitter::ROR(IRVariable const& result, IRVariable const& operand, IRValue
   code.push_back(std::make_unique<IRRotateRight>(result, operand, amount, update_host_flags));
 }
 
-void IREmitter::Add(IRVariable const& result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
+void IREmitter::Add(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
+  if (result.IsConstant()) {
+    throw std::runtime_error("Add: result must not be a constant");
+  }
   if (rhs.IsNull()) {
     throw std::runtime_error("Add: rhs operand must not be null");
   }
   code.push_back(std::make_unique<IRAdd>(result, lhs, rhs, update_host_flags));
 }
 
-void IREmitter::Sub(IRVariable const& result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
+void IREmitter::Sub(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
+  if (result.IsConstant()) {
+    throw std::runtime_error("Add: result must not be a constant");
+  }
   if (rhs.IsNull()) {
     throw std::runtime_error("Sub: rhs operand must not be null");
   }

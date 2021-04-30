@@ -230,14 +230,14 @@ struct IRRotateRight final : IRShifterBase<IROpcodeClass::RotateRight> {
 template<IROpcodeClass _klass>
 struct IRBinaryOpBase : IROpcodeBase<_klass> {
   IRBinaryOpBase(
-    IRVariable const& result,
+    IRValue result,
     IRVariable const& lhs,
     IRValue rhs,
     bool update_host_flags
   ) : result(result), lhs(lhs), rhs(rhs), update_host_flags(update_host_flags) {}
 
-  /// The variable to store the result in
-  IRVariable const& result;
+  /// A variable to store the result or null if the result is unused
+  IRValue result;
 
   /// The left-hand side operand (variable)
   IRVariable const& lhs;
@@ -253,7 +253,7 @@ struct IRBinaryOpBase : IROpcodeBase<_klass> {
   }
 
   auto Writes(IRVariable const& var) const -> bool override {
-    return &result == &var;
+    return result.IsVariable() && (&result.GetVar() == &var);
   }  
 };
 
