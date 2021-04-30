@@ -272,11 +272,9 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
           auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
 
           if (op->result.IsNull()) {
-            // TODO: optimize this.
-            code.push(rcx);
-            code.mov(ecx, lhs_reg);
-            code.add(ecx, rhs_reg);
-            code.pop(rcx);
+            // eax will be trashed by lahf anyways
+            code.mov(eax, lhs_reg);
+            code.add(eax, rhs_reg);
           } else {
             auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
 
