@@ -8,42 +8,100 @@
 #include <memory>
 #include <vector>
 
+#include "common/optional.hpp"
 #include "opcode.hpp"
 
 namespace lunatic {
 namespace frontend {
 
 struct IREmitter {
-  auto Code() const -> std::list<std::unique_ptr<IROpcode>> const& { return code; }
-  auto Vars() const -> std::vector<std::unique_ptr<IRVariable>> const& { return variables; }
+  using InstructionList = std::list<std::unique_ptr<IROpcode>>;
+  using VariableList = std::vector<std::unique_ptr<IRVariable>>;
+
+  auto Code() const -> InstructionList const& { return code; }
+  auto Vars() const -> VariableList const& { return variables; }
   auto ToString() const -> std::string;
 
-  auto CreateVar(IRDataType data_type, char const* label = nullptr) -> IRVariable const&;
+  auto CreateVar(
+    IRDataType data_type,
+    char const* label = nullptr
+  ) -> IRVariable const&;
 
-  void LoadGPR(IRGuestReg reg, IRVariable const& result);
+  void LoadGPR (IRGuestReg reg, IRVariable const& result);
   void StoreGPR(IRGuestReg reg, IRValue value);
-  void LoadCPSR(IRVariable const& result);
+  
+  void LoadCPSR (IRVariable const& result);
   void StoreCPSR(IRValue value);
 
-  void LSL(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
-  void LSR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
-  void ASR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
-  void ROR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags);
+  void LSL(
+    IRVariable const& result,
+    IRVariable const& operand,
+    IRValue amount,
+    bool update_host_flags
+  );
+  
+  void LSR(
+    IRVariable const& result,
+    IRVariable const& operand,
+    IRValue amount,
+    bool update_host_flags
+  );
+  
+  void ASR(
+    IRVariable const& result,
+    IRVariable const& operand,
+    IRValue amount,
+    bool update_host_flags
+  );
 
-  void AND(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
-  void EOR(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
-  void Add(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
-  void Sub(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags);
+  void ROR(
+    IRVariable const& result,
+    IRVariable const& operand,
+    IRValue amount,
+    bool update_host_flags
+  );
 
-  void UpdateNZC (IRVariable const& result, IRVariable const& input);
-  void UpdateNZCV(IRVariable const& result, IRVariable const& input);
+  void AND(
+    Optional<IRVariable const&> result,
+    IRVariable const& lhs,
+    IRValue rhs,
+    bool update_host_flags
+  );
+
+  void EOR(
+    Optional<IRVariable const&> result,
+    IRVariable const& lhs,
+    IRValue rhs,
+    bool update_host_flags
+  );
+
+  void ADD(
+    Optional<IRVariable const&> result,
+    IRVariable const& lhs,
+    IRValue rhs,
+    bool update_host_flags
+  );
+
+  void SUB(
+    Optional<IRVariable const&> result,
+    IRVariable const& lhs,
+    IRValue rhs,
+    bool update_host_flags
+  );
+
+  void UpdateNZCV(
+    IRVariable const& result,
+    IRVariable const& input
+  );
+
+  void UpdateNZC(
+    IRVariable const& result,
+    IRVariable const& input
+  );
 
 private:
-  /// List of emitted IR opcodes
-  std::list<std::unique_ptr<IROpcode>> code;
-
-  /// List of allocated variables
-  std::vector<std::unique_ptr<IRVariable>> variables;
+  InstructionList code;
+  VariableList variables;
 };
 
 } // namespace lunatic::frontend

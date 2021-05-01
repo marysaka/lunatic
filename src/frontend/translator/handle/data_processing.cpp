@@ -107,7 +107,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
       auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
 
       emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
-      emitter->Sub(result, op1, op2, opcode.set_flags);
+      emitter->SUB(result, op1, op2, opcode.set_flags);
       emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
 
       if (opcode.set_flags) {
@@ -120,7 +120,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
       auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
 
       emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
-      emitter->Add(result, op1, op2, opcode.set_flags);
+      emitter->ADD(result, op1, op2, opcode.set_flags);
       emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
 
       if (opcode.set_flags) {
@@ -146,14 +146,14 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
     case Opcode::CMP: {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
       emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
-      emitter->Sub({}, op1, op2, opcode.set_flags);
+      emitter->SUB({}, op1, op2, opcode.set_flags);
       EmitUpdateNZCV();
       break;
     }
     case Opcode::CMN: {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
       emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
-      emitter->Add({}, op1, op2, opcode.set_flags);
+      emitter->ADD({}, op1, op2, opcode.set_flags);
       EmitUpdateNZCV();
       break;
     }

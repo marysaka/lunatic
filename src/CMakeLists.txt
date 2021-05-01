@@ -19,6 +19,8 @@ set(SOURCES
 
 set(HEADERS
   common/bit.hpp
+  common/meta.hpp
+  common/optional.hpp
   backend/x86_64/backend.hpp
   backend/x86_64/register_allocator.hpp
   backend/backend.hpp

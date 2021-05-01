@@ -26,7 +26,10 @@ auto IREmitter::ToString() const -> std::string {
   return source;
 }
 
-auto IREmitter::CreateVar(IRDataType data_type, char const* label) -> IRVariable const& {
+auto IREmitter::CreateVar(
+  IRDataType data_type,
+  char const* label
+) -> IRVariable const& {
   auto id = u32(variables.size());
   auto var = new IRVariable{id, data_type, label};
 
@@ -56,80 +59,118 @@ void IREmitter::StoreCPSR(IRValue value) {
   code.push_back(std::make_unique<IRStoreCPSR>(value));
 }
 
-void IREmitter::LSL(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags) {
+void IREmitter::LSL(
+  IRVariable const& result,
+  IRVariable const& operand,
+  IRValue amount,
+  bool update_host_flags
+) {
   if (amount.IsNull()) {
     throw std::runtime_error("LSL: amount must not be null");
   }
   code.push_back(std::make_unique<IRLogicalShiftLeft>(result, operand, amount, update_host_flags));
 }
 
-void IREmitter::LSR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags) {
+void IREmitter::LSR(
+  IRVariable const& result,
+  IRVariable const& operand,
+  IRValue amount,
+  bool update_host_flags
+) {
   if (amount.IsNull()) {
     throw std::runtime_error("LSR: amount must not be null");
   }
   code.push_back(std::make_unique<IRLogicalShiftRight>(result, operand, amount, update_host_flags));
 }
 
-void IREmitter::ASR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags) {
+void IREmitter::ASR(
+  IRVariable const& result,
+  IRVariable const& operand,
+  IRValue amount,
+  bool update_host_flags
+) {
   if (amount.IsNull()) {
     throw std::runtime_error("ASR: amount must not be null");
   }
   code.push_back(std::make_unique<IRArithmeticShiftRight>(result, operand, amount, update_host_flags));
 }
 
-void IREmitter::ROR(IRVariable const& result, IRVariable const& operand, IRValue amount, bool update_host_flags) {
+void IREmitter::ROR(
+  IRVariable const& result,
+  IRVariable const& operand,
+  IRValue amount,
+  bool update_host_flags
+) {
   if (amount.IsNull()) {
     throw std::runtime_error("ROR: amount must not be null");
   }
   code.push_back(std::make_unique<IRRotateRight>(result, operand, amount, update_host_flags));
 }
 
-void IREmitter::AND(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
-  if (result.IsConstant()) {
-    throw std::runtime_error("AND: result must not be a constant");
-  }
+void IREmitter::AND(
+  Optional<IRVariable const&> result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  auto result_ = result.IsNull() ? IRValue{} : result.Unwrap();
   if (rhs.IsNull()) {
     throw std::runtime_error("AND: rhs operand must not be null");
   }
-  code.push_back(std::make_unique<IRBitwiseAND>(result, lhs, rhs, update_host_flags));
+  code.push_back(std::make_unique<IRBitwiseAND>(result_, lhs, rhs, update_host_flags));
 }
 
-void IREmitter::EOR(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
-  if (result.IsConstant()) {
-    throw std::runtime_error("EOR: result must not be a constant");
-  }
+void IREmitter::EOR(
+  Optional<IRVariable const&> result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  auto result_ = result.IsNull() ? IRValue{} : result.Unwrap();
   if (rhs.IsNull()) {
     throw std::runtime_error("EOR: rhs operand must not be null");
   }
-  code.push_back(std::make_unique<IRBitwiseEOR>(result, lhs, rhs, update_host_flags));
+  code.push_back(std::make_unique<IRBitwiseEOR>(result_, lhs, rhs, update_host_flags));
 }
 
-void IREmitter::Sub(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
-  if (result.IsConstant()) {
-    throw std::runtime_error("Sub: result must not be a constant");
-  }
+void IREmitter::SUB(
+  Optional<IRVariable const&> result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  auto result_ = result.IsNull() ? IRValue{} : result.Unwrap();
   if (rhs.IsNull()) {
     throw std::runtime_error("Sub: rhs operand must not be null");
   }
-  code.push_back(std::make_unique<IRSub>(result, lhs, rhs, update_host_flags));
+  code.push_back(std::make_unique<IRSub>(result_, lhs, rhs, update_host_flags));
 }
 
-void IREmitter::Add(IRValue result, IRVariable const& lhs, IRValue rhs, bool update_host_flags) {
-  if (result.IsConstant()) {
-    throw std::runtime_error("Add: result must not be a constant");
-  }
+void IREmitter::ADD(
+  Optional<IRVariable const&> result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  auto result_ = result.IsNull() ? IRValue{} : result.Unwrap();
   if (rhs.IsNull()) {
     throw std::runtime_error("Add: rhs operand must not be null");
   }
-  code.push_back(std::make_unique<IRAdd>(result, lhs, rhs, update_host_flags));
+  code.push_back(std::make_unique<IRAdd>(result_, lhs, rhs, update_host_flags));
 }
 
-void IREmitter::UpdateNZC(IRVariable const& result, IRVariable const& input) {
-  code.push_back(std::make_unique<IRUpdateFlags>(result, input, true, true, true, false));
-}
-
-void IREmitter::UpdateNZCV(IRVariable const& result, IRVariable const& input) {
+void IREmitter::UpdateNZCV(
+  IRVariable const& result,
+  IRVariable const& input
+) {
   code.push_back(std::make_unique<IRUpdateFlags>(result, input, true, true, true, true));
+}
+
+void IREmitter::UpdateNZC(
+  IRVariable const& result,
+  IRVariable const& input
+) {
+  code.push_back(std::make_unique<IRUpdateFlags>(result, input, true, true, true, false));
 }
 
 } // namespace lunatic::frontend
