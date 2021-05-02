@@ -23,8 +23,10 @@ struct Translator final : ARMDecodeClient<bool> {
 
   void EmitUpdateNZC();
   void EmitUpdateNZCV();
+  void EmitAdvancePC();
 
   Mode mode;
+  u32 opcode_size;
   IREmitter* emitter = nullptr;
 };
 

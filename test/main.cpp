@@ -35,8 +35,6 @@ struct JIT {
 
     if (success) {
       backend.Run(state, basic_block.emitter, false);
-      // TODO: move this into the codegen step
-      state.GetGPR(Mode::User, GPR::PC) += sizeof(u32);
     }
 
     return success;

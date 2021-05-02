@@ -19,6 +19,7 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
   }
 
   mode = block.key.field.mode;
+  opcode_size = (block.key.field.address & 1) ? sizeof(u16) : sizeof(u32);
   emitter = &block.emitter;
 
   auto instruction = memory.FastRead<u32, Memory::Bus::Code>(address);
@@ -46,6 +47,17 @@ void Translator::EmitUpdateNZCV() {
   emitter->LoadCPSR(cpsr_in);
   emitter->UpdateNZCV(cpsr_out, cpsr_in);
   emitter->StoreCPSR(cpsr_out);
+}
+
+void Translator::EmitAdvancePC() {
+  auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "r15_in");
+  auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "r15_out");
+
+  // TODO: optimize this away and special-case r15 reads instead?
+  // At least perform some kind of ADD merging?
+  emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, r15_in);
+  emitter->ADD(r15_out, r15_in, IRConstant{opcode_size}, false);
+  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, r15_out);
 }
 
 } // namespace lunatic::frontend

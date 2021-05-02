@@ -54,6 +54,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
     emitter->LoadGPR(IRGuestReg{opcode.op2_reg.reg, mode}, source);
 
     if (shift.immediate) {
+      // TODO: optimize case when amount == 0
       amount = IRConstant(u32(shift.amount_imm));
     } else {
       amount = emitter->CreateVar(IRDataType::UInt32, "shift_amount");
@@ -249,6 +250,8 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
     // Hmm... this really gets spammed a lot in ARMWrestler right now.
     // fmt::print("DataProcessing: unhandled write to R15\n");
     return false;
+  } else {
+    EmitAdvancePC();
   }
 
   return true;
