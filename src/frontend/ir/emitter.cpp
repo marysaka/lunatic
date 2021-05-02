@@ -116,11 +116,10 @@ void IREmitter::AND(
   IRValue rhs,
   bool update_host_flags
 ) {
-  auto result_ = result.IsNull() ? IRValue{} : result.Unwrap();
   if (rhs.IsNull()) {
     throw std::runtime_error("AND: rhs operand must not be null");
   }
-  Push<IRBitwiseAND>(result_, lhs, rhs, update_host_flags);
+  Push<IRBitwiseAND>(result, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::EOR(
@@ -129,11 +128,10 @@ void IREmitter::EOR(
   IRValue rhs,
   bool update_host_flags
 ) {
-  auto result_ = result.IsNull() ? IRValue{} : result.Unwrap();
   if (rhs.IsNull()) {
     throw std::runtime_error("EOR: rhs operand must not be null");
   }
-  Push<IRBitwiseEOR>(result_, lhs, rhs, update_host_flags);
+  Push<IRBitwiseEOR>(result, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::SUB(
@@ -142,11 +140,10 @@ void IREmitter::SUB(
   IRValue rhs,
   bool update_host_flags
 ) {
-  auto result_ = result.IsNull() ? IRValue{} : result.Unwrap();
   if (rhs.IsNull()) {
     throw std::runtime_error("Sub: rhs operand must not be null");
   }
-  Push<IRSub>(result_, lhs, rhs, update_host_flags);
+  Push<IRSub>(result, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::ADD(
@@ -155,11 +152,10 @@ void IREmitter::ADD(
   IRValue rhs,
   bool update_host_flags
 ) {
-  auto result_ = result.IsNull() ? IRValue{} : result.Unwrap();
   if (rhs.IsNull()) {
     throw std::runtime_error("Add: rhs operand must not be null");
   }
-  Push<IRAdd>(result_, lhs, rhs, update_host_flags);
+  Push<IRAdd>(result, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::UpdateNZCV(

@@ -265,7 +265,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
           if (op->result.IsNull()) {
             code.test(lhs_reg, imm);
           } else {
-            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+            auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
 
             code.mov(result_reg, lhs_reg);
             code.and_(result_reg, imm);
@@ -276,7 +276,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
           if (op->result.IsNull()) {
             code.test(lhs_reg, rhs_reg);
           } else {
-            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+            auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
 
             code.mov(result_reg, lhs_reg);
             code.and_(result_reg, rhs_reg);
@@ -308,7 +308,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
             code.xor_(lhs_reg, imm);
             code.pop(lhs_reg.cvt64());
           } else {
-            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+            auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
 
             code.mov(result_reg, lhs_reg);
             code.xor_(result_reg, imm);
@@ -327,7 +327,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
             code.xor_(lhs_reg, rhs_reg);
             code.pop(lhs_reg.cvt64());
           } else {
-            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+            auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
 
             code.mov(result_reg, lhs_reg);
             code.xor_(result_reg, rhs_reg);
@@ -352,7 +352,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
             code.cmp(lhs_reg, imm);
             code.cmc();
           } else {
-            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+            auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
 
             code.mov(result_reg, lhs_reg);
             code.sub(result_reg, imm);
@@ -365,7 +365,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
             code.cmp(lhs_reg, rhs_reg);
             code.cmc();
           } else {
-            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+            auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
 
             code.mov(result_reg, lhs_reg);
             code.sub(result_reg, rhs_reg);
@@ -390,7 +390,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
             code.cmp(lhs_reg, -imm);
             code.cmc();
           } else {
-            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+            auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
 
             code.mov(result_reg, lhs_reg);
             code.add(result_reg, imm); 
@@ -403,7 +403,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
             code.mov(eax, lhs_reg);
             code.add(eax, rhs_reg);
           } else {
-            auto result_reg = reg_alloc.GetReg32(op->result.GetVar(), location);
+            auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
 
             code.mov(result_reg, lhs_reg);
             code.add(result_reg, rhs_reg);

@@ -11,6 +11,8 @@
 #include <lunatic/integer.hpp>
 #include <stdexcept>
 
+#include "common/optional.hpp"
+
 namespace lunatic {
 namespace frontend {
 
@@ -134,6 +136,13 @@ inline auto to_string(lunatic::frontend::IRValue const& value) -> std::string {
     return std::to_string(value.GetConst());
   }
   return std::to_string(value.GetVar());
+}
+
+inline auto to_string(Optional<lunatic::frontend::IRVariable const&> value) -> std::string {
+  if (value.IsNull()) {
+    return "(null)";
+  }
+  return std::to_string(value.Unwrap());
 }
 
 } // namespace std

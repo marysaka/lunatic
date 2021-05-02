@@ -24,10 +24,10 @@ struct Optional {
     }
   }
 
-  bool IsNull() const {
-    return is_null;
-  }
+  bool IsNull() const { return is_null; }
+  bool HasValue() const { return !IsNull(); }
 
+  // TODO: support Unwrap() on const Optional<T>.
   auto Unwrap() -> T {
     if (IsNull()) {
       throw std::runtime_error("attempt to unwrap empty Optional<T>");

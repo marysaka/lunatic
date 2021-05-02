@@ -36,13 +36,16 @@ enum class IROpcodeClass {
   BIC
 };
 
+// TODO: Reads(), Writes() and ToString() should be const,
+// but due to the nature of this Optional<T> implementation this is not possible at the moment.
+
 struct IROpcode {
   virtual ~IROpcode() = default;
 
   virtual auto GetClass() const -> IROpcodeClass = 0;
-  virtual auto Reads (IRVariable const& var) const -> bool = 0;
-  virtual auto Writes(IRVariable const& var) const -> bool = 0;
-  virtual auto ToString() const -> std::string = 0;
+  virtual auto Reads (IRVariable const& var) -> bool = 0;
+  virtual auto Writes(IRVariable const& var) -> bool = 0;
+  virtual auto ToString() -> std::string = 0;
 };
 
 template<IROpcodeClass _klass>
@@ -61,15 +64,15 @@ struct IRLoadGPR final : IROpcodeBase<IROpcodeClass::LoadGPR> {
   /// The variable to load the GPR into
   IRVariable const& result;
 
-  auto Reads(IRVariable const& var) const -> bool override {
+  auto Reads(IRVariable const& var) -> bool override {
     return false;
   }
 
-  auto Writes(IRVariable const& var) const -> bool override {
+  auto Writes(IRVariable const& var) -> bool override {
     return &var == &result;
   }
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("ldgpr {}, {}", std::to_string(reg), std::to_string(result));
   }
 };
@@ -83,18 +86,18 @@ struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
   /// The variable or constant to write to the GPR (must be non-null)
   IRValue value;
 
-  auto Reads(IRVariable const& var) const -> bool override {
+  auto Reads(IRVariable const& var) -> bool override {
     if (value.IsVariable()) {
       return &var == &value.GetVar();
     }
     return false;
   }
 
-  auto Writes(IRVariable const& var) const -> bool override {
+  auto Writes(IRVariable const& var) -> bool override {
     return false;
   }
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("stgpr {}, {}", std::to_string(reg), std::to_string(value));
   }
 };
@@ -105,15 +108,15 @@ struct IRLoadCPSR final : IROpcodeBase<IROpcodeClass::LoadCPSR> {
   /// The variable to load CPSR into
   IRVariable const& result;
 
-  auto Reads(IRVariable const& var) const -> bool override {
+  auto Reads(IRVariable const& var) -> bool override {
     return false;
   }
 
-  auto Writes(IRVariable const& var) const -> bool override {
+  auto Writes(IRVariable const& var) -> bool override {
     return &var == &result;
   }
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("ldcpsr {}", std::to_string(result));
   }  
 };
@@ -124,15 +127,15 @@ struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {
   /// The variable or constant to write to CPSR
   IRValue value;
 
-  auto Reads(IRVariable const& var) const -> bool override {
+  auto Reads(IRVariable const& var) -> bool override {
     return value.IsVariable() && &var == &value.GetVar();
   }
 
-  auto Writes(IRVariable const& var) const -> bool override {
+  auto Writes(IRVariable const& var) -> bool override {
     return false;
   }
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("stcpsr {}", std::to_string(value));
   }  
 };
@@ -155,15 +158,15 @@ struct IRUpdateFlags final : IROpcodeBase<IROpcodeClass::UpdateFlags> {
   bool flag_c;
   bool flag_v;
 
-  auto Reads(IRVariable const& var) const -> bool override {
+  auto Reads(IRVariable const& var) -> bool override {
     return &input == &var;
   }
 
-  auto Writes(IRVariable const& var) const -> bool override {
+  auto Writes(IRVariable const& var) -> bool override {
     return &result == &var;
   }
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("update.{}{}{}{} {}, {}",
       flag_n ? 'n' : '-',
       flag_z ? 'z' : '-',
@@ -195,11 +198,11 @@ struct IRShifterBase : IROpcodeBase<_klass> {
   /// Whether to update/cache the host system flags
   bool update_host_flags;
 
-  auto Reads(IRVariable const& var) const -> bool override {
+  auto Reads(IRVariable const& var) -> bool override {
     return &var == &operand || (amount.IsVariable() && &var == &amount.GetVar());
   }
 
-  auto Writes(IRVariable const& var) const -> bool override {
+  auto Writes(IRVariable const& var) -> bool override {
     return &var == &result;
   }
 };
@@ -207,7 +210,7 @@ struct IRShifterBase : IROpcodeBase<_klass> {
 struct IRLogicalShiftLeft final : IRShifterBase<IROpcodeClass::LogicalShiftLeft> {
   using IRShifterBase::IRShifterBase;
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("lsl {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
   }
 };
@@ -215,7 +218,7 @@ struct IRLogicalShiftLeft final : IRShifterBase<IROpcodeClass::LogicalShiftLeft>
 struct IRLogicalShiftRight final : IRShifterBase<IROpcodeClass::LogicalShiftRight> {
   using IRShifterBase::IRShifterBase;
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("lsr {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
   }
 };
@@ -223,7 +226,7 @@ struct IRLogicalShiftRight final : IRShifterBase<IROpcodeClass::LogicalShiftRigh
 struct IRArithmeticShiftRight final : IRShifterBase<IROpcodeClass::ArithmeticShiftRight> {
   using IRShifterBase::IRShifterBase;
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("asr {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
   }
 };
@@ -231,7 +234,7 @@ struct IRArithmeticShiftRight final : IRShifterBase<IROpcodeClass::ArithmeticShi
 struct IRRotateRight final : IRShifterBase<IROpcodeClass::RotateRight> {
   using IRShifterBase::IRShifterBase;
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("ror {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
   }
 };
@@ -239,14 +242,14 @@ struct IRRotateRight final : IRShifterBase<IROpcodeClass::RotateRight> {
 template<IROpcodeClass _klass>
 struct IRBinaryOpBase : IROpcodeBase<_klass> {
   IRBinaryOpBase(
-    IRValue result,
+    Optional<IRVariable const&> result,
     IRVariable const& lhs,
     IRValue rhs,
     bool update_host_flags
   ) : result(result), lhs(lhs), rhs(rhs), update_host_flags(update_host_flags) {}
 
-  /// A variable to store the result or null if the result is unused
-  IRValue result;
+  /// An optional result variable
+  Optional<IRVariable const&> result;
 
   /// The left-hand side operand (variable)
   IRVariable const& lhs;
@@ -257,19 +260,19 @@ struct IRBinaryOpBase : IROpcodeBase<_klass> {
   /// Whether to update/cache the host system flags
   bool update_host_flags;
 
-  auto Reads(IRVariable const& var) const -> bool override {
+  auto Reads(IRVariable const& var) -> bool override {
     return &lhs == &var || (rhs.IsVariable() && &rhs.GetVar() == &var);
   }
 
-  auto Writes(IRVariable const& var) const -> bool override {
-    return result.IsVariable() && (&result.GetVar() == &var);
-  }  
+  auto Writes(IRVariable const& var) -> bool override {
+    return result.HasValue() && (&result.Unwrap() == &var);
+  }
 };
 
 struct IRBitwiseAND final : IRBinaryOpBase<IROpcodeClass::AND> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("and{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
@@ -281,7 +284,7 @@ struct IRBitwiseAND final : IRBinaryOpBase<IROpcodeClass::AND> {
 struct IRBitwiseEOR final : IRBinaryOpBase<IROpcodeClass::EOR> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("eor{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
@@ -293,7 +296,7 @@ struct IRBitwiseEOR final : IRBinaryOpBase<IROpcodeClass::EOR> {
 struct IRSub final : IRBinaryOpBase<IROpcodeClass::Sub> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("sub{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
@@ -305,7 +308,7 @@ struct IRSub final : IRBinaryOpBase<IROpcodeClass::Sub> {
 struct IRAdd final : IRBinaryOpBase<IROpcodeClass::Add> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
-  auto ToString() const -> std::string override {
+  auto ToString() -> std::string override {
     return fmt::format("add{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
