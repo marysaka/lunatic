@@ -29,9 +29,11 @@ enum class IROpcodeClass {
   AND,
   EOR,
   SUB,
+  RSB,
   ADD,
   ADC,
-  SBC
+  SBC,
+  RSC
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -303,6 +305,18 @@ struct IRSub final : IRBinaryOpBase<IROpcodeClass::SUB> {
   }
 };
 
+struct IRRsb final : IRBinaryOpBase<IROpcodeClass::RSB> {
+  using IRBinaryOpBase::IRBinaryOpBase;
+
+  auto ToString() -> std::string override {
+    return fmt::format("rsb{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
+  }
+};
+
 struct IRAdd final : IRBinaryOpBase<IROpcodeClass::ADD> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
@@ -332,6 +346,18 @@ struct IRSbc final : IRBinaryOpBase<IROpcodeClass::SBC> {
 
   auto ToString() -> std::string override {
     return fmt::format("sbc{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
+  }
+};
+
+struct IRRsc final : IRBinaryOpBase<IROpcodeClass::RSC> {
+  using IRBinaryOpBase::IRBinaryOpBase;
+
+  auto ToString() -> std::string override {
+    return fmt::format("rsc{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),

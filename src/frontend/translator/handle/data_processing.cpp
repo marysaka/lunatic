@@ -21,19 +21,15 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
     return false;
   }
 
-  if (opcode.set_flags && opcode.opcode == Opcode::MOV) {
-    return false;
-  }
-
   auto op2 = IRValue{};
 
   // TODO: clean this unholy mess up.
+  // TODO: do not update the carry flag if it will be overwritten.
   auto shifter_update_carry = opcode.set_flags && 
     opcode.opcode != Opcode::ADC &&
     opcode.opcode != Opcode::SBC &&
     opcode.opcode != Opcode::RSC;
 
-  // TODO: do not update the carry flag if it will be overwritten.
   if (opcode.immediate) {
     auto value = opcode.op2_imm.value;
     auto shift = opcode.op2_imm.shift;
@@ -124,6 +120,19 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
       }
       break;
     }
+    case Opcode::RSB: {
+      auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
+      auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
+
+      emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
+      emitter->RSB(result, op1, op2, opcode.set_flags);
+      emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+
+      if (opcode.set_flags) {
+        EmitUpdateNZCV();
+      }
+      break;
+    }
     case Opcode::ADD: {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
       auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
@@ -163,6 +172,19 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
       }
       break;
     }
+    case Opcode::RSC: {
+      auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
+      auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
+
+      emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
+      emitter->RSC(result, op1, op2, opcode.set_flags);
+      emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+
+      if (opcode.set_flags) {
+        EmitUpdateNZCV();
+      }
+      break;
+    }
 
     case Opcode::TST: {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
@@ -194,6 +216,9 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
     }
 
     case Opcode::MOV: {
+      if (opcode.set_flags) {
+        return false;
+      }
       // TODO: update NZC flags
       emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, op2);
       break;

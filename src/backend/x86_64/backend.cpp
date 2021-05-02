@@ -379,6 +379,31 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
+      case IROpcodeClass::RSB: {
+        auto op = lunatic_cast<IRRsc>(op_.get());
+        auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
+        auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
+
+        if (op->rhs.IsConstant()) {
+          auto imm = op->rhs.GetConst().value;
+
+          code.mov(result_reg, imm);
+          code.sub(result_reg, lhs_reg);
+          code.cmc();
+        } else {
+          auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
+
+          code.mov(result_reg, rhs_reg);
+          code.sub(result_reg, lhs_reg);
+          code.cmc();
+        }
+
+        if (op->update_host_flags) {
+          code.lahf();
+          code.seto(al);
+        }
+        break;
+      }
       case IROpcodeClass::ADD: {
         auto op = lunatic_cast<IRAdd>(op_.get());
         auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
@@ -463,6 +488,34 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
           code.cmc();
         }
     
+        if (op->update_host_flags) {
+          code.lahf();
+          code.seto(al);
+        }
+        break;
+      }
+      case IROpcodeClass::RSC: {
+        auto op = lunatic_cast<IRRsc>(op_.get());
+        auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
+        auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
+
+        code.sahf();
+        code.cmc();
+
+        if (op->rhs.IsConstant()) {
+          auto imm = op->rhs.GetConst().value;
+
+          code.mov(result_reg, imm);
+          code.sbb(result_reg, lhs_reg);
+          code.cmc();
+        } else {
+          auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
+
+          code.mov(result_reg, rhs_reg);
+          code.sbb(result_reg, lhs_reg);
+          code.cmc();
+        }
+
         if (op->update_host_flags) {
           code.lahf();
           code.seto(al);

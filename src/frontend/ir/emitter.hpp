@@ -85,6 +85,13 @@ struct IREmitter {
     bool update_host_flags
   );
 
+  void RSB(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRValue rhs,
+    bool update_host_flags
+  );
+
   void ADD(
     Optional<IRVariable const&> result,
     IRVariable const& lhs,
@@ -100,6 +107,13 @@ struct IREmitter {
   );
 
   void SBC(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRValue rhs,
+    bool update_host_flags
+  );
+
+  void RSC(
     IRVariable const& result,
     IRVariable const& lhs,
     IRValue rhs,

@@ -141,9 +141,21 @@ void IREmitter::SUB(
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
-    throw std::runtime_error("Sub: rhs operand must not be null");
+    throw std::runtime_error("SUB: rhs operand must not be null");
   }
   Push<IRSub>(result, lhs, rhs, update_host_flags);
+}
+
+void IREmitter::RSB(
+  IRVariable const& result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  if (rhs.IsNull()) {
+    throw std::runtime_error("RSB: rhs operand must not be null");
+  }
+  Push<IRRsb>(result, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::ADD(
@@ -153,7 +165,7 @@ void IREmitter::ADD(
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
-    throw std::runtime_error("Add: rhs operand must not be null");
+    throw std::runtime_error("ADD: rhs operand must not be null");
   }
   Push<IRAdd>(result, lhs, rhs, update_host_flags);
 }
@@ -165,7 +177,7 @@ void IREmitter::ADC(
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
-    throw std::runtime_error("Adc: rhs operand must not be null");
+    throw std::runtime_error("ADC: rhs operand must not be null");
   }
   Push<IRAdc>(result, lhs, rhs, update_host_flags);
 }
@@ -177,9 +189,21 @@ void IREmitter::SBC(
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
-    throw std::runtime_error("Sbc: rhs operand must not be null");
+    throw std::runtime_error("SBC: rhs operand must not be null");
   }
   Push<IRSbc>(result, lhs, rhs, update_host_flags);
+}
+
+void IREmitter::RSC(
+  IRVariable const& result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  if (rhs.IsNull()) {
+    throw std::runtime_error("RSC: rhs operand must not be null");
+  }
+  Push<IRRsc>(result, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::UpdateNZCV(
