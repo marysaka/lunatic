@@ -38,25 +38,25 @@ auto IREmitter::CreateVar(
 }
 
 void IREmitter::LoadGPR(IRGuestReg reg, IRVariable const& result) {
-  code.push_back(std::make_unique<IRLoadGPR>(reg, result));
+  Push<IRLoadGPR>(reg, result);
 }
 
 void IREmitter::StoreGPR(IRGuestReg reg, IRValue value) {
   if (value.IsNull()) {
     throw std::runtime_error("StoreGPR: value must not be null");
   }
-  code.push_back(std::make_unique<IRStoreGPR>(reg, value));
+  Push<IRStoreGPR>(reg, value);
 }
 
 void IREmitter::LoadCPSR(IRVariable const& result) {
-  code.push_back(std::make_unique<IRLoadCPSR>(result));
+  Push<IRLoadCPSR>(result);
 }
 
 void IREmitter::StoreCPSR(IRValue value) {
   if (value.IsNull()) {
     throw std::runtime_error("StoreCPSR: value must not be null");
   }
-  code.push_back(std::make_unique<IRStoreCPSR>(value));
+  Push<IRStoreCPSR>(value);
 }
 
 void IREmitter::LSL(
@@ -68,7 +68,7 @@ void IREmitter::LSL(
   if (amount.IsNull()) {
     throw std::runtime_error("LSL: amount must not be null");
   }
-  code.push_back(std::make_unique<IRLogicalShiftLeft>(result, operand, amount, update_host_flags));
+  Push<IRLogicalShiftLeft>(result, operand, amount, update_host_flags);
 }
 
 void IREmitter::LSR(
@@ -80,7 +80,7 @@ void IREmitter::LSR(
   if (amount.IsNull()) {
     throw std::runtime_error("LSR: amount must not be null");
   }
-  code.push_back(std::make_unique<IRLogicalShiftRight>(result, operand, amount, update_host_flags));
+  Push<IRLogicalShiftRight>(result, operand, amount, update_host_flags);
 }
 
 void IREmitter::ASR(
@@ -92,7 +92,7 @@ void IREmitter::ASR(
   if (amount.IsNull()) {
     throw std::runtime_error("ASR: amount must not be null");
   }
-  code.push_back(std::make_unique<IRArithmeticShiftRight>(result, operand, amount, update_host_flags));
+  Push<IRArithmeticShiftRight>(result, operand, amount, update_host_flags);
 }
 
 void IREmitter::ROR(
@@ -104,7 +104,7 @@ void IREmitter::ROR(
   if (amount.IsNull()) {
     throw std::runtime_error("ROR: amount must not be null");
   }
-  code.push_back(std::make_unique<IRRotateRight>(result, operand, amount, update_host_flags));
+  Push<IRRotateRight>(result, operand, amount, update_host_flags);
 }
 
 void IREmitter::AND(
@@ -117,7 +117,7 @@ void IREmitter::AND(
   if (rhs.IsNull()) {
     throw std::runtime_error("AND: rhs operand must not be null");
   }
-  code.push_back(std::make_unique<IRBitwiseAND>(result_, lhs, rhs, update_host_flags));
+  Push<IRBitwiseAND>(result_, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::EOR(
@@ -130,7 +130,7 @@ void IREmitter::EOR(
   if (rhs.IsNull()) {
     throw std::runtime_error("EOR: rhs operand must not be null");
   }
-  code.push_back(std::make_unique<IRBitwiseEOR>(result_, lhs, rhs, update_host_flags));
+  Push<IRBitwiseEOR>(result_, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::SUB(
@@ -143,7 +143,7 @@ void IREmitter::SUB(
   if (rhs.IsNull()) {
     throw std::runtime_error("Sub: rhs operand must not be null");
   }
-  code.push_back(std::make_unique<IRSub>(result_, lhs, rhs, update_host_flags));
+  Push<IRSub>(result_, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::ADD(
@@ -156,21 +156,21 @@ void IREmitter::ADD(
   if (rhs.IsNull()) {
     throw std::runtime_error("Add: rhs operand must not be null");
   }
-  code.push_back(std::make_unique<IRAdd>(result_, lhs, rhs, update_host_flags));
+  Push<IRAdd>(result_, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::UpdateNZCV(
   IRVariable const& result,
   IRVariable const& input
 ) {
-  code.push_back(std::make_unique<IRUpdateFlags>(result, input, true, true, true, true));
+  Push<IRUpdateFlags>(result, input, true, true, true, true);
 }
 
 void IREmitter::UpdateNZC(
   IRVariable const& result,
   IRVariable const& input
 ) {
-  code.push_back(std::make_unique<IRUpdateFlags>(result, input, true, true, true, false));
+  Push<IRUpdateFlags>(result, input, true, true, true, false);
 }
 
 } // namespace lunatic::frontend

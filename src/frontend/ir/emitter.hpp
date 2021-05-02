@@ -100,6 +100,11 @@ struct IREmitter {
   );
 
 private:
+  template<typename T, typename... Args>
+  void Push(Args&&... args) {
+    code.push_back(std::make_unique<T>(args...));
+  }
+
   InstructionList code;
   VariableList variables;
 };
