@@ -238,7 +238,7 @@ struct IRShifterBase : IROpcodeBase<_klass> {
     IRVariable const& operand,
     IRValue amount,
     bool update_host_flags
-  ) : result(result), operand(operand), amount(amount) {}
+  ) : result(result), operand(operand), amount(amount), update_host_flags(update_host_flags) {}
 
   /// The variable to store the result in
   IRVariable const& result;
