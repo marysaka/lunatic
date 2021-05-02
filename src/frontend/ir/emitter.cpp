@@ -51,6 +51,10 @@ void IREmitter::StoreGPR(IRGuestReg reg, IRValue value) {
   Push<IRStoreGPR>(reg, value);
 }
 
+void IREmitter::LoadSPSR (IRVariable const& result, State::Mode mode) {
+  Push<IRLoadSPSR>(result, mode);
+}
+
 void IREmitter::LoadCPSR(IRVariable const& result) {
   Push<IRLoadCPSR>(result);
 }

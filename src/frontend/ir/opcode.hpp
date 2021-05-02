@@ -19,6 +19,7 @@ namespace frontend {
 enum class IROpcodeClass {
   LoadGPR,
   StoreGPR,
+  LoadSPSR,
   LoadCPSR,
   StoreCPSR,
   ClearCarry,
@@ -108,6 +109,25 @@ struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
   }
 };
 
+struct IRLoadSPSR final : IROpcodeBase<IROpcodeClass::LoadSPSR> {
+  IRLoadSPSR(IRVariable const& result, State::Mode mode) : result(result), mode(mode) {}
+
+  IRVariable const& result;
+  State::Mode mode;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &var == &result;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("ldspsr.{} {}", std::to_string(mode), std::to_string(result));
+  }
+};
+
 struct IRLoadCPSR final : IROpcodeBase<IROpcodeClass::LoadCPSR> {
   IRLoadCPSR(IRVariable const& result) : result(result) {}
 
@@ -124,7 +144,7 @@ struct IRLoadCPSR final : IROpcodeBase<IROpcodeClass::LoadCPSR> {
 
   auto ToString() -> std::string override {
     return fmt::format("ldcpsr {}", std::to_string(result));
-  }  
+  }
 };
 
 struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {

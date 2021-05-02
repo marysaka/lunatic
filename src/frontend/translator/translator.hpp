@@ -24,6 +24,8 @@ struct Translator final : ARMDecodeClient<bool> {
   void EmitUpdateNZC();
   void EmitUpdateNZCV();
   void EmitAdvancePC();
+  void EmitFlushPipeline();
+  void EmitLoadSPSRToCPSR();
 
   Mode mode;
   u32 opcode_size;

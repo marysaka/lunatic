@@ -33,6 +33,7 @@ struct IREmitter {
   void LoadGPR (IRGuestReg reg, IRVariable const& result);
   void StoreGPR(IRGuestReg reg, IRValue value);
   
+  void LoadSPSR (IRVariable const& result, State::Mode mode);
   void LoadCPSR (IRVariable const& result);
   void StoreCPSR(IRValue value);
 

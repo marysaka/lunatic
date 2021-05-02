@@ -12,8 +12,6 @@
 namespace lunatic {
 namespace frontend {
 
-// TODO: handle R15 and SPSR loading special cases
-
 auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
   using Opcode = ARMDataProcessing::Opcode;
 
@@ -270,15 +268,14 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
       }
       break;
     }
-    default: {
-      return false;
-    }
   }
 
   if (opcode.reg_dst == GPR::PC) {
-    // Hmm... this really gets spammed a lot in ARMWrestler right now.
-    // fmt::print("DataProcessing: unhandled write to R15\n");
-    return false;
+    // TODO: handle CMP, CMN, TST and TEQ opcodes.
+    if (opcode.set_flags) {
+      EmitLoadSPSRToCPSR();
+    }
+    EmitFlushPipeline();
   } else if (!advance_pc_early) {
     EmitAdvancePC();
   }
