@@ -36,7 +36,9 @@ enum class IROpcodeClass {
   ADC,
   SBC,
   RSC,
-  ORR
+  ORR,
+  MOV,
+  MVN
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -405,6 +407,60 @@ struct IRBitwiseORR final : IRBinaryOpBase<IROpcodeClass::ORR> {
       std::to_string(result),
       std::to_string(lhs),
       std::to_string(rhs));
+  }
+};
+
+struct IRMov final : IROpcodeBase<IROpcodeClass::MOV> {
+  IRMov(
+    IRVariable const& result,
+    IRValue source,
+    bool update_host_flags
+  ) : result(result), source(source), update_host_flags(update_host_flags) {}
+
+  IRVariable const& result;
+  IRValue source;
+  bool update_host_flags;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return source.IsVariable() && (&source.GetVar() == &var);
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &result == &var;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("mov{} {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(source));
+  }
+};
+
+struct IRMvn final : IROpcodeBase<IROpcodeClass::MVN> {
+  IRMvn(
+    IRVariable const& result,
+    IRValue source,
+    bool update_host_flags
+  ) : result(result), source(source), update_host_flags(update_host_flags) {}
+
+  IRVariable const& result;
+  IRValue source;
+  bool update_host_flags;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return source.IsVariable() && (&source.GetVar() == &var);
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &result == &var;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("mvn{} {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(source));
   }
 };
 

@@ -140,6 +140,18 @@ struct IREmitter {
     bool update_host_flags
   );
 
+  void MOV(
+    IRVariable const& result,
+    IRValue source,
+    bool update_host_flags
+  );
+
+  void MVN(
+    IRVariable const& result,
+    IRValue source,
+    bool update_host_flags
+  );
+
 private:
   template<typename T, typename... Args>
   void Push(Args&&... args) {

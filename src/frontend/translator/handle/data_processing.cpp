@@ -22,6 +22,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
   }
 
   auto op2 = IRValue{};
+  bool advance_pc_early = false;
 
   // TODO: clean this unholy mess up.
   // TODO: do not update the carry flag if it will be overwritten.
@@ -51,15 +52,18 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
     auto& source = emitter->CreateVar(IRDataType::UInt32, "shift_source");
     auto& result = emitter->CreateVar(IRDataType::UInt32, "shift_result");
 
-    emitter->LoadGPR(IRGuestReg{opcode.op2_reg.reg, mode}, source);
-
     if (shift.immediate) {
       // TODO: optimize case when amount == 0
       amount = IRConstant(u32(shift.amount_imm));
     } else {
       amount = emitter->CreateVar(IRDataType::UInt32, "shift_amount");
       emitter->LoadGPR(IRGuestReg{shift.amount_reg, mode}, amount.GetVar());
+
+      EmitAdvancePC();
+      advance_pc_early = true;
     }
+
+    emitter->LoadGPR(IRGuestReg{opcode.op2_reg.reg, mode}, source);
 
     switch (shift.type) {
       case Shift::LSL: {
@@ -235,10 +239,22 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
 
     case Opcode::MOV: {
       if (opcode.set_flags) {
-        return false;
+        auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
+        emitter->MOV(result, op2, true);
+        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+        EmitUpdateNZC();
+      } else {
+        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, op2);
       }
-      // TODO: update NZC flags
-      emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, op2);
+      break;
+    }
+    case Opcode::MVN: {
+      auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
+      emitter->MVN(result, op2, opcode.set_flags);
+      emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+      if (opcode.set_flags) {
+        EmitUpdateNZC();
+      }
       break;
     }
     default: {
@@ -250,7 +266,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
     // Hmm... this really gets spammed a lot in ARMWrestler right now.
     // fmt::print("DataProcessing: unhandled write to R15\n");
     return false;
-  } else {
+  } else if (!advance_pc_early) {
     EmitAdvancePC();
   }
 

@@ -240,5 +240,21 @@ void IREmitter::ORR(
   Push<IRBitwiseORR>(result, lhs, rhs, update_host_flags);
 }
 
+void IREmitter::MOV(
+  IRVariable const& result,
+  IRValue source,
+  bool update_host_flags
+) {
+  Push<IRMov>(result, source, update_host_flags);
+}
+
+void IREmitter::MVN(
+  IRVariable const& result,
+  IRValue source,
+  bool update_host_flags
+) {
+  Push<IRMvn>(result, source, update_host_flags);
+}
+
 } // namespace lunatic::frontend
 } // namespace lunatic

@@ -585,6 +585,44 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
+      case IROpcodeClass::MOV: {
+        auto op = lunatic_cast<IRMov>(op_.get());
+        auto result_reg = reg_alloc.GetReg32(op->result, location);
+
+        if (op->source.IsConstant()) {
+          code.mov(result_reg, op->source.GetConst().value);
+        } else {
+          code.mov(result_reg, reg_alloc.GetReg32(op->source.GetVar(), location));
+        }
+
+        if (op->update_host_flags) {
+          code.test(result_reg, result_reg);
+          // load flags but preserve carry
+          code.bt(ax, 8); // CF = value of bit8
+          code.lahf();
+        }
+        break;
+      }
+      case IROpcodeClass::MVN: {
+        auto op = lunatic_cast<IRMvn>(op_.get());
+        auto result_reg = reg_alloc.GetReg32(op->result, location);
+
+        if (op->source.IsConstant()) {
+          code.mov(result_reg, op->source.GetConst().value);
+        } else {
+          code.mov(result_reg, reg_alloc.GetReg32(op->source.GetVar(), location));
+        }
+
+        code.not_(result_reg);
+
+        if (op->update_host_flags) {
+          code.test(result_reg, result_reg);
+          // load flags but preserve carry
+          code.bt(ax, 8); // CF = value of bit8
+          code.lahf();
+        }
+        break;
+      }
       default: {
         throw std::runtime_error(fmt::format("X64Backend: unhandled IR opcode: {}", op_->ToString()));
       }
