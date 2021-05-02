@@ -27,6 +27,12 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
 
   auto op2 = IRValue{};
 
+  // TODO: clean this unholy mess up.
+  auto shifter_update_carry = opcode.set_flags && 
+    opcode.opcode != Opcode::ADC &&
+    opcode.opcode != Opcode::SBC &&
+    opcode.opcode != Opcode::RSC;
+
   // TODO: do not update the carry flag if it will be overwritten.
   if (opcode.immediate) {
     auto value = opcode.op2_imm.value;
@@ -34,7 +40,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
 
     op2 = IRConstant{bit::rotate_right<u32>(value, shift)};
 
-    if (opcode.set_flags && shift != 0) {
+    if (shifter_update_carry && shift != 0) {
       bool carry = bit::get_bit<u32, bool>(value, shift - 1);
       // TODO: update the carry flag in host flags!
     }
@@ -56,19 +62,19 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
 
     switch (shift.type) {
       case Shift::LSL: {
-        emitter->LSL(result, source, amount, opcode.set_flags);
+        emitter->LSL(result, source, amount, shifter_update_carry);
         break;
       }
       case Shift::LSR: {
-        emitter->LSR(result, source, amount, opcode.set_flags);
+        emitter->LSR(result, source, amount, shifter_update_carry);
         break;
       }
       case Shift::ASR: {
-        emitter->ASR(result, source, amount, opcode.set_flags);
+        emitter->ASR(result, source, amount, shifter_update_carry);
         break;
       }
       case Shift::ROR: {
-        emitter->ROR(result, source, amount, opcode.set_flags);
+        emitter->ROR(result, source, amount, shifter_update_carry);
         break;
       }
     }
@@ -124,6 +130,32 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
 
       emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
       emitter->ADD(result, op1, op2, opcode.set_flags);
+      emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+
+      if (opcode.set_flags) {
+        EmitUpdateNZCV();
+      }
+      break;
+    }
+    case Opcode::ADC: {
+      auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
+      auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
+
+      emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
+      emitter->ADC(result, op1, op2, opcode.set_flags);
+      emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+
+      if (opcode.set_flags) {
+        EmitUpdateNZCV();
+      }
+      break;
+    }
+    case Opcode::SBC: {
+      auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
+      auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
+
+      emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
+      emitter->SBC(result, op1, op2, opcode.set_flags);
       emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
 
       if (opcode.set_flags) {

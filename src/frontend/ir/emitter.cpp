@@ -158,6 +158,30 @@ void IREmitter::ADD(
   Push<IRAdd>(result, lhs, rhs, update_host_flags);
 }
 
+void IREmitter::ADC(
+  IRVariable const& result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  if (rhs.IsNull()) {
+    throw std::runtime_error("Adc: rhs operand must not be null");
+  }
+  Push<IRAdc>(result, lhs, rhs, update_host_flags);
+}
+
+void IREmitter::SBC(
+  IRVariable const& result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  if (rhs.IsNull()) {
+    throw std::runtime_error("Sbc: rhs operand must not be null");
+  }
+  Push<IRSbc>(result, lhs, rhs, update_host_flags);
+}
+
 void IREmitter::UpdateNZCV(
   IRVariable const& result,
   IRVariable const& input

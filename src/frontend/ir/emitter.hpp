@@ -78,6 +78,13 @@ struct IREmitter {
     bool update_host_flags
   );
 
+  void SUB(
+    Optional<IRVariable const&> result,
+    IRVariable const& lhs,
+    IRValue rhs,
+    bool update_host_flags
+  );
+
   void ADD(
     Optional<IRVariable const&> result,
     IRVariable const& lhs,
@@ -85,8 +92,15 @@ struct IREmitter {
     bool update_host_flags
   );
 
-  void SUB(
-    Optional<IRVariable const&> result,
+  void ADC(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRValue rhs,
+    bool update_host_flags
+  );
+
+  void SBC(
+    IRVariable const& result,
     IRVariable const& lhs,
     IRValue rhs,
     bool update_host_flags

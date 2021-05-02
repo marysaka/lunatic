@@ -416,6 +416,59 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
+      case IROpcodeClass::ADC: {
+        auto op = lunatic_cast<IRAdc>(op_.get());
+        auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
+        auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
+
+        code.sahf();
+
+        if (op->rhs.IsConstant()) {
+          auto imm = op->rhs.GetConst().value;
+
+          code.mov(result_reg, lhs_reg);
+          code.adc(result_reg, imm); 
+        } else {
+          auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
+
+          code.mov(result_reg, lhs_reg);
+          code.adc(result_reg, rhs_reg);
+        }
+
+        if (op->update_host_flags) {
+          code.lahf();
+          code.seto(al);
+        }
+        break;
+      }
+      case IROpcodeClass::SBC: {
+        auto op = lunatic_cast<IRSbc>(op_.get());
+        auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
+        auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
+
+        code.sahf();
+        code.cmc();
+
+        if (op->rhs.IsConstant()) {
+          auto imm = op->rhs.GetConst().value;
+
+          code.mov(result_reg, lhs_reg);
+          code.sbb(result_reg, imm);
+          code.cmc();
+        } else {
+          auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
+
+          code.mov(result_reg, lhs_reg);
+          code.sbb(result_reg, rhs_reg);
+          code.cmc();
+        }
+    
+        if (op->update_host_flags) {
+          code.lahf();
+          code.seto(al);
+        }
+        break;
+      }
       case IROpcodeClass::UpdateFlags: {
         auto op  = lunatic_cast<IRUpdateFlags>(op_.get());
         u32 mask = 0;
