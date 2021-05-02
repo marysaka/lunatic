@@ -128,6 +128,7 @@ namespace std {
 
 inline auto to_string(lunatic::frontend::State::Mode value) -> std::string {
   using Mode = lunatic::frontend::State::Mode;
+
   switch (value) {
     case Mode::User: return "usr";
     case Mode::FIQ: return "fiq";
@@ -137,6 +138,8 @@ inline auto to_string(lunatic::frontend::State::Mode value) -> std::string {
     case Mode::Undefined: return "und";
     case Mode::System: return "sys";
   }
+
+  return "???";
 }
 
 } // namespace std

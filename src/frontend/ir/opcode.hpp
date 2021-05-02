@@ -22,18 +22,14 @@ enum class IROpcodeClass {
   LoadCPSR,
   StoreCPSR,
   UpdateFlags,
-  LogicalShiftLeft,
-  LogicalShiftRight,
-  ArithmeticShiftRight,
-  RotateRight,
+  LSL,
+  LSR,
+  ASR,
+  ROR,
   AND,
   EOR,
-  Sub,
-  Add,
-  AddWithCarry,
-  SubWithCarry,
-  ORR,
-  BIC
+  SUB,
+  ADD
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -207,7 +203,7 @@ struct IRShifterBase : IROpcodeBase<_klass> {
   }
 };
 
-struct IRLogicalShiftLeft final : IRShifterBase<IROpcodeClass::LogicalShiftLeft> {
+struct IRLogicalShiftLeft final : IRShifterBase<IROpcodeClass::LSL> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
@@ -215,7 +211,7 @@ struct IRLogicalShiftLeft final : IRShifterBase<IROpcodeClass::LogicalShiftLeft>
   }
 };
 
-struct IRLogicalShiftRight final : IRShifterBase<IROpcodeClass::LogicalShiftRight> {
+struct IRLogicalShiftRight final : IRShifterBase<IROpcodeClass::LSR> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
@@ -223,7 +219,7 @@ struct IRLogicalShiftRight final : IRShifterBase<IROpcodeClass::LogicalShiftRigh
   }
 };
 
-struct IRArithmeticShiftRight final : IRShifterBase<IROpcodeClass::ArithmeticShiftRight> {
+struct IRArithmeticShiftRight final : IRShifterBase<IROpcodeClass::ASR> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
@@ -231,7 +227,7 @@ struct IRArithmeticShiftRight final : IRShifterBase<IROpcodeClass::ArithmeticShi
   }
 };
 
-struct IRRotateRight final : IRShifterBase<IROpcodeClass::RotateRight> {
+struct IRRotateRight final : IRShifterBase<IROpcodeClass::ROR> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
@@ -293,7 +289,7 @@ struct IRBitwiseEOR final : IRBinaryOpBase<IROpcodeClass::EOR> {
   }
 };
 
-struct IRSub final : IRBinaryOpBase<IROpcodeClass::Sub> {
+struct IRSub final : IRBinaryOpBase<IROpcodeClass::SUB> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
@@ -305,7 +301,7 @@ struct IRSub final : IRBinaryOpBase<IROpcodeClass::Sub> {
   }
 };
 
-struct IRAdd final : IRBinaryOpBase<IROpcodeClass::Add> {
+struct IRAdd final : IRBinaryOpBase<IROpcodeClass::ADD> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {

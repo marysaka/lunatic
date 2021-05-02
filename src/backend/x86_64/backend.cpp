@@ -80,7 +80,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
-      case IROpcodeClass::LogicalShiftLeft: {
+      case IROpcodeClass::LSL: {
         auto op = lunatic_cast<IRLogicalShiftLeft>(op_.get());
         auto amount = op->amount;
         auto result_reg = reg_alloc.GetReg32(op->result, location);
@@ -119,7 +119,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         code.shr(result_reg.cvt64(), 32);
         break;
       }
-      case IROpcodeClass::LogicalShiftRight: {
+      case IROpcodeClass::LSR: {
         auto op = lunatic_cast<IRLogicalShiftRight>(op_.get());
         auto amount = op->amount;
         auto result_reg = reg_alloc.GetReg32(op->result, location);
@@ -163,7 +163,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
-      case IROpcodeClass::ArithmeticShiftRight: {
+      case IROpcodeClass::ASR: {
         auto op = lunatic_cast<IRArithmeticShiftRight>(op_.get());
         auto amount = op->amount;
         auto result_reg = reg_alloc.GetReg32(op->result, location);
@@ -213,7 +213,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         code.mov(result_reg, result_reg);
         break;
       }
-      case IROpcodeClass::RotateRight: {
+      case IROpcodeClass::ROR: {
         auto op = lunatic_cast<IRRotateRight>(op_.get());
         auto amount = op->amount;
         auto result_reg = reg_alloc.GetReg32(op->result, location);
@@ -341,7 +341,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
-      case IROpcodeClass::Sub: {
+      case IROpcodeClass::SUB: {
         auto op = lunatic_cast<IRSub>(op_.get());
         auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
 
@@ -379,7 +379,7 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
-      case IROpcodeClass::Add: {
+      case IROpcodeClass::ADD: {
         auto op = lunatic_cast<IRAdd>(op_.get());
         auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
 

@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
   SDL_Init(SDL_INIT_VIDEO);
 
   auto window = SDL_CreateWindow(
-    "Project lunatic",
+    "Project: lunatic",
     SDL_WINDOWPOS_CENTERED,
     SDL_WINDOWPOS_CENTERED,
     480,
