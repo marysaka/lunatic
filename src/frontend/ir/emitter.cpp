@@ -62,6 +62,28 @@ void IREmitter::StoreCPSR(IRValue value) {
   Push<IRStoreCPSR>(value);
 }
 
+void IREmitter::ClearCarry() {
+  Push<IRClearCarry>();
+}
+
+void IREmitter::SetCarry() {
+  Push<IRSetCarry>();
+}
+
+void IREmitter::UpdateNZCV(
+  IRVariable const& result,
+  IRVariable const& input
+) {
+  Push<IRUpdateFlags>(result, input, true, true, true, true);
+}
+
+void IREmitter::UpdateNZC(
+  IRVariable const& result,
+  IRVariable const& input
+) {
+  Push<IRUpdateFlags>(result, input, true, true, true, false);
+}
+
 void IREmitter::LSL(
   IRVariable const& result,
   IRVariable const& operand,
@@ -216,20 +238,6 @@ void IREmitter::ORR(
     throw std::runtime_error("ORR: rhs operand must not be null");
   }
   Push<IRBitwiseORR>(result, lhs, rhs, update_host_flags);
-}
-
-void IREmitter::UpdateNZCV(
-  IRVariable const& result,
-  IRVariable const& input
-) {
-  Push<IRUpdateFlags>(result, input, true, true, true, true);
-}
-
-void IREmitter::UpdateNZC(
-  IRVariable const& result,
-  IRVariable const& input
-) {
-  Push<IRUpdateFlags>(result, input, true, true, true, false);
 }
 
 } // namespace lunatic::frontend

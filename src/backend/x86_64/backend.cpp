@@ -80,6 +80,45 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
+      case IROpcodeClass::ClearCarry: {
+        code.and_(ah, ~1);
+        break;
+      }
+      case IROpcodeClass::SetCarry: {
+        code.or_(ah, 1);
+        break;
+      }
+      case IROpcodeClass::UpdateFlags: {
+        auto op  = lunatic_cast<IRUpdateFlags>(op_.get());
+        u32 mask = 0;
+        auto result_reg = reg_alloc.GetReg32(op->result, location);
+        auto input_reg  = reg_alloc.GetReg32(op->input, location);
+
+        if (op->flag_n) mask |= 0x80000000;
+        if (op->flag_z) mask |= 0x40000000;
+        if (op->flag_c) mask |= 0x20000000;
+        if (op->flag_v) mask |= 0x10000000;
+
+        // TODO: properly allocate a temporary register...
+        code.push(rcx);
+
+        // Convert NZCV bits from AX register into the guest format.
+        // Clear the bits which are not to be updated.
+        // Note: this trashes AX and means that UpdateFlags() cannot be called again,
+        // until another IR opcode updates the flags in AX again.
+        code.mov(ecx, 0xC101);
+        code.pext(eax, eax, ecx);
+        code.shl(eax, 28);
+        code.and_(eax, mask);
+
+        // Clear the bits to be updated, then OR the new values.
+        code.mov(result_reg, input_reg);
+        code.and_(result_reg, ~mask);
+        code.or_(result_reg, eax);
+
+        code.pop(rcx);
+        break;
+      }
       case IROpcodeClass::LSL: {
         auto op = lunatic_cast<IRLogicalShiftLeft>(op_.get());
         auto amount = op->amount;
@@ -544,37 +583,6 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
           code.bt(ax, 8); // CF = value of bit8
           code.lahf();
         }
-        break;
-      }
-      case IROpcodeClass::UpdateFlags: {
-        auto op  = lunatic_cast<IRUpdateFlags>(op_.get());
-        u32 mask = 0;
-        auto result_reg = reg_alloc.GetReg32(op->result, location);
-        auto input_reg  = reg_alloc.GetReg32(op->input, location);
-
-        if (op->flag_n) mask |= 0x80000000;
-        if (op->flag_z) mask |= 0x40000000;
-        if (op->flag_c) mask |= 0x20000000;
-        if (op->flag_v) mask |= 0x10000000;
-
-        // TODO: properly allocate a temporary register...
-        code.push(rcx);
-    
-        // Convert NZCV bits from AX register into the guest format.
-        // Clear the bits which are not to be updated.
-        // Note: this trashes AX and means that UpdateFlags() cannot be called again,
-        // until another IR opcode updates the flags in AX again.
-        code.mov(ecx, 0xC101);
-        code.pext(eax, eax, ecx);
-        code.shl(eax, 28);
-        code.and_(eax, mask);
-
-        // Clear the bits to be updated, then OR the new values.
-        code.mov(result_reg, input_reg);
-        code.and_(result_reg, ~mask);
-        code.or_(result_reg, eax);
-
-        code.pop(rcx);
         break;
       }
       default: {

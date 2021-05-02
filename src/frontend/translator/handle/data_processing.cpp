@@ -38,7 +38,11 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
 
     if (shifter_update_carry && shift != 0) {
       bool carry = bit::get_bit<u32, bool>(value, shift - 1);
-      // TODO: update the carry flag in host flags!
+      if (carry) {
+        emitter->SetCarry();
+      } else {
+        emitter->ClearCarry();
+      }
     }
   } else {
     auto& shift = opcode.op2_reg.shift;

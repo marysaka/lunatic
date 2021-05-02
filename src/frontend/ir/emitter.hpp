@@ -36,6 +36,19 @@ struct IREmitter {
   void LoadCPSR (IRVariable const& result);
   void StoreCPSR(IRValue value);
 
+  void ClearCarry();
+  void SetCarry();
+
+  void UpdateNZCV(
+    IRVariable const& result,
+    IRVariable const& input
+  );
+
+  void UpdateNZC(
+    IRVariable const& result,
+    IRVariable const& input
+  );
+
   void LSL(
     IRVariable const& result,
     IRVariable const& operand,
@@ -125,16 +138,6 @@ struct IREmitter {
     IRVariable const& lhs,
     IRValue rhs,
     bool update_host_flags
-  );
-
-  void UpdateNZCV(
-    IRVariable const& result,
-    IRVariable const& input
-  );
-
-  void UpdateNZC(
-    IRVariable const& result,
-    IRVariable const& input
   );
 
 private:

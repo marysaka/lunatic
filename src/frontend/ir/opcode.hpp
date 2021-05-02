@@ -21,6 +21,8 @@ enum class IROpcodeClass {
   StoreGPR,
   LoadCPSR,
   StoreCPSR,
+  ClearCarry,
+  SetCarry,
   UpdateFlags,
   LSL,
   LSR,
@@ -139,6 +141,34 @@ struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {
   auto ToString() -> std::string override {
     return fmt::format("stcpsr {}", std::to_string(value));
   }  
+};
+
+struct IRClearCarry final : IROpcodeBase<IROpcodeClass::ClearCarry> {
+  auto Reads(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto ToString() -> std::string override {
+    return "clearcarry";
+  }
+};
+
+struct IRSetCarry final : IROpcodeBase<IROpcodeClass::ClearCarry> {
+  auto Reads(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto ToString() -> std::string override {
+    return "setcarry";
+  }
 };
 
 struct IRUpdateFlags final : IROpcodeBase<IROpcodeClass::UpdateFlags> {
