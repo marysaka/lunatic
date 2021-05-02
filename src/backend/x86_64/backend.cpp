@@ -522,6 +522,30 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
         }
         break;
       }
+      case IROpcodeClass::ORR: {
+        auto op = lunatic_cast<IRBitwiseORR>(op_.get());
+        auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
+        auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
+
+        if (op->rhs.IsConstant()) {
+          auto imm = op->rhs.GetConst().value;
+          
+          code.mov(result_reg, lhs_reg);
+          code.or_(result_reg, imm);
+        } else {
+          auto rhs_reg = reg_alloc.GetReg32(op->rhs.GetVar(), location);
+
+          code.mov(result_reg, lhs_reg);
+          code.or_(result_reg, rhs_reg);
+        }
+
+        if (op->update_host_flags) {
+          // load flags but preserve carry
+          code.bt(ax, 8); // CF = value of bit8
+          code.lahf();
+        }
+        break;
+      }
       case IROpcodeClass::UpdateFlags: {
         auto op  = lunatic_cast<IRUpdateFlags>(op_.get());
         u32 mask = 0;

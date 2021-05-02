@@ -33,7 +33,8 @@ enum class IROpcodeClass {
   ADD,
   ADC,
   SBC,
-  RSC
+  RSC,
+  ORR
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -358,6 +359,18 @@ struct IRRsc final : IRBinaryOpBase<IROpcodeClass::RSC> {
 
   auto ToString() -> std::string override {
     return fmt::format("rsc{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
+  }
+};
+
+struct IRBitwiseORR final : IRBinaryOpBase<IROpcodeClass::ORR> {
+  using IRBinaryOpBase::IRBinaryOpBase;
+
+  auto ToString() -> std::string override {
+    return fmt::format("orr{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),

@@ -206,6 +206,18 @@ void IREmitter::RSC(
   Push<IRRsc>(result, lhs, rhs, update_host_flags);
 }
 
+void IREmitter::ORR(
+  IRVariable const& result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  if (rhs.IsNull()) {
+    throw std::runtime_error("ORR: rhs operand must not be null");
+  }
+  Push<IRBitwiseORR>(result, lhs, rhs, update_host_flags);
+}
+
 void IREmitter::UpdateNZCV(
   IRVariable const& result,
   IRVariable const& input

@@ -185,6 +185,19 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
       }
       break;
     }
+    case Opcode::ORR: {
+      auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
+      auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
+
+      emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
+      emitter->ORR(result, op1, op2, opcode.set_flags);
+      emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
+
+      if (opcode.set_flags) {
+        EmitUpdateNZC();
+      }
+      break;
+    }
 
     case Opcode::TST: {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
