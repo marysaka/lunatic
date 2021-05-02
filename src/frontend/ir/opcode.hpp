@@ -29,6 +29,7 @@ enum class IROpcodeClass {
   ASR,
   ROR,
   AND,
+  BIC,
   EOR,
   SUB,
   RSB,
@@ -307,6 +308,18 @@ struct IRBitwiseAND final : IRBinaryOpBase<IROpcodeClass::AND> {
 
   auto ToString() -> std::string override {
     return fmt::format("and{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
+  }
+};
+
+struct IRBitwiseBIC final : IRBinaryOpBase<IROpcodeClass::BIC> {
+  using IRBinaryOpBase::IRBinaryOpBase;
+
+  auto ToString() -> std::string override {
+    return fmt::format("bic{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),

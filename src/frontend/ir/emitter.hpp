@@ -84,6 +84,13 @@ struct IREmitter {
     bool update_host_flags
   );
 
+  void BIC(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRValue rhs,
+    bool update_host_flags
+  );
+
   void EOR(
     Optional<IRVariable const&> result,
     IRVariable const& lhs,

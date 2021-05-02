@@ -144,6 +144,18 @@ void IREmitter::AND(
   Push<IRBitwiseAND>(result, lhs, rhs, update_host_flags);
 }
 
+void IREmitter::BIC(
+  IRVariable const& result,
+  IRVariable const& lhs,
+  IRValue rhs,
+  bool update_host_flags
+) {
+  if (rhs.IsNull()) {
+    throw std::runtime_error("BIC: rhs operand must not be null");
+  }
+  Push<IRBitwiseBIC>(result, lhs, rhs, update_host_flags);
+}
+
 void IREmitter::EOR(
   Optional<IRVariable const&> result,
   IRVariable const& lhs,
