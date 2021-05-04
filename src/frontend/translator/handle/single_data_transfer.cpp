@@ -73,6 +73,10 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
   if (opcode.load) {
     auto& data = emitter->CreateVar(IRDataType::UInt32, "data");
 
+    if (!opcode.pre_increment || opcode.writeback) {
+      emitter->StoreGPR(IRGuestReg{opcode.reg_base, mode}, base_new);
+    }
+
     if (opcode.byte) {
       return false;
     } else {
@@ -82,12 +86,13 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
 
     emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
   } else {
-    return false;
-  }
 
-  // TODO: handle base == dst case (by performing writeback before destination reg write)
-  if (!opcode.pre_increment || opcode.writeback) {
-    emitter->StoreGPR(IRGuestReg{opcode.reg_base, mode}, base_new);
+    // TODO: this is kinda redundant.
+    if (!opcode.pre_increment || opcode.writeback) {
+      emitter->StoreGPR(IRGuestReg{opcode.reg_base, mode}, base_new);
+    }
+
+    return false;
   }
 
   return true;

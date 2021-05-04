@@ -277,7 +277,7 @@ void IREmitter::LDR(
   IRVariable const& result,
   IRVariable const& address
 ) {
-  Push<IRMemoryLoad>(flags, result, address);
+  Push<IRMemoryRead>(flags, result, address);
 }
 
 } // namespace lunatic::frontend

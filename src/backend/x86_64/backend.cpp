@@ -25,11 +25,13 @@ using namespace lunatic::frontend;
 
 // TODO: right now we only have UInt32 but how to deal with different variable or constant data types?
 
-void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
+void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, bool int3) {
   using namespace Xbyak::util;
 
   Xbyak::CodeGenerator code;
   X64RegisterAllocator reg_alloc { emitter, code };
+
+  this->memory = &memory;
 
   // Load pointer to state into RCX
   code.mov(rcx, u64(&state));
@@ -645,6 +647,80 @@ void X64Backend::Run(State& state, IREmitter const& emitter, bool int3) {
           // load flags but preserve carry
           code.bt(ax, 8); // CF = value of bit8
           code.lahf();
+        }
+        break;
+      }
+      case IROpcodeClass::MemoryRead: {
+        auto op = lunatic_cast<IRMemoryRead>(op_.get());
+        auto result_reg = reg_alloc.GetReg32(op->result, location);
+        auto address_reg = reg_alloc.GetReg32(op->address, location);
+
+        auto pagetable = memory.pagetable.get();
+
+        if (pagetable != nullptr) {
+          auto label_done = Xbyak::Label{};
+          auto label_slowmem = Xbyak::Label{};
+
+          // TODO: properly allocate a free register.
+          // Or statically allocate a register for the page table pointer?
+          code.push(rcx);
+
+          code.mov(rcx, u64(pagetable));
+
+          // Get the page table entry
+          code.mov(result_reg, address_reg);
+          code.shr(result_reg, Memory::kPageShift);
+          code.mov(rcx, qword[rcx + result_reg.cvt64() * sizeof(uintptr)]);
+
+          // Check if the entry is a null pointer.
+          code.test(rcx, rcx);
+          code.jz(label_slowmem);
+
+          // Read from the data pointer
+          code.mov(result_reg, address_reg);
+          // TODO: handle different access sizes and alignments.
+          code.and_(result_reg, Memory::kPageMask & ~3);
+          code.mov(result_reg, dword[rcx + result_reg.cvt64()]);
+          if (op->flags & lunatic::frontend::IRMemoryFlags::Rotate) {
+            // TODO: account for halfword size
+            // TODO: also do this for the slowmem path
+            code.mov(ecx, address_reg);
+            code.and_(cl, 3);
+            code.shl(cl, 3);
+            code.ror(result_reg, cl);
+          }
+          code.jmp(label_done);
+
+          // TODO: get rid of the thunk if possible?
+          auto fnptr = u64((void*)(&X64Backend::ReadWordThunk));
+
+          // TODO: properly determine which registers actually need saving
+          code.L(label_slowmem);
+          code.push(rax);
+          code.push(rcx);
+          code.push(rdx);
+          code.push(r8);
+          code.push(r9);
+
+          code.sub(rsp, 0x28);
+          code.mov(edx, address_reg);
+          code.mov(rax, fnptr);
+          code.mov(rcx, u64(this));
+          code.mov(r8d, u32(Memory::Bus::Data));
+          code.call(rax);
+          code.add(rsp, 0x28);
+
+          code.pop(r9);
+          code.pop(r8);
+          code.pop(rdx);
+          code.pop(rcx);
+          code.mov(result_reg, eax);
+          code.pop(rax);
+
+          code.L(label_done);
+          code.pop(rcx);
+        } else {
+          // TODO: slowmem fallback
         }
         break;
       }

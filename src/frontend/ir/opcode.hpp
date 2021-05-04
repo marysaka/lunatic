@@ -48,7 +48,7 @@ enum class IROpcodeClass {
   MVN,
 
   /// Memory load/store unit
-  ReadMemory
+  MemoryRead
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -514,8 +514,8 @@ enum IRMemoryFlags {
   Rotate = 8
 };
 
-struct IRMemoryLoad final : IROpcodeBase<IROpcodeClass::ReadMemory> {
-  IRMemoryLoad(
+struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
+  IRMemoryRead(
     IRMemoryFlags flags,
     IRVariable const& result,
     IRVariable const& address

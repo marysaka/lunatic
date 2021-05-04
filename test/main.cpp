@@ -34,7 +34,7 @@ struct JIT {
     auto success = translator.Translate(basic_block, memory);
 
     if (success) {
-      backend.Run(state, basic_block.emitter, false);
+      backend.Run(memory, state, basic_block.emitter, false);
     }
 
     return success;

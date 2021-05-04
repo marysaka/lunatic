@@ -67,6 +67,8 @@ inline auto decode_single_data_transfer(Condition condition, u32 opcode, T& clie
     .byte = bit::get_bit<u32, bool>(opcode, 22),
     .writeback = bit::get_bit<u32, bool>(opcode, 21),
     .load = bit::get_bit<u32, bool>(opcode, 20),
+    .reg_dst = bit::get_field<u32, GPR>(opcode, 12, 4),
+    .reg_base = bit::get_field<u32, GPR>(opcode, 16, 4),
     .offset_imm = bit::get_field(opcode, 0, 12),
     .offset_reg = {
       .reg = bit::get_field<u32, GPR>(opcode, 0, 4),
