@@ -5,8 +5,6 @@
  * found in the LICENSE file.
  */
 
-#include <fmt/format.h>
-
 #include "frontend/translator/translator.hpp"
 
 namespace lunatic {

@@ -11,6 +11,7 @@
 
 #include "common/bit.hpp"
 #include "definition/data_processing.hpp"
+#include "definition/single_data_transfer.hpp"
 
 namespace lunatic {
 namespace frontend {
@@ -23,17 +24,20 @@ struct ARMDecodeClient {
   using return_type = T;
 
   virtual auto Handle(ARMDataProcessing const& opcode) -> T = 0;
+  virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
 };
 
 namespace detail {
 
+// TODO: unify reg and imm data processing
+
 template<typename T, typename U = typename T::return_type>
-inline auto decode_data_processing_reg(Condition condition, u32 opcode, T& client) -> U {
+inline auto decode_data_processing(Condition condition, u32 opcode, T& client) -> U {
   return client.Handle(ARMDataProcessing{
     .condition = condition,
     .opcode = bit::get_field<u32, ARMDataProcessing::Opcode>(opcode, 21, 4),
-    .immediate = false,
+    .immediate = bit::get_bit<u32, bool>(opcode, 25),
     .set_flags = bit::get_bit<u32, bool>(opcode, 20),
     .reg_dst = bit::get_field<u32, GPR>(opcode, 12, 4),
     .reg_op1 = bit::get_field<u32, GPR>(opcode, 16, 4),
@@ -45,22 +49,29 @@ inline auto decode_data_processing_reg(Condition condition, u32 opcode, T& clien
         .amount_reg = bit::get_field<u32, GPR>(opcode, 8, 4),
         .amount_imm = bit::get_field(opcode, 7, 5)
       }
+    },
+    .op2_imm = {
+      .value = bit::get_field<u32, u8>(opcode, 0, 8),
+      .shift = bit::get_field(opcode, 8, 4) * 2
     }
   });
 }
 
 template<typename T, typename U = typename T::return_type>
-inline auto decode_data_processing_imm(Condition condition, u32 opcode, T& client) -> U {
-  return client.Handle(ARMDataProcessing{
+inline auto decode_single_data_transfer(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMSingleDataTransfer{
     .condition = condition,
-    .opcode = bit::get_field<u32, ARMDataProcessing::Opcode>(opcode, 21, 4),
-    .immediate = true,
-    .set_flags = bit::get_bit<u32, bool>(opcode, 20),
-    .reg_dst = bit::get_field<u32, GPR>(opcode, 12, 4),
-    .reg_op1 = bit::get_field<u32, GPR>(opcode, 16, 4),
-    .op2_imm = {
-      .value = bit::get_field<u32, u8>(opcode, 0, 8),
-      .shift = bit::get_field(opcode, 8, 4) * 2
+    .immediate = !bit::get_bit<u32, bool>(opcode, 25),
+    .pre_increment = bit::get_bit<u32, bool>(opcode, 24),
+    .add = bit::get_bit<u32, bool>(opcode, 23),
+    .byte = bit::get_bit<u32, bool>(opcode, 22),
+    .writeback = bit::get_bit<u32, bool>(opcode, 21),
+    .load = bit::get_bit<u32, bool>(opcode, 20),
+    .offset_imm = bit::get_field(opcode, 0, 12),
+    .offset_reg = {
+      .reg = bit::get_field<u32, GPR>(opcode, 0, 4),
+      .shift = bit::get_field<u32, Shift>(opcode, 5, 2),
+      .amount = bit::get_field(opcode, 7, 5)
     }
   });
 }
@@ -155,8 +166,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
       
       // Data processing immediate shift
       // Data processing register shift
-      // return ARMInstrType::DataProcessing;
-      return decode_data_processing_reg(condition, opcode, client);
+      return decode_data_processing(condition, opcode, client);
     }
     case 0b001: {
       // Data processing immediate
@@ -179,13 +189,11 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         }
       }
 
-      // return ARMInstrType::DataProcessing;
-      return decode_data_processing_imm(condition, opcode, client);
+      return decode_data_processing(condition, opcode, client);
     }
     case 0b010: {
       // Load/store immediate offset
-      // return ARMInstrType::SingleDataTransfer;
-      return client.Undefined(instruction);
+      return decode_single_data_transfer(condition, opcode, client);
     }
     case 0b011: {
       // Load/store register offset

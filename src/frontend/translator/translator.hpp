@@ -19,6 +19,7 @@ struct Translator final : ARMDecodeClient<bool> {
   auto Translate(BasicBlock& block, Memory& memory) -> bool;
 
   auto Handle(ARMDataProcessing const& opcode) -> bool override;
+  auto Handle(ARMSingleDataTransfer const& opcode) -> bool override;
   auto Undefined(u32 opcode) -> bool override;
 
   void EmitUpdateNZC();

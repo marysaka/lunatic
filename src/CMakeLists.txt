@@ -12,6 +12,7 @@ set(SOURCES
   backend/x86_64/register_allocator.cpp
   frontend/ir/emitter.cpp
   frontend/translator/handle/data_processing.cpp
+  frontend/translator/handle/single_data_transfer.cpp
   frontend/translator/translator.cpp
   frontend/basic_block.cpp
   frontend/state.cpp
@@ -26,6 +27,7 @@ set(HEADERS
   backend/backend.hpp
   frontend/decode/definition/common.hpp
   frontend/decode/definition/data_processing.hpp
+  frontend/decode/definition/single_data_transfer.hpp
   frontend/decode/arm.hpp
   frontend/ir/emitter.hpp
   frontend/ir/opcode.hpp
