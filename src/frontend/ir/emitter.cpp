@@ -272,5 +272,13 @@ void IREmitter::MVN(
   Push<IRMvn>(result, source, update_host_flags);
 }
 
+void IREmitter::LDR(
+  IRMemoryFlags flags,
+  IRVariable const& result,
+  IRVariable const& address
+) {
+  Push<IRMemoryLoad>(flags, result, address);
+}
+
 } // namespace lunatic::frontend
 } // namespace lunatic

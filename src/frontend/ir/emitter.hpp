@@ -160,6 +160,12 @@ struct IREmitter {
     bool update_host_flags
   );
 
+  void LDR(
+    IRMemoryFlags flags,
+    IRVariable const& result,
+    IRVariable const& address
+  );
+
 private:
   template<typename T, typename... Args>
   void Push(Args&&... args) {

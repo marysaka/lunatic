@@ -17,14 +17,19 @@ namespace lunatic {
 namespace frontend {
 
 enum class IROpcodeClass {
+  /// Context load/store
   LoadGPR,
   StoreGPR,
   LoadSPSR,
   LoadCPSR,
   StoreCPSR,
+
+  /// Guest flag handling
   ClearCarry,
   SetCarry,
   UpdateFlags,
+
+  /// Barrel shifter and ALU
   LSL,
   LSR,
   ASR,
@@ -40,7 +45,10 @@ enum class IROpcodeClass {
   RSC,
   ORR,
   MOV,
-  MVN
+  MVN,
+
+  /// Memory load/store unit
+  ReadMemory
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -494,6 +502,48 @@ struct IRMvn final : IROpcodeBase<IROpcodeClass::MVN> {
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(source));
+  }
+};
+
+// TODO: maybe the IR prefixes everywhere are a bit silly...
+// TODO: is there a nicer solution that is scoped but allows combining flags easily?
+enum IRMemoryFlags {
+  Byte = 1,
+  Half = 2,
+  Word = 4,
+  Rotate = 8
+};
+
+struct IRMemoryLoad final : IROpcodeBase<IROpcodeClass::ReadMemory> {
+  IRMemoryLoad(
+    IRMemoryFlags flags,
+    IRVariable const& result,
+    IRVariable const& address
+  ) : flags(flags), result(result), address(address) {}
+
+  IRMemoryFlags flags;
+  IRVariable const& result;
+  IRVariable const& address;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &address == &var;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &result == &var;
+  }
+
+  auto ToString() -> std::string override {
+    auto size = "b";
+
+    if (flags & IRMemoryFlags::Half) size = "h";
+    if (flags & IRMemoryFlags::Word) size = "w";
+
+    return fmt::format("ldr.{}{} {}, [{}]",
+      size,
+      (flags & IRMemoryFlags::Rotate) ? "r" : "",
+      std::to_string(result),
+      std::to_string(address));
   }
 };
 

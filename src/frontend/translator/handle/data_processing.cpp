@@ -111,7 +111,6 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
       }
       break;
     }
-
     case Opcode::SUB: {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
       auto& result = emitter->CreateVar(IRDataType::UInt32, "result");

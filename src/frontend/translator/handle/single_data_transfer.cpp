@@ -69,14 +69,28 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
 
   EmitAdvancePC();
 
-  // Do the actual memory access etc...
+  // TODO: maybe it's cleaner to decode opcode into an enum upfront.
+  if (opcode.load) {
+    auto& data = emitter->CreateVar(IRDataType::UInt32, "data");
+
+    if (opcode.byte) {
+      return false;
+    } else {
+      // TODO: can we get rid of that annoying cast please?
+      emitter->LDR(static_cast<IRMemoryFlags>(Word | Rotate), data, address);
+    }
+
+    emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
+  } else {
+    return false;
+  }
 
   // TODO: handle base == dst case (by performing writeback before destination reg write)
   if (!opcode.pre_increment || opcode.writeback) {
     emitter->StoreGPR(IRGuestReg{opcode.reg_base, mode}, base_new);
   }
 
-  return false;
+  return true;
 }
 
 } // namespace lunatic::frontend
