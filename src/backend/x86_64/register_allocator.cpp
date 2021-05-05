@@ -16,8 +16,8 @@ namespace backend {
 X64RegisterAllocator::X64RegisterAllocator(IREmitter const& emitter, Xbyak::CodeGenerator& code)
     : emitter(emitter)
     , code(code) {
+  // rax and rcx are statically allocated
   Xbyak::Reg32 regs[] = {
-    // ecx,
     edx,
     ebx,
     esi,
@@ -123,7 +123,13 @@ void X64RegisterAllocator::ExpireVariables(int location) {
 }
 
 auto X64RegisterAllocator::IsCallerSaved(Xbyak::Reg32 reg) -> bool {
-  return reg == eax || reg == ecx || reg == edx || reg == r8d || reg == r9d;
+  return reg == eax  ||
+         reg == ecx  ||
+         reg == edx  ||
+         reg == r8d  ||
+         reg == r9d  ||
+         reg == r10d ||
+         reg == r11d;
 }
 
 } // namespace lunatic::backend

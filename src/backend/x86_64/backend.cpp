@@ -701,6 +701,8 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, boo
           code.push(rdx);
           code.push(r8);
           code.push(r9);
+          code.push(r10);
+          code.push(r11);
 
           code.sub(rsp, 0x28);
           code.mov(edx, address_reg);
@@ -710,6 +712,8 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, boo
           code.call(rax);
           code.add(rsp, 0x28);
 
+          code.pop(r11);
+          code.pop(r10);
           code.pop(r9);
           code.pop(r8);
           code.pop(rdx);
