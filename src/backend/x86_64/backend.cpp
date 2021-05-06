@@ -474,6 +474,10 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, boo
         auto op = lunatic_cast<IRAdd>(op_.get());
         auto lhs_reg = reg_alloc.GetReg32(op->lhs, location);
 
+        if (op->result.IsNull() && !op->update_host_flags) {
+          break;
+        }
+
         if (op->rhs.IsConstant()) {
           auto imm = op->rhs.GetConst().value;
 
