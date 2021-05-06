@@ -478,8 +478,9 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, boo
           auto imm = op->rhs.GetConst().value;
 
           if (op->result.IsNull()) {
-            code.cmp(lhs_reg, -imm);
-            code.cmc();
+            // eax will be trashed by lahf anyways
+            code.mov(eax, lhs_reg);
+            code.add(eax, imm);
           } else {
             auto result_reg = reg_alloc.GetReg32(op->result.Unwrap(), location);
 
