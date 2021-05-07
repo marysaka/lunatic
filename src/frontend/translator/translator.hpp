@@ -30,6 +30,7 @@ struct Translator final : ARMDecodeClient<bool> {
 
   Mode mode;
   u32 opcode_size;
+  bool armv5te = false;
   IREmitter* emitter = nullptr;
 };
 

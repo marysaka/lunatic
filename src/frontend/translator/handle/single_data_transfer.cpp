@@ -97,6 +97,15 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
     return false;
   }
 
+  if (opcode.reg_dst == GPR::PC) {
+    if (armv5te) {
+      // TODO: switch to thumb mode if necessary.
+      return false;
+    }
+
+    EmitFlushPipeline();
+  }
+
   return true;
 }
 
