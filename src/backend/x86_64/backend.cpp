@@ -26,7 +26,7 @@ using namespace Xbyak::util;
 
 // TODO: right now we only have UInt32 but how to deal with different variable or constant data types?
 
-void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, bool int3) {
+void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter) {
   Xbyak::CodeGenerator code;
   X64RegisterAllocator reg_alloc { emitter, code };
 
@@ -47,105 +47,82 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, boo
 
   for (auto const& op_ : emitter.Code()) {
     switch (op_->GetClass()) {
-      case IROpcodeClass::LoadGPR: {
+      case IROpcodeClass::LoadGPR:
         CompileLoadGPR(context, lunatic_cast<IRLoadGPR>(op_.get()));
         break;
-      }
-      case IROpcodeClass::StoreGPR: {
+      case IROpcodeClass::StoreGPR:
         CompileStoreGPR(context, lunatic_cast<IRStoreGPR>(op_.get()));
         break;
-      }
-      case IROpcodeClass::LoadCPSR: {
+      case IROpcodeClass::LoadCPSR:
         CompileLoadCPSR(context, lunatic_cast<IRLoadCPSR>(op_.get()));
         break;
-      }
-      case IROpcodeClass::StoreCPSR: {
+      case IROpcodeClass::StoreCPSR:
         CompileStoreCPSR(context, lunatic_cast<IRStoreCPSR>(op_.get()));
         break;
-      }
-      case IROpcodeClass::ClearCarry: {
+      case IROpcodeClass::ClearCarry:
         code.and_(ah, ~1);
         break;
-      }
-      case IROpcodeClass::SetCarry: {
+      case IROpcodeClass::SetCarry:
         code.or_(ah, 1);
         break;
-      }
-      case IROpcodeClass::UpdateFlags: {
+      case IROpcodeClass::UpdateFlags:
         CompileUpdateFlags(context, lunatic_cast<IRUpdateFlags>(op_.get()));
         break;
-      }
-      case IROpcodeClass::LSL: {
+      case IROpcodeClass::LSL:
         CompileLSL(context, lunatic_cast<IRLogicalShiftLeft>(op_.get()));
         break;
-      }
-      case IROpcodeClass::LSR: {
+      case IROpcodeClass::LSR:
         CompileLSR(context, lunatic_cast<IRLogicalShiftRight>(op_.get()));
         break;
-      }
-      case IROpcodeClass::ASR: {
+      case IROpcodeClass::ASR:
         CompileASR(context, lunatic_cast<IRArithmeticShiftRight>(op_.get()));
         break;
-      }
-      case IROpcodeClass::ROR: {
+      case IROpcodeClass::ROR:
         CompileROR(context, lunatic_cast<IRRotateRight>(op_.get()));
         break;
-      }
-      case IROpcodeClass::AND: {
+      case IROpcodeClass::AND:
         CompileAND(context, lunatic_cast<IRBitwiseAND>(op_.get()));
         break;
-      }
-      case IROpcodeClass::BIC: {
+      case IROpcodeClass::BIC:
         CompileBIC(context, lunatic_cast<IRBitwiseBIC>(op_.get()));
         break;
-      }
-      case IROpcodeClass::EOR: {
+      case IROpcodeClass::EOR:
         CompileEOR(context, lunatic_cast<IRBitwiseEOR>(op_.get()));
         break;
-      }
-      case IROpcodeClass::SUB: {
+      case IROpcodeClass::SUB:
         CompileSUB(context, lunatic_cast<IRSub>(op_.get()));
         break;
-      }
-      case IROpcodeClass::RSB: {
+      case IROpcodeClass::RSB:
         CompileRSB(context, lunatic_cast<IRRsb>(op_.get()));
         break;
-      }
-      case IROpcodeClass::ADD: {
+      case IROpcodeClass::ADD:
         CompileADD(context, lunatic_cast<IRAdd>(op_.get()));
         break;
-      }
-      case IROpcodeClass::ADC: {
+      case IROpcodeClass::ADC:
         CompileADC(context, lunatic_cast<IRAdc>(op_.get()));
         break;
-      }
-      case IROpcodeClass::SBC: {
+      case IROpcodeClass::SBC:
         CompileSBC(context, lunatic_cast<IRSbc>(op_.get()));
         break;
-      }
-      case IROpcodeClass::RSC: {
+      case IROpcodeClass::RSC:
         CompileRSC(context, lunatic_cast<IRRsc>(op_.get()));
         break;
-      }
-      case IROpcodeClass::ORR: {
+      case IROpcodeClass::ORR:
         CompileORR(context, lunatic_cast<IRBitwiseORR>(op_.get()));
         break;
-      }
-      case IROpcodeClass::MOV: {
+      case IROpcodeClass::MOV:
         CompileMOV(context, lunatic_cast<IRMov>(op_.get()));
         break;
-      }
-      case IROpcodeClass::MVN: {
+      case IROpcodeClass::MVN:
         CompileMVN(context, lunatic_cast<IRMvn>(op_.get()));
         break;
-      }
-      case IROpcodeClass::MemoryRead: {
+      case IROpcodeClass::MemoryRead:
         CompileMemoryRead(context, lunatic_cast<IRMemoryRead>(op_.get()));
         break;
-      }
-      default: {
-        throw std::runtime_error(fmt::format("X64Backend: unhandled IR opcode: {}", op_->ToString()));
-      }
+      default:
+        throw std::runtime_error(
+          fmt::format("X64Backend: unhandled IR opcode: {}", op_->ToString())
+        );
     }
 
     location++;
@@ -154,9 +131,6 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, boo
   // Restore any callee-saved registers.
   reg_alloc.Finalize();
 
-  // if (int3) {
-  //   code.int3();
-  // }
   code.ret();
   code.getCode<void (*)()>()();
 }

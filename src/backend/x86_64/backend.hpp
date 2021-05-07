@@ -25,8 +25,7 @@ struct X64Backend : Backend {
   void Run(
     Memory& memory,
     State& state,
-    IREmitter const& emitter,
-    bool int3
+    IREmitter const& emitter
   );
 
 private:
