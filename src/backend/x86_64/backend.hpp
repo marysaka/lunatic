@@ -28,7 +28,17 @@ struct X64Backend : Backend {
 private:
   Memory* memory = nullptr;
 
-  auto ReadWordThunk(u32 address, Memory::Bus bus) -> u32 {
+  // TODO: get rid of the thunks eventually.
+
+  auto ReadByte(u32 address, Memory::Bus bus) -> u8 {
+    return memory->ReadByte(address, bus);
+  }
+
+  auto ReadHalf(u32 address, Memory::Bus bus) -> u16 {
+    return memory->ReadHalf(address, bus);
+  }
+
+  auto ReadWord(u32 address, Memory::Bus bus) -> u32 {
     return memory->ReadWord(address, bus);
   }
 };

@@ -659,17 +659,17 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, boo
         auto op = lunatic_cast<IRMemoryRead>(op_.get());
         auto result_reg = reg_alloc.GetReg32(op->result, location);
         auto address_reg = reg_alloc.GetReg32(op->address, location);
+        auto flags = op->flags;
 
+        auto label_slowmem = Xbyak::Label{};
+        auto label_final = Xbyak::Label{};
         auto pagetable = memory.pagetable.get();
 
+        // TODO: properly allocate a free register.
+        // Or statically allocate a register for the page table pointer?
+        code.push(rcx);
+
         if (pagetable != nullptr) {
-          auto label_done = Xbyak::Label{};
-          auto label_slowmem = Xbyak::Label{};
-
-          // TODO: properly allocate a free register.
-          // Or statically allocate a register for the page table pointer?
-          code.push(rcx);
-
           code.mov(rcx, u64(pagetable));
 
           // Get the page table entry
@@ -681,56 +681,87 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter, boo
           code.test(rcx, rcx);
           code.jz(label_slowmem);
 
-          // Read from the data pointer
           code.mov(result_reg, address_reg);
-          // TODO: handle different access sizes and alignments.
-          code.and_(result_reg, Memory::kPageMask & ~3);
-          code.mov(result_reg, dword[rcx + result_reg.cvt64()]);
-          if (op->flags & lunatic::frontend::IRMemoryFlags::Rotate) {
-            // TODO: account for halfword size
-            // TODO: also do this for the slowmem path
+
+          if (flags & Word) {
+            code.and_(result_reg, Memory::kPageMask & ~3);
+            code.mov(result_reg, dword[rcx + result_reg.cvt64()]);
+          }
+
+          if (flags & Half) {
+            code.and_(result_reg, Memory::kPageMask & ~1);
+            code.movzx(result_reg, word[rcx + result_reg.cvt64()]);
+          }
+
+          if (flags & Byte) {
+            code.and_(result_reg, Memory::kPageMask);
+            code.movzx(result_reg, byte[rcx + result_reg.cvt64()]);
+          }
+
+          code.jmp(label_final);
+        }
+
+        code.L(label_slowmem);
+
+        // TODO: determine which registers need to be saved.
+        code.push(rax);
+        code.push(rdx);
+        code.push(r8);
+        code.push(r9);
+        code.push(r10);
+        code.push(r11);
+
+        code.mov(edx, address_reg);
+
+        if (flags & Word) {
+          code.and_(edx, ~3);
+          code.mov(rax, u64((void*)&X64Backend::ReadWord));
+        }
+
+        if (flags & Half) {
+          code.and_(edx, ~1);
+          code.mov(rax, u64((void*)&X64Backend::ReadHalf));
+        }
+
+        if (flags & Byte) {
+          code.mov(rax, u64((void*)&X64Backend::ReadByte));
+        }
+
+        code.mov(rcx, u64(this));
+        code.mov(r8d, u32(Memory::Bus::Data));
+
+        // TODO: make sure the stack is actually properly aligned.
+        code.sub(rsp, 0x28);
+        code.call(rax);
+        code.add(rsp, 0x28);
+
+        code.pop(r11);
+        code.pop(r10);
+        code.pop(r9);
+        code.pop(r8);
+        code.pop(rdx);
+        code.mov(result_reg, eax);
+        code.pop(rax);
+
+        code.L(label_final);
+
+        if (flags & lunatic::frontend::IRMemoryFlags::Rotate) {
+          if (flags & Word) {
             code.mov(ecx, address_reg);
             code.and_(cl, 3);
             code.shl(cl, 3);
             code.ror(result_reg, cl);
           }
-          code.jmp(label_done);
 
-          // TODO: get rid of the thunk if possible?
-          auto fnptr = u64((void*)(&X64Backend::ReadWordThunk));
-
-          // TODO: properly determine which registers actually need saving
-          code.L(label_slowmem);
-          code.push(rax);
-          code.push(rcx);
-          code.push(rdx);
-          code.push(r8);
-          code.push(r9);
-          code.push(r10);
-          code.push(r11);
-
-          code.sub(rsp, 0x28);
-          code.mov(edx, address_reg);
-          code.mov(rax, fnptr);
-          code.mov(rcx, u64(this));
-          code.mov(r8d, u32(Memory::Bus::Data));
-          code.call(rax);
-          code.add(rsp, 0x28);
-
-          code.pop(r11);
-          code.pop(r10);
-          code.pop(r9);
-          code.pop(r8);
-          code.pop(rdx);
-          code.pop(rcx);
-          code.mov(result_reg, eax);
-          code.pop(rax);
-
-          code.L(label_done);
-          code.pop(rcx);
-        } else {
-          // TODO: slowmem fallback
+          if (flags & Half) {
+            code.mov(ecx, address_reg);
+            code.and_(cl, 1);
+            code.shl(cl, 3);
+            code.ror(result_reg.cvt16(), cl); 
+          }
         }
+
+        code.pop(rcx);
         break;
       }
       default: {
