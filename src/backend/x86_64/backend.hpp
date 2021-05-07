@@ -13,6 +13,10 @@
 #include "backend/backend.hpp"
 #include "frontend/ir/emitter.hpp"
 #include "frontend/state.hpp"
+#include "register_allocator.hpp"
+
+// FIXME
+using namespace lunatic::frontend;
 
 namespace lunatic {
 namespace backend {
@@ -20,13 +24,43 @@ namespace backend {
 struct X64Backend : Backend {
   void Run(
     Memory& memory,
-    lunatic::frontend::State& state,
-    lunatic::frontend::IREmitter const& emitter,
+    State& state,
+    IREmitter const& emitter,
     bool int3
   );
 
 private:
   Memory* memory = nullptr;
+
+  struct CompileContext {
+    Xbyak::CodeGenerator& code;
+    X64RegisterAllocator& reg_alloc;
+    State& state;
+    int& location;
+  };
+
+  void CompileLoadGPR(CompileContext const& context, IRLoadGPR* op);
+  void CompileStoreGPR(CompileContext const& context, IRStoreGPR* op);
+  void CompileLoadCPSR(CompileContext const& context, IRLoadCPSR* op);
+  void CompileStoreCPSR(CompileContext const& context, IRStoreCPSR* op);
+  void CompileUpdateFlags(CompileContext const& context, IRUpdateFlags* op);
+  void CompileLSL(CompileContext const& context, IRLogicalShiftLeft* op);
+  void CompileLSR(CompileContext const& context, IRLogicalShiftRight* op);
+  void CompileASR(CompileContext const& context, IRArithmeticShiftRight* op);
+  void CompileROR(CompileContext const& context, IRRotateRight* op);
+  void CompileAND(CompileContext const& context, IRBitwiseAND* op);
+  void CompileBIC(CompileContext const& context, IRBitwiseBIC* op);
+  void CompileEOR(CompileContext const& context, IRBitwiseEOR* op);
+  void CompileSUB(CompileContext const& context, IRSub* op);
+  void CompileRSB(CompileContext const& context, IRRsb* op);
+  void CompileADD(CompileContext const& context, IRAdd* op);
+  void CompileADC(CompileContext const& context, IRAdc* op);
+  void CompileSBC(CompileContext const& context, IRSbc* op);
+  void CompileRSC(CompileContext const& context, IRRsc* op);
+  void CompileORR(CompileContext const& context, IRBitwiseORR* op);
+  void CompileMOV(CompileContext const& context, IRMov* op);
+  void CompileMVN(CompileContext const& context, IRMvn* op);
+  void CompileMemoryRead(CompileContext const& context, IRMemoryRead* op);
 
   // TODO: get rid of the thunks eventually.
 

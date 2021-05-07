@@ -31,3 +31,4 @@ target_include_directories(test PRIVATE . ${SDL2_INCLUDE_DIR})
 
 # Hack to access the internal library headers for testing
 target_include_directories(test PRIVATE ../src)
+target_link_libraries(test xbyak)
