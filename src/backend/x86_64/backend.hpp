@@ -60,6 +60,7 @@ private:
   void CompileMOV(CompileContext const& context, IRMov* op);
   void CompileMVN(CompileContext const& context, IRMvn* op);
   void CompileMemoryRead(CompileContext const& context, IRMemoryRead* op);
+  void CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op);
 
   // TODO: get rid of the thunks eventually.
 
@@ -73,6 +74,18 @@ private:
 
   auto ReadWord(u32 address, Memory::Bus bus) -> u32 {
     return memory->ReadWord(address, bus);
+  }
+
+  void WriteByte(u32 address, Memory::Bus bus, u8 value) {
+    memory->WriteByte(address, value, bus);
+  }
+  
+  void WriteHalf(u32 address, Memory::Bus bus, u16 value) {
+    memory->WriteHalf(address, value, bus);
+  }
+  
+  void WriteWord(u32 address, Memory::Bus bus, u32 value) {
+    memory->WriteWord(address, value, bus);
   }
 };
 

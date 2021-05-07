@@ -17,19 +17,14 @@ namespace lunatic {
 namespace frontend {
 
 enum class IROpcodeClass {
-  /// Context load/store
   LoadGPR,
   StoreGPR,
   LoadSPSR,
   LoadCPSR,
   StoreCPSR,
-
-  /// Guest flag handling
   ClearCarry,
   SetCarry,
   UpdateFlags,
-
-  /// Barrel shifter and ALU
   LSL,
   LSR,
   ASR,
@@ -46,9 +41,8 @@ enum class IROpcodeClass {
   ORR,
   MOV,
   MVN,
-
-  /// Memory load/store unit
-  MemoryRead
+  MemoryRead,
+  MemoryWrite
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -511,7 +505,8 @@ enum IRMemoryFlags {
   Byte = 1,
   Half = 2,
   Word = 4,
-  Rotate = 8
+  Rotate = 8,
+  Signed = 16
 };
 
 struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
@@ -546,6 +541,40 @@ struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
       std::to_string(address));
   }
 };
+
+// TODO: is there a valid case where we'd like source to be a constant?
+struct IRMemoryWrite final : IROpcodeBase<IROpcodeClass::MemoryWrite> {
+  IRMemoryWrite(
+    IRMemoryFlags flags,
+    IRVariable const& source,
+    IRVariable const& address
+  ) : flags(flags), source(source), address(address) {}
+
+  IRMemoryFlags flags;
+  IRVariable const& source;
+  IRVariable const& address;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &address == &var || &source == &var;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto ToString() -> std::string override {
+    auto size = "b";
+
+    if (flags & IRMemoryFlags::Half) size = "h";
+    if (flags & IRMemoryFlags::Word) size = "w";
+
+    return fmt::format("str.{} {}, [{}]",
+      size,
+      std::to_string(source),
+      std::to_string(address));
+  }
+};
+
 
 } // namespace lunatic::frontend
 } // namespace lunatic

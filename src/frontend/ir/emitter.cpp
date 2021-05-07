@@ -280,5 +280,13 @@ void IREmitter::LDR(
   Push<IRMemoryRead>(flags, result, address);
 }
 
+void IREmitter::STR(
+  IRMemoryFlags flags,
+  IRVariable const& source,
+  IRVariable const& address
+) {
+  Push<IRMemoryWrite>(flags, source, address);
+}
+
 } // namespace lunatic::frontend
 } // namespace lunatic

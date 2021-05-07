@@ -166,6 +166,12 @@ struct IREmitter {
     IRVariable const& address
   );
 
+  void STR(
+    IRMemoryFlags flags,
+    IRVariable const& source,
+    IRVariable const& address
+  );
+
 private:
   template<typename T, typename... Args>
   void Push(Args&&... args) {

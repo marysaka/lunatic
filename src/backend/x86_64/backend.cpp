@@ -119,6 +119,9 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter) {
       case IROpcodeClass::MemoryRead:
         CompileMemoryRead(context, lunatic_cast<IRMemoryRead>(op.get()));
         break;
+      case IROpcodeClass::MemoryWrite:
+        CompileMemoryWrite(context, lunatic_cast<IRMemoryWrite>(op.get()));
+        break;
       default:
         throw std::runtime_error(
           fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
@@ -781,7 +784,7 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   if (pagetable != nullptr) {
     code.mov(rcx, u64(pagetable));
 
-    // TODO: check for TCM!!!
+    // TODO: check for DTCM!!!
 
     // Get the page table entry
     code.mov(result_reg, address_reg);
@@ -872,6 +875,103 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
     }
   }
 
+  code.pop(rcx);
+}
+
+void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto source_reg = reg_alloc.GetReg32(op->source, location);
+  auto address_reg = reg_alloc.GetReg32(op->address, location);
+  auto flags = op->flags;
+
+  auto label_slowmem = Xbyak::Label{};
+  auto label_final = Xbyak::Label{};
+  auto pagetable = memory->pagetable.get();
+
+  // TODO: properly allocate free registers.
+  code.push(rcx);
+  code.push(rdx);
+
+  if (pagetable != nullptr) {
+    code.mov(rcx, u64(pagetable));
+
+    // TODO: check for ITCM and DTCM!!!
+
+    // Get the page table entry
+    code.mov(edx, address_reg);
+    code.shr(edx, Memory::kPageShift);
+    code.mov(rcx, qword[rcx + rdx * sizeof(uintptr)]);
+
+    // Check if the entry is a null pointer.
+    code.test(rcx, rcx);
+    code.jz(label_slowmem);
+
+    code.mov(edx, address_reg);
+
+    if (flags & Word) {
+      code.and_(edx, Memory::kPageMask & ~3);
+      code.mov(dword[rcx + rdx], source_reg);
+    }
+
+    if (flags & Half) {
+      code.and_(edx, Memory::kPageMask & ~1);
+      code.mov(word[rcx + rdx], source_reg.cvt16());
+    }
+
+    if (flags & Byte) {
+      code.and_(edx, Memory::kPageMask);
+      code.mov(byte[rcx + rdx], source_reg.cvt8());
+    }
+
+    code.jmp(label_final);
+  }
+
+  code.L(label_slowmem);
+
+  // TODO: determine which registers need to be saved.
+  code.push(rax);
+  // code.push(rdx);
+  code.push(r8);
+  code.push(r9);
+  code.push(r10);
+  code.push(r11);
+
+  code.mov(edx, address_reg);
+
+  if (flags & Word) {
+    code.and_(edx, ~3);
+    code.mov(rax, u64((void*)&X64Backend::WriteWord));
+  }
+
+  if (flags & Half) {
+    code.and_(edx, ~1);
+    code.mov(rax, u64((void*)&X64Backend::WriteHalf));
+  }
+
+  if (flags & Byte) {
+    code.mov(rax, u64((void*)&X64Backend::WriteByte));
+  }
+
+  code.mov(rcx, u64(this));
+  code.mov(r8d, u32(Memory::Bus::Data));
+  code.mov(r9d, source_reg);
+
+  // TODO: make sure the stack is actually properly aligned.
+  code.sub(rsp, 0x28);
+  code.call(rax);
+  code.add(rsp, 0x28);
+
+  code.pop(r11);
+  code.pop(r10);
+  code.pop(r9);
+  code.pop(r8);
+  // code.pop(rdx);
+  // code.mov(result_reg, eax);
+  code.pop(rax);
+
+  code.L(label_final);
+  code.pop(rdx);
   code.pop(rcx);
 }
 

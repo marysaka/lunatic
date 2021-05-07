@@ -69,13 +69,17 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
 
   EmitAdvancePC();
 
+  auto writeback = [&]() {
+    if (!opcode.pre_increment || opcode.writeback) {
+      emitter->StoreGPR(IRGuestReg{opcode.reg_base, mode}, base_new);
+    }
+  };
+
   // TODO: maybe it's cleaner to decode opcode into an enum upfront.
   if (opcode.load) {
     auto& data = emitter->CreateVar(IRDataType::UInt32, "data");
 
-    if (!opcode.pre_increment || opcode.writeback) {
-      emitter->StoreGPR(IRGuestReg{opcode.reg_base, mode}, base_new);
-    }
+    writeback();
 
     if (opcode.byte) {
       emitter->LDR(Byte, data, address);
@@ -86,15 +90,17 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
 
     emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
   } else {
+    auto& data = emitter->CreateVar(IRDataType::UInt32, "data");
+
+    emitter->LoadGPR(IRGuestReg{opcode.reg_dst, mode}, data);
+
     if (opcode.byte) {
+      emitter->STR(Byte, data, address);
     } else {
+      emitter->STR(Word, data, address);
     }
 
-    if (!opcode.pre_increment || opcode.writeback) {
-      emitter->StoreGPR(IRGuestReg{opcode.reg_base, mode}, base_new);
-    }
-
-    return false;
+    writeback();
   }
 
   if (opcode.reg_dst == GPR::PC) {
