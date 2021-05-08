@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+#include <fmt/format.h>
+
 #include "frontend/translator/translator.hpp"
 
 namespace lunatic {
@@ -82,10 +84,13 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> bool {
     case 3: {
       if (opcode.load) {
         // TODO: how to handle the ARM7 and ARM9 difference?
-        // maybe make combination Half | Signed | Rotate work?
-        // but in that case rotate has to happen before signed?
         writeback();
-        emitter->LDR(static_cast<IRMemoryFlags>(Half | Signed), data, address);
+        if (armv5te) {
+          emitter->LDR(Half | Signed, data, address);
+        } else {
+          fmt::print("OwO\n");
+          emitter->LDR(Half | Signed | ARMv4T, data, address);
+        }
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
       } else {
         // STRD (unimplemented)

@@ -506,7 +506,8 @@ enum IRMemoryFlags {
   Half = 2,
   Word = 4,
   Rotate = 8,
-  Signed = 16
+  Signed = 16,
+  ARMv4T = 32
 };
 
 inline auto operator|(IRMemoryFlags lhs, IRMemoryFlags rhs) -> IRMemoryFlags {
