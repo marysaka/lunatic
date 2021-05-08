@@ -10,6 +10,7 @@
 #include <lunatic/integer.hpp>
 
 #include "common/bit.hpp"
+#include "definition/block_data_transfer.hpp"
 #include "definition/data_processing.hpp"
 #include "definition/halfword_signed_transfer.hpp"
 #include "definition/single_data_transfer.hpp"
@@ -27,6 +28,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMDataProcessing const& opcode) -> T = 0;
   virtual auto Handle(ARMHalfwordSignedTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
+  virtual auto Handle(ARMBlockDataTransfer const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
 };
 
@@ -93,6 +95,20 @@ inline auto decode_single_data_transfer(Condition condition, u32 opcode, T& clie
       .shift = bit::get_field<u32, Shift>(opcode, 5, 2),
       .amount = bit::get_field(opcode, 7, 5)
     }
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_block_data_transfer(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMBlockDataTransfer{
+    .condition = condition,
+    .pre_increment = bit::get_bit<u32, bool>(opcode, 24),
+    .add = bit::get_bit<u32, bool>(opcode, 23),
+    .user_mode = bit::get_bit<u32, bool>(opcode, 22),
+    .writeback = bit::get_bit<u32, bool>(opcode, 21),
+    .load = bit::get_bit<u32, bool>(opcode, 20),
+    .reg_base = bit::get_field<u32, GPR>(opcode, 16, 4),
+    .reg_list = bit::get_field<u32, u16>(opcode, 0, 16)
   });
 }
 
@@ -223,13 +239,11 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         return client.Undefined(instruction);
       }
 
-      // return ARMInstrType::SingleDataTransfer;
-      return client.Undefined(instruction);
+      return decode_single_data_transfer(condition, opcode, client); 
     }
     case 0b100: {
       // Load/store multiple
-      // return ARMInstrType::BlockDataTransfer;
-      return client.Undefined(instruction);
+      return decode_block_data_transfer(condition, opcode, client);
     }
     case 0b101: {
       // Branch and branch with link

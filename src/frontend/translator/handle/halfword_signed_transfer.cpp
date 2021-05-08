@@ -81,7 +81,6 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> bool {
     }
     case 3: {
       if (opcode.load) {
-        // TODO: how to handle the ARM7 and ARM9 difference?
         writeback();
         if (armv5te) {
           emitter->LDR(Half | Signed, data, address);

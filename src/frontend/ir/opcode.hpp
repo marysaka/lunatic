@@ -510,7 +510,7 @@ enum IRMemoryFlags {
   ARMv4T = 32
 };
 
-inline auto operator|(IRMemoryFlags lhs, IRMemoryFlags rhs) -> IRMemoryFlags {
+constexpr auto operator|(IRMemoryFlags lhs, IRMemoryFlags rhs) -> IRMemoryFlags {
   return static_cast<IRMemoryFlags>(int(lhs) | rhs);
 }
 
