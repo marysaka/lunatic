@@ -5,8 +5,6 @@
  * found in the LICENSE file.
  */
 
-#include <fmt/format.h>
-
 #include "frontend/translator/translator.hpp"
 
 namespace lunatic {
@@ -88,7 +86,6 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> bool {
         if (armv5te) {
           emitter->LDR(Half | Signed, data, address);
         } else {
-          fmt::print("OwO\n");
           emitter->LDR(Half | Signed | ARMv4T, data, address);
         }
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
