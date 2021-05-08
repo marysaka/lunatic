@@ -103,7 +103,7 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
     writeback();
   }
 
-  if (opcode.reg_dst == GPR::PC) {
+  if (opcode.load && opcode.reg_dst == GPR::PC) {
     if (armv5te) {
       // TODO: switch to thumb mode if necessary.
       return false;
