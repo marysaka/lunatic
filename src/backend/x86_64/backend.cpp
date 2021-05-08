@@ -804,12 +804,20 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
     if (flags & Half) {
       code.and_(result_reg, Memory::kPageMask & ~1);
-      code.movzx(result_reg, word[rcx + result_reg.cvt64()]);
+      if (flags & Signed) {
+        code.movsx(result_reg, word[rcx + result_reg.cvt64()]);
+      } else {
+        code.movzx(result_reg, word[rcx + result_reg.cvt64()]);
+      }
     }
 
     if (flags & Byte) {
       code.and_(result_reg, Memory::kPageMask);
-      code.movzx(result_reg, byte[rcx + result_reg.cvt64()]);
+      if (flags & Signed) {
+        code.movsx(result_reg, byte[rcx + result_reg.cvt64()]);
+      } else {
+        code.movzx(result_reg, byte[rcx + result_reg.cvt64()]);
+      }
     }
 
     code.jmp(label_final);
@@ -856,6 +864,16 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   code.pop(rdx);
   code.mov(result_reg, eax);
   code.pop(rax);
+
+  if (flags & Signed) {
+    if (flags & Half) {
+      code.movsx(result_reg, result_reg.cvt16());
+    }
+
+    if (flags & Byte) {
+      code.movsx(result_reg, result_reg.cvt8());
+    }
+  }
 
   code.L(label_final);
 

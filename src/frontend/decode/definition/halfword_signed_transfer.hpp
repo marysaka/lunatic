@@ -12,26 +12,22 @@
 namespace lunatic {
 namespace frontend {
 
-struct ARMSingleDataTransfer {
+struct ARMHalfwordSignedTransfer {
   Condition condition;
 
-  bool immediate;
   bool pre_increment;
   bool add;
-  bool byte;
+  bool immediate;
   bool writeback;
+  // TODO: clean this up... there must be a nice way...
   bool load;
+  int  opcode;
 
   GPR reg_dst;
   GPR reg_base;
 
   u32 offset_imm;
-
-  struct {
-    GPR reg;
-    Shift shift;
-    u32 amount;
-  } offset_reg;
+  GPR offset_reg;
 };
 
 } // namespace lunatic::frontend

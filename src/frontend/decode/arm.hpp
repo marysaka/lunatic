@@ -11,6 +11,7 @@
 
 #include "common/bit.hpp"
 #include "definition/data_processing.hpp"
+#include "definition/halfword_signed_transfer.hpp"
 #include "definition/single_data_transfer.hpp"
 
 namespace lunatic {
@@ -24,13 +25,12 @@ struct ARMDecodeClient {
   using return_type = T;
 
   virtual auto Handle(ARMDataProcessing const& opcode) -> T = 0;
+  virtual auto Handle(ARMHalfwordSignedTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
 };
 
 namespace detail {
-
-// TODO: unify reg and imm data processing
 
 template<typename T, typename U = typename T::return_type>
 inline auto decode_data_processing(Condition condition, u32 opcode, T& client) -> U {
@@ -54,6 +54,24 @@ inline auto decode_data_processing(Condition condition, u32 opcode, T& client) -
       .value = bit::get_field<u32, u8>(opcode, 0, 8),
       .shift = bit::get_field(opcode, 8, 4) * 2
     }
+  });
+}
+
+// TODO: the name of this instruction group is a misnormer...
+template<typename T, typename U = typename T::return_type>
+inline auto decode_halfword_signed_transfer(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMHalfwordSignedTransfer{
+    .condition = condition,
+    .pre_increment = bit::get_bit<u32, bool>(opcode, 24),
+    .add = bit::get_bit<u32, bool>(opcode, 23),
+    .immediate = bit::get_bit<u32, bool>(opcode, 22),
+    .writeback = bit::get_bit<u32, bool>(opcode, 21),
+    .load = bit::get_bit<u32, bool>(opcode, 20),
+    .opcode = bit::get_field<u32, int>(opcode, 5, 2),
+    .reg_dst = bit::get_field<u32, GPR>(opcode, 12, 4),
+    .reg_base = bit::get_field<u32, GPR>(opcode, 16, 4),
+    .offset_imm = (opcode & 0xF) | ((opcode >> 4) & 0xF0),
+    .offset_reg = bit::get_field<u32, GPR>(opcode, 0, 4)
   });
 }
 
@@ -105,8 +123,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         // Multiplies (A3-3)
         // Extra load/stores (A3-5)
         if ((opcode & 0x60) != 0) {
-          // return ARMInstrType::HalfwordSignedTransfer;
-          return client.Undefined(instruction);
+          return decode_halfword_signed_transfer(condition, opcode, client);
         } else {
           switch ((opcode >> 23) & 3) {
             case 0b00:
