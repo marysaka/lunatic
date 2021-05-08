@@ -509,6 +509,10 @@ enum IRMemoryFlags {
   Signed = 16
 };
 
+inline auto operator|(IRMemoryFlags lhs, IRMemoryFlags rhs) -> IRMemoryFlags {
+  return static_cast<IRMemoryFlags>(int(lhs) | rhs);
+}
+
 struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
   IRMemoryRead(
     IRMemoryFlags flags,

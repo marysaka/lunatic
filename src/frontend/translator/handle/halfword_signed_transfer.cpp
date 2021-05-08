@@ -51,9 +51,12 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> bool {
   switch (opcode.opcode) {
     case 1: {
       if (opcode.load) {
-        // TODO: handle rotated read on ARMv4T.
         writeback();
-        emitter->LDR(Half, data, address);
+        if (armv5te) {
+          emitter->LDR(Half, data, address);
+        } else {
+          emitter->LDR(Half | Rotate, data, address);
+        }
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
       } else {
         emitter->LoadGPR(IRGuestReg{opcode.reg_dst, mode}, data);
@@ -65,25 +68,31 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> bool {
     case 2: {
       if (opcode.load) {
         writeback();
-        emitter->LDR(static_cast<IRMemoryFlags>(Byte | Signed), data, address);
+        emitter->LDR(Byte | Signed, data, address);
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
       } else {
         // LDRD (unimplemented)
+        if (armv5te) {
+          return false;
+        }
         writeback();
-        return false;
       }
       break;
     }
     case 3: {
       if (opcode.load) {
         // TODO: how to handle the ARM7 and ARM9 difference?
+        // maybe make combination Half | Signed | Rotate work?
+        // but in that case rotate has to happen before signed?
         writeback();
         emitter->LDR(static_cast<IRMemoryFlags>(Half | Signed), data, address);
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
       } else {
         // STRD (unimplemented)
+        if (armv5te) {
+          return false;
+        }
         writeback();
-        return false;
       }
       break;
     }
@@ -91,6 +100,15 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> bool {
       // Unreachable
       return false;
     }
+  }
+
+  if (opcode.load && opcode.reg_dst == GPR::PC) {
+    if (armv5te) {
+      // TODO: switch to thumb mode if necessary.
+      return false;
+    }
+
+    EmitFlushPipeline();
   }
 
   return true;

@@ -84,8 +84,7 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
     if (opcode.byte) {
       emitter->LDR(Byte, data, address);
     } else {
-      // TODO: can we get rid of that annoying cast please?
-      emitter->LDR(static_cast<IRMemoryFlags>(Word | Rotate), data, address);
+      emitter->LDR(Word | Rotate, data, address);
     }
 
     emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
