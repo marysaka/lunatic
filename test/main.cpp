@@ -50,6 +50,8 @@ struct JIT {
         block_cache[block_key.value] = basic_block;
         basic_block->function();
         return basic_block->cycle_count;
+      } else {
+        delete basic_block;
       }
 
       return -1;
