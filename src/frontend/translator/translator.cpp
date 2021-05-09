@@ -24,11 +24,11 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
 
   auto instruction = memory.FastRead<u32, Memory::Bus::Code>(address);
 
-  return decode_arm(instruction, *this);
+  return decode_arm(instruction, *this) != Status::Unimplemented;
 }
 
-auto Translator::Undefined(u32 opcode) -> bool {
-  return false;
+auto Translator::Undefined(u32 opcode) -> Status {
+  return Status::Unimplemented;
 }
 
 void Translator::EmitUpdateNZC() {

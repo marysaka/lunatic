@@ -10,13 +10,13 @@
 namespace lunatic {
 namespace frontend {
 
-auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> bool {
+auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
   if (opcode.condition != Condition::AL) {
-    return false;
+    return Status::Unimplemented;
   }
 
   if (opcode.reg_list == 0) {
-    return false;
+    return Status::Unimplemented;
   }
 
   auto transfer_pc = bit::get_bit(opcode.reg_list, 15);
@@ -25,6 +25,7 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> bool {
   // TODO: clean this up and document "base is not in rlist" caveat
   bool base_is_first = (opcode.reg_list & ((1 << int(opcode.reg_base)) - 1)) == 0;
   bool base_is_last  = (opcode.reg_list >> int(opcode.reg_base)) == 1;
+  bool early_writeback = opcode.writeback && !opcode.load && !armv5te && !base_is_first;
 
   u32 bytes = 0;
 
@@ -64,7 +65,7 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> bool {
 
   // STM ARMv4: store new base unless it is the first register
   // STM ARMv5: always store old base.
-  if (opcode.writeback && !opcode.load && !armv5te && !base_is_first) {
+  if (early_writeback) {
     writeback();
   }
 
@@ -114,8 +115,7 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> bool {
         if (!bit::get_bit(opcode.reg_list, int(opcode.reg_base)))
           writeback();
       }
-    } else {
-      // TODO: this is redundant in some cases.
+    } else if (!early_writeback) {
       writeback();
     }
   }
@@ -124,16 +124,17 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> bool {
   if (opcode.load && transfer_pc) {
     if (opcode.user_mode) {
       // flush pipeline based on CPSR.T ...
-      return false;
+      return Status::Unimplemented;
     } else if (armv5te) {
       // BX ...
-      return false;
+      return Status::Unimplemented;
     }
 
     EmitFlushPipeline();
+    return Status::BreakBasicBlock;
   }
 
-  return true;
+  return Status::Continue;
 }
 
 } // namespace lunatic::frontend

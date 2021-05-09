@@ -15,14 +15,21 @@
 namespace lunatic {
 namespace frontend {
 
-struct Translator final : ARMDecodeClient<bool> {
+// TODO: rename me :)
+enum class Status {
+  Continue,
+  BreakBasicBlock,
+  Unimplemented
+};
+
+struct Translator final : ARMDecodeClient<Status> {
   auto Translate(BasicBlock& block, Memory& memory) -> bool;
 
-  auto Handle(ARMDataProcessing const& opcode) -> bool override;
-  auto Handle(ARMHalfwordSignedTransfer const& opcode) -> bool override;
-  auto Handle(ARMSingleDataTransfer const& opcode) -> bool override;
-  auto Handle(ARMBlockDataTransfer const& opcode) -> bool override;
-  auto Undefined(u32 opcode) -> bool override;
+  auto Handle(ARMDataProcessing const& opcode) -> Status override;
+  auto Handle(ARMHalfwordSignedTransfer const& opcode) -> Status override;
+  auto Handle(ARMSingleDataTransfer const& opcode) -> Status override;
+  auto Handle(ARMBlockDataTransfer const& opcode) -> Status override;
+  auto Undefined(u32 opcode) -> Status override;
 
   void EmitUpdateNZC();
   void EmitUpdateNZCV();

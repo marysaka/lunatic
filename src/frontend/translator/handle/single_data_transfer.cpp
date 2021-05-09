@@ -10,14 +10,14 @@
 namespace lunatic {
 namespace frontend {
 
-auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
+auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> Status {
   if (opcode.condition != Condition::AL) {
-    return false;
+    return Status::Unimplemented;
   }
 
   if (!opcode.pre_increment && opcode.writeback) {
     // LDRT and STRT are not supported right now.
-    return false;
+    return Status::Unimplemented;
   }
 
   auto offset = IRValue{};
@@ -104,14 +104,15 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> bool {
 
   if (opcode.load && opcode.reg_dst == GPR::PC) {
     if (armv5te) {
-      // TODO: switch to thumb mode if necessary.
-      return false;
+      // TODO: handle switch to thumb mode.
+      return Status::Unimplemented;
     }
 
     EmitFlushPipeline();
+    return Status::BreakBasicBlock;
   }
 
-  return true;
+  return Status::Continue;
 }
 
 } // namespace lunatic::frontend

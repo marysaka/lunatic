@@ -10,11 +10,11 @@
 namespace lunatic {
 namespace frontend {
 
-auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
+auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
   using Opcode = ARMDataProcessing::Opcode;
 
   if (opcode.condition != Condition::AL) {
-    return false;
+    return Status::Unimplemented;
   }
 
   auto op2 = IRValue{};
@@ -267,15 +267,17 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> bool {
 
   if (opcode.reg_dst == GPR::PC) {
     // TODO: handle CMP, CMN, TST and TEQ opcodes.
+    // TODO: handle switch to thumb mode.
     if (opcode.set_flags) {
       EmitLoadSPSRToCPSR();
     }
     EmitFlushPipeline();
+    return Status::BreakBasicBlock;
   } else if (!advance_pc_early) {
     EmitAdvancePC();
   }
 
-  return true;
+  return Status::Continue;
 }
 
 } // namespace lunatic::frontend

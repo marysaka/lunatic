@@ -10,9 +10,9 @@
 namespace lunatic {
 namespace frontend {
 
-auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> bool {
+auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
   if (opcode.condition != Condition::AL) {
-    return false;
+    return Status::Unimplemented;
   }
 
   auto offset = IRValue{};
@@ -73,7 +73,7 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> bool {
       } else {
         // LDRD (unimplemented)
         if (armv5te) {
-          return false;
+          return Status::Unimplemented;
         }
         writeback();
       }
@@ -91,28 +91,29 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> bool {
       } else {
         // STRD (unimplemented)
         if (armv5te) {
-          return false;
+          return Status::Unimplemented;
         }
         writeback();
       }
       break;
     }
     default: {
-      // Unreachable
-      return false;
+      // Unreachable?
+      return Status::Unimplemented;
     }
   }
 
   if (opcode.load && opcode.reg_dst == GPR::PC) {
     if (armv5te) {
-      // TODO: switch to thumb mode if necessary.
-      return false;
+      // TODO: handle switch to thumb mode.
+      return Status::Unimplemented;
     }
 
     EmitFlushPipeline();
+    return Status::BreakBasicBlock;
   }
 
-  return true;
+  return Status::Continue;
 }
 
 } // namespace lunatic::frontend
