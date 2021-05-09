@@ -76,7 +76,7 @@ auto X64RegisterAllocator::GetReg32(IRVariable const& var, int location) -> Xbya
   if (free_callee_saved.size() != 0) {
     auto reg = free_callee_saved.back();
     restore_list.push_back(reg);
-    code.push(reg.cvt64());
+    // code.push(reg.cvt64());
     allocation[var.id] = reg;
     free_callee_saved.pop_back();
     return reg;

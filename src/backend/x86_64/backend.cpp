@@ -36,6 +36,16 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
 
   this->memory = &memory;
 
+  code->push(rbx);
+  code->push(rsi);
+  code->push(rdi);
+  code->push(rbp);
+  code->push(r12);
+  code->push(r13);
+  code->push(r14);
+  code->push(r15);
+  code->sub(rsp, 0x28);
+
   // Load pointer to state into RCX
   code->mov(rcx, u64(&state));
 
@@ -131,9 +141,15 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     location++;
   }
 
-  // Restore any callee-saved registers.
-  reg_alloc.Finalize();
-
+  code->add(rsp, 0x28);
+  code->pop(r15);
+  code->pop(r14);
+  code->pop(r13);
+  code->pop(r12);
+  code->pop(rbp);
+  code->pop(rdi);
+  code->pop(rsi);
+  code->pop(rbx);
   code->ret();
 
   basic_block.function = code->getCode<BasicBlock::CompiledFn>();
@@ -852,11 +868,9 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   code.mov(rcx, u64(this));
   code.mov(r8d, u32(Memory::Bus::Data));
-
-  // TODO: make sure the stack is actually properly aligned.
-  code.sub(rsp, 0x28);
+  code.sub(rsp, 8);
   code.call(rax);
-  code.add(rsp, 0x28);
+  code.add(rsp, 8);
 
   code.pop(r11);
   code.pop(r10);
@@ -963,7 +977,6 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
   // TODO: determine which registers need to be saved.
   code.push(rax);
-  // code.push(rdx);
   code.push(r8);
   code.push(r9);
   code.push(r10);
@@ -988,18 +1001,12 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   code.mov(rcx, u64(this));
   code.mov(r8d, u32(Memory::Bus::Data));
   code.mov(r9d, source_reg);
-
-  // TODO: make sure the stack is actually properly aligned.
-  code.sub(rsp, 0x28);
   code.call(rax);
-  code.add(rsp, 0x28);
 
   code.pop(r11);
   code.pop(r10);
   code.pop(r9);
   code.pop(r8);
-  // code.pop(rdx);
-  // code.mov(result_reg, eax);
   code.pop(rax);
 
   code.L(label_final);
