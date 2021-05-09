@@ -31,6 +31,8 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
   auto& emitter = basic_block.emitter;
   auto  code = new Xbyak::CodeGenerator{};
   auto  reg_alloc = X64RegisterAllocator{emitter, *code};
+  auto  location = 0;
+  auto  context = CompileContext{*code, reg_alloc, state, location};
 
   this->memory = &memory;
 
@@ -42,10 +44,6 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
   code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
   code->bt(edx, 29); // CF = value of bit 29
   code->lahf();
-
-  int location = 0;
-
-  auto context = CompileContext{*code, reg_alloc, state, location};
 
   for (auto const& op : emitter.Code()) {
     switch (op->GetClass()) {
