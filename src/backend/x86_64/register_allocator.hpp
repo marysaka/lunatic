@@ -19,6 +19,8 @@ namespace backend {
 struct X64RegisterAllocator {
   X64RegisterAllocator(lunatic::frontend::IREmitter const& emitter);
 
+  auto GetReg32() -> Xbyak::Reg32;
+
   auto GetReg32(
     lunatic::frontend::IRVariable const& var,
     int location

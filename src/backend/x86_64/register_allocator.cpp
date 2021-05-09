@@ -34,6 +34,16 @@ X64RegisterAllocator::X64RegisterAllocator(IREmitter const& emitter) : emitter(e
   CreateVariableExpirationPoints();
 }
 
+auto X64RegisterAllocator::GetReg32() -> Xbyak::Reg32 {
+  if (free_list.size() != 0) {
+    auto reg = free_list.back();
+    free_list.pop_back();
+    return reg;
+  }
+
+  throw std::runtime_error("X64RegisterAllocator: failed to allocate register");
+}
+
 auto X64RegisterAllocator::GetReg32(IRVariable const& var, int location) -> Xbyak::Reg32 {
   auto match = allocation.find(var.id);
 
@@ -42,17 +52,12 @@ auto X64RegisterAllocator::GetReg32(IRVariable const& var, int location) -> Xbya
     return match->second;
   }
 
-  // TODO: defer this to the point where we'd need to spill otherwise.
+  // Release any registers that are allocated to expired variables first.
   ExpireVariables(location);
 
-  if (free_list.size() != 0) {
-    auto reg = free_list.back();
-    allocation[var.id] = reg;
-    free_list.pop_back();
-    return reg;
-  }
-
-  throw std::runtime_error("X64RegisterAllocator: failed to allocate register");
+  auto reg = GetReg32();
+  allocation[var.id] = reg;
+  return reg;
 }
 
 void X64RegisterAllocator::CreateVariableExpirationPoints() {
