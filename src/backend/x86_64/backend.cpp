@@ -196,13 +196,12 @@ void X64Backend::CompileUpdateFlags(CompileContext const& context, IRUpdateFlags
   if (op->flag_c) mask |= 0x20000000;
   if (op->flag_v) mask |= 0x10000000;
 
-  // TODO: properly allocate a temporary register...
+  // TODO: allocate temporary registers?
+  code.push(rax);
   code.push(rcx);
 
   // Convert NZCV bits from AX register into the guest format.
   // Clear the bits which are not to be updated.
-  // Note: this trashes AX and means that UpdateFlags() cannot be called again,
-  // until another IR opcode updates the flags in AX again.
   code.mov(ecx, 0xC101);
   code.pext(eax, eax, ecx);
   code.shl(eax, 28);
@@ -214,6 +213,7 @@ void X64Backend::CompileUpdateFlags(CompileContext const& context, IRUpdateFlags
   code.or_(result_reg, eax);
 
   code.pop(rcx);
+  code.pop(rax);
 }
 
 void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* op) {

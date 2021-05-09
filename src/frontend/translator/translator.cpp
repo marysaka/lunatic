@@ -22,9 +22,28 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
   opcode_size = (block.key.field.address & 1) ? sizeof(u16) : sizeof(u32);
   emitter = &block.emitter;
 
-  auto instruction = memory.FastRead<u32, Memory::Bus::Code>(address);
+  static constexpr int kMaxBlockSize = 32;
 
-  return decode_arm(instruction, *this) != Status::Unimplemented;
+  for (int i = 0; i < kMaxBlockSize; i++) {
+    auto instruction = memory.FastRead<u32, Memory::Bus::Code>(address);
+    auto status = decode_arm(instruction, *this);
+
+    if (status == Status::Unimplemented) {
+      /* TODO: this is not optimal.
+       * Let the callee know that we have something to run,
+       * but that the interpreter has to take over after that instead...
+       */
+      return i != 0;
+    }
+
+    if (status == Status::BreakBasicBlock) {
+      break;
+    }
+
+    address += sizeof(u32);
+  }
+
+  return true;
 }
 
 auto Translator::Undefined(u32 opcode) -> Status {
