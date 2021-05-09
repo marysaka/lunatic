@@ -36,6 +36,8 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
       return i != 0;
     }
 
+    block.cycle_count++;
+
     if (status == Status::BreakBasicBlock) {
       break;
     }

@@ -27,7 +27,7 @@ struct JIT {
   JIT(lunatic::Memory& memory) : memory(memory) {
   }
 
-  bool Run() {
+  auto Run() -> int {
     using namespace lunatic::backend;
     using namespace lunatic::frontend;
 
@@ -38,7 +38,7 @@ struct JIT {
       auto basic_block = match->second;
 
       basic_block->function();
-      return true;
+      return basic_block->cycle_count;
     } else {
       // TODO: because BasícBlock is not copyable right now
       // we use dynamic allocation, but that's probably not optimal.
@@ -49,9 +49,10 @@ struct JIT {
         backend.Compile(memory, state, *basic_block);
         block_cache[block_key.value] = basic_block;
         basic_block->function();
+        return basic_block->cycle_count;
       }
 
-      return success;
+      return -1;
     }
   }
 
@@ -219,7 +220,8 @@ int main(int argc, char** argv) {
 
   for (;;) {
     for (uint i = 0; i < 279620; i++) {
-      if (!g_cpu_jit.Run()) {
+      auto jit_cycles = g_cpu_jit.Run();
+      if (jit_cycles == -1) {
         g_cpu_jit.SaveState(state);
 
         // TODO: just remove pipeline emulation from the interpreter instead.
@@ -227,6 +229,8 @@ int main(int argc, char** argv) {
         g_cpu_interp.Run(1);
 
         g_cpu_jit.LoadState(state);
+      } else {
+        i += jit_cycles - 1;
       }
     }
     // g_cpu_interp.Run(279620);

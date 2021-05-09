@@ -29,6 +29,8 @@ struct BasicBlock {
     u64 value = 0;
   } key;
 
+  int cycle_count = 0;
+
   IREmitter emitter;
 
   // Function pointer to the compiled function.
