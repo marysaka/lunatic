@@ -26,24 +26,26 @@ using namespace Xbyak::util;
 
 // TODO: right now we only have UInt32 but how to deal with different variable or constant data types?
 
-void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter) {
-  Xbyak::CodeGenerator code;
-  X64RegisterAllocator reg_alloc { emitter, code };
+void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) {
+  // TODO: do not keep the code in memory forever.
+  auto& emitter = basic_block.emitter;
+  auto  code = new Xbyak::CodeGenerator{};
+  auto  reg_alloc = X64RegisterAllocator{emitter, *code};
 
   this->memory = &memory;
 
   // Load pointer to state into RCX
-  code.mov(rcx, u64(&state));
+  code->mov(rcx, u64(&state));
 
   // Load carry flag from state into AX register.
   // Right now we assume we will only need the old carry, is this true?
-  code.mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
-  code.bt(edx, 29); // CF = value of bit 29
-  code.lahf();
+  code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+  code->bt(edx, 29); // CF = value of bit 29
+  code->lahf();
 
   int location = 0;
 
-  auto context = CompileContext{code, reg_alloc, state, location};
+  auto context = CompileContext{*code, reg_alloc, state, location};
 
   for (auto const& op : emitter.Code()) {
     switch (op->GetClass()) {
@@ -60,10 +62,10 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter) {
         CompileStoreCPSR(context, lunatic_cast<IRStoreCPSR>(op.get()));
         break;
       case IROpcodeClass::ClearCarry:
-        code.and_(ah, ~1);
+        code->and_(ah, ~1);
         break;
       case IROpcodeClass::SetCarry:
-        code.or_(ah, 1);
+        code->or_(ah, 1);
         break;
       case IROpcodeClass::UpdateFlags:
         CompileUpdateFlags(context, lunatic_cast<IRUpdateFlags>(op.get()));
@@ -134,8 +136,9 @@ void X64Backend::Run(Memory& memory, State& state, IREmitter const& emitter) {
   // Restore any callee-saved registers.
   reg_alloc.Finalize();
 
-  code.ret();
-  code.getCode<void (*)()>()();
+  code->ret();
+
+  basic_block.function = code->getCode<BasicBlock::CompiledFn>();
 }
 
 void X64Backend::CompileLoadGPR(CompileContext const& context, IRLoadGPR* op) {

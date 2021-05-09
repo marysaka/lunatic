@@ -12,6 +12,7 @@
 #include <fstream>
 #include <cstring>
 #include <SDL.h>
+#include <unordered_map>
 
 #include "backend/x86_64/backend.hpp"
 #include "frontend/translator/translator.hpp"
@@ -30,14 +31,28 @@ struct JIT {
     using namespace lunatic::backend;
     using namespace lunatic::frontend;
 
-    auto basic_block = BasicBlock{BasicBlock::Key{state}};
-    auto success = translator.Translate(basic_block, memory);
+    auto block_key = BasicBlock::Key{state};
+    auto match = block_cache.find(block_key.value);
 
-    if (success) {
-      backend.Run(memory, state, basic_block.emitter);
+    if (match != block_cache.end()) {
+      auto basic_block = match->second;
+
+      basic_block->function();
+      return true;
+    } else {
+      // TODO: because BasícBlock is not copyable right now
+      // we use dynamic allocation, but that's probably not optimal.
+      auto basic_block = new BasicBlock{block_key};
+      auto success = translator.Translate(*basic_block, memory);
+
+      if (success) {
+        backend.Compile(memory, state, *basic_block);
+        block_cache[block_key.value] = basic_block;
+        basic_block->function();
+      }
+
+      return success;
     }
-
-    return success;
   }
 
   void SaveState(lunatic::test::arm::State& other_state) {
@@ -62,6 +77,9 @@ struct JIT {
   lunatic::frontend::State state;
   lunatic::Memory& memory;
   lunatic::frontend::Translator translator;
+
+  // TODO: use a better data structure for block lookup.
+  std::unordered_map<u64, BasicBlock*> block_cache;
 };
 
 struct Memory final : lunatic::Memory {

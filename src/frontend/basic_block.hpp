@@ -17,6 +17,8 @@ namespace frontend {
 
 // TODO: how to handle conditional flow (predicated instructions) inside a basic block?
 struct BasicBlock {
+  typedef void (*CompiledFn)();
+
   union Key {
     Key() {}
     Key(State& state);
@@ -28,6 +30,9 @@ struct BasicBlock {
   } key;
 
   IREmitter emitter;
+
+  // Function pointer to the compiled function.
+  CompiledFn function = nullptr;
 
   BasicBlock() {}
   BasicBlock(Key key) : key(key) {}

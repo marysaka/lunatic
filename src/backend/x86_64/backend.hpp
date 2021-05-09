@@ -11,7 +11,7 @@
 #include <fmt/format.h>
 
 #include "backend/backend.hpp"
-#include "frontend/ir/emitter.hpp"
+#include "frontend/basic_block.hpp"
 #include "frontend/state.hpp"
 #include "register_allocator.hpp"
 
@@ -22,10 +22,10 @@ namespace lunatic {
 namespace backend {
 
 struct X64Backend : Backend {
-  void Run(
+  void Compile(
     Memory& memory,
     State& state,
-    IREmitter const& emitter
+    BasicBlock& basic_block
   );
 
 private:
