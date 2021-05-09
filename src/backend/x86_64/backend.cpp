@@ -44,7 +44,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
   code->push(r13);
   code->push(r14);
   code->push(r15);
-  code->sub(rsp, 0x28);
+  code->sub(rsp, 8);
 
   // Load pointer to state into RCX
   code->mov(rcx, u64(&state));
@@ -141,7 +141,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     location++;
   }
 
-  code->add(rsp, 0x28);
+  code->add(rsp, 8);
   code->pop(r15);
   code->pop(r14);
   code->pop(r13);
@@ -868,9 +868,9 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   code.mov(rcx, u64(this));
   code.mov(r8d, u32(Memory::Bus::Data));
-  code.sub(rsp, 8);
+  code.sub(rsp, 0x28);
   code.call(rax);
-  code.add(rsp, 8);
+  code.add(rsp, 0x28);
 
   code.pop(r11);
   code.pop(r10);
@@ -1001,7 +1001,9 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   code.mov(rcx, u64(this));
   code.mov(r8d, u32(Memory::Bus::Data));
   code.mov(r9d, source_reg);
+  code.sub(rsp, 0x20);
   code.call(rax);
+  code.add(rsp, 0x20);
 
   code.pop(r11);
   code.pop(r10);
