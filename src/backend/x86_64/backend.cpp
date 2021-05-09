@@ -381,14 +381,14 @@ void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
   if (amount.IsConstant()) {
     auto amount_value = amount.GetConst().value;
 
-    if (op->update_host_flags) {
-      code.sahf();
-    }
-
     // ROR #0 equals to RRX #1
     if (amount_value == 0) {
+      code.sahf();
       code.rcr(result_reg, 1);
     } else {
+      if (op->update_host_flags) {
+        code.sahf();
+      }
       code.ror(result_reg, u8(amount_value));
     }
   } else {
