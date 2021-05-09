@@ -8,9 +8,9 @@
 #pragma once
 
 #include <xbyak/xbyak.h>
-#include <unordered_map>
 #include <vector>
 
+#include "common/optional.hpp"
 #include "frontend/ir/emitter.hpp"
 
 namespace lunatic {
@@ -33,8 +33,8 @@ private:
   lunatic::frontend::IREmitter const& emitter;
 
   std::vector<Xbyak::Reg32> free_list;
-  std::unordered_map<u32, Xbyak::Reg32> allocation;
-  std::unordered_map<u32, int> expiration_points;
+  std::vector<Optional<Xbyak::Reg32>> allocation;
+  std::vector<int> expiration_points;
 };
 
 } // namespace lunatic::backend

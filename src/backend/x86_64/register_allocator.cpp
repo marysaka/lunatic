@@ -31,6 +31,9 @@ X64RegisterAllocator::X64RegisterAllocator(IREmitter const& emitter) : emitter(e
     r15d
   };
 
+  allocation.resize(emitter.Vars().size());
+  expiration_points.resize(emitter.Vars().size());
+
   CreateVariableExpirationPoints();
 }
 
@@ -45,11 +48,10 @@ auto X64RegisterAllocator::GetReg32() -> Xbyak::Reg32 {
 }
 
 auto X64RegisterAllocator::GetReg32(IRVariable const& var, int location) -> Xbyak::Reg32 {
-  auto match = allocation.find(var.id);
-
   // Check if the variable is already allocated to a register at the moment.
-  if (match != allocation.end()) {
-    return match->second;
+  auto maybe_reg = allocation[var.id];
+  if (maybe_reg.HasValue()) {
+    return maybe_reg.Unwrap();
   }
 
   // Release any registers that are allocated to expired variables first.
@@ -84,11 +86,10 @@ void X64RegisterAllocator::ExpireVariables(int location) {
     auto expiration_point = expiration_points[var->id];
 
     if (location > expiration_point) {
-      auto match = allocation.find(var->id);
-      if (match != allocation.end()) {
-        auto reg = match->second;
-        free_list.push_back(reg);
-        allocation.erase(match);
+      auto maybe_reg = allocation[var->id];
+      if (maybe_reg.HasValue()) {
+        free_list.push_back(maybe_reg.Unwrap());
+        allocation[var->id] = {};
       }
     }
   }
