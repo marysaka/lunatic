@@ -13,11 +13,9 @@ using namespace Xbyak::util;
 namespace lunatic {
 namespace backend {
 
-X64RegisterAllocator::X64RegisterAllocator(IREmitter const& emitter, Xbyak::CodeGenerator& code)
-    : emitter(emitter)
-    , code(code) {
+X64RegisterAllocator::X64RegisterAllocator(IREmitter const& emitter) : emitter(emitter) {
   // rax and rcx are statically allocated
-  Xbyak::Reg32 regs[] = {
+  free_list = {
     edx,
     ebx,
     esi,
@@ -33,57 +31,28 @@ X64RegisterAllocator::X64RegisterAllocator(IREmitter const& emitter, Xbyak::Code
     r15d
   };
 
-  for (auto reg : regs) {
-    if (IsCallerSaved(reg)) {
-      free_caller_saved.push_back(reg);
-    } else {
-      free_callee_saved.push_back(reg);
-    }
-  }
-
   CreateVariableExpirationPoints();
-}
-
-void X64RegisterAllocator::Finalize() {
-  auto end = restore_list.rend();
-
-  for (auto it = restore_list.rbegin(); it != end; ++it) {
-    auto reg = *it;
-    code.pop(reg.cvt64());
-  }
 }
 
 auto X64RegisterAllocator::GetReg32(IRVariable const& var, int location) -> Xbyak::Reg32 {
   auto match = allocation.find(var.id);
 
+  // Check if the variable is already allocated to a register at the moment.
   if (match != allocation.end()) {
-    // Variable is already allocated to a register currently.
     return match->second;
   }
 
-  // TODO: this probably can be deferred to the point where we would otherwise have to spill a register.
+  // TODO: defer this to the point where we'd need to spill otherwise.
   ExpireVariables(location);
 
-  // Try to find a register that is caller saved first.
-  if (free_caller_saved.size() != 0) {
-    auto reg = free_caller_saved.back();
+  if (free_list.size() != 0) {
+    auto reg = free_list.back();
     allocation[var.id] = reg;
-    free_caller_saved.pop_back();
+    free_list.pop_back();
     return reg;
   }
 
-  // If that didn't work attempt to use a callee saved register (we have to push and pop it once)
-  if (free_callee_saved.size() != 0) {
-    auto reg = free_callee_saved.back();
-    restore_list.push_back(reg);
-    // code.push(reg.cvt64());
-    allocation[var.id] = reg;
-    free_callee_saved.pop_back();
-    return reg;
-  }
-
-  // Take care of this later...
-  throw std::runtime_error("need to handle spilling");
+  throw std::runtime_error("X64RegisterAllocator: failed to allocate register");
 }
 
 void X64RegisterAllocator::CreateVariableExpirationPoints() {
@@ -113,23 +82,11 @@ void X64RegisterAllocator::ExpireVariables(int location) {
       auto match = allocation.find(var->id);
       if (match != allocation.end()) {
         auto reg = match->second;
-        // Even if the register would be callee saved it was already saved at this point,
-        // so we don't really care.
-        free_caller_saved.push_back(reg);
+        free_list.push_back(reg);
         allocation.erase(match);
       }
     }
   }
-}
-
-auto X64RegisterAllocator::IsCallerSaved(Xbyak::Reg32 reg) -> bool {
-  return reg == eax  ||
-         reg == ecx  ||
-         reg == edx  ||
-         reg == r8d  ||
-         reg == r9d  ||
-         reg == r10d ||
-         reg == r11d;
 }
 
 } // namespace lunatic::backend

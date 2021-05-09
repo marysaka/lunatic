@@ -30,7 +30,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
   // TODO: do not keep the code in memory forever.
   auto& emitter = basic_block.emitter;
   auto  code = new Xbyak::CodeGenerator{};
-  auto  reg_alloc = X64RegisterAllocator{emitter, *code};
+  auto  reg_alloc = X64RegisterAllocator{emitter};
   auto  location = 0;
   auto  context = CompileContext{*code, reg_alloc, state, location};
 

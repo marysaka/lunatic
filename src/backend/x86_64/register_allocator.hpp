@@ -17,27 +17,20 @@ namespace lunatic {
 namespace backend {
 
 struct X64RegisterAllocator {
-  X64RegisterAllocator(
-    lunatic::frontend::IREmitter const& emitter,
-    Xbyak::CodeGenerator& code
-  );
+  X64RegisterAllocator(lunatic::frontend::IREmitter const& emitter);
 
-  void Finalize();
-  auto GetReg32(lunatic::frontend::IRVariable const& var, int location) -> Xbyak::Reg32;
+  auto GetReg32(
+    lunatic::frontend::IRVariable const& var,
+    int location
+  ) -> Xbyak::Reg32;
 
 private:
-  static auto IsCallerSaved(Xbyak::Reg32 reg) -> bool;
-
   void CreateVariableExpirationPoints();
   void ExpireVariables(int location);
 
   lunatic::frontend::IREmitter const& emitter;
-  Xbyak::CodeGenerator& code;
 
-  std::vector<Xbyak::Reg32> free_caller_saved;
-  std::vector<Xbyak::Reg32> free_callee_saved;
-  std::vector<Xbyak::Reg32> restore_list;
-
+  std::vector<Xbyak::Reg32> free_list;
   std::unordered_map<u32, Xbyak::Reg32> allocation;
   std::unordered_map<u32, int> expiration_points;
 };
