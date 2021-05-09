@@ -30,11 +30,13 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
   // TODO: do not keep the code in memory forever.
   auto& emitter = basic_block.emitter;
   auto  code = new Xbyak::CodeGenerator{};
-  auto  reg_alloc = X64RegisterAllocator{emitter};
+  auto  reg_alloc = X64RegisterAllocator{emitter, *code, kSpillAreaSize};
   auto  location = 0;
   auto  context = CompileContext{*code, reg_alloc, state, location};
 
   this->memory = &memory;
+
+  auto stack_displacement = sizeof(u64) + kSpillAreaSize * sizeof(u32);
 
   code->push(rbx);
   code->push(rsi);
@@ -44,7 +46,8 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
   code->push(r13);
   code->push(r14);
   code->push(r15);
-  code->sub(rsp, 8);
+  code->sub(rsp, stack_displacement);
+  code->mov(rbp, rsp);
 
   // Load pointer to state into RCX
   code->mov(rcx, u64(&state));
@@ -141,7 +144,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     location++;
   }
 
-  code->add(rsp, 8);
+  code->add(rsp, stack_displacement);
   code->pop(r15);
   code->pop(r14);
   code->pop(r13);
@@ -938,6 +941,10 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   // TODO: properly allocate free registers.
   code.push(rcx);
   code.push(rdx);
+
+  if (address_reg == edx) {
+    throw std::runtime_error("X64Backend: edx is also address reg");
+  }
 
   if (pagetable != nullptr) {
     code.mov(rcx, u64(pagetable));

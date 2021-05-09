@@ -17,9 +17,13 @@ namespace lunatic {
 namespace backend {
 
 struct X64RegisterAllocator {
-  X64RegisterAllocator(lunatic::frontend::IREmitter const& emitter);
+  X64RegisterAllocator(
+    lunatic::frontend::IREmitter const& emitter,
+    Xbyak::CodeGenerator& code,
+    int spill_area_size
+  );
 
-  auto GetReg32() -> Xbyak::Reg32;
+  auto GetReg32(int location) -> Xbyak::Reg32;
 
   auto GetReg32(
     lunatic::frontend::IRVariable const& var,
@@ -31,10 +35,13 @@ private:
   void ExpireVariables(int location);
 
   lunatic::frontend::IREmitter const& emitter;
+  Xbyak::CodeGenerator& code;
 
   std::vector<Xbyak::Reg32> free_list;
   std::vector<Optional<Xbyak::Reg32>> allocation;
   std::vector<int> expiration_points;
+  std::vector<bool> spill_used;
+  std::vector<Optional<u32>> spill_location;
 };
 
 } // namespace lunatic::backend
