@@ -69,6 +69,8 @@ void IREmitter::Optimize() {
           code.insert(it, std::make_unique<IRMov>(var_dst, var_src.Unwrap(), false));
           code.erase(it_old);
           continue;
+        } else {
+          last_gpr_store[gpr_id] = var_dst;
         }
       }
 
