@@ -40,7 +40,7 @@ void IREmitter::Optimize() {
   {
     auto it = code.begin();
     auto end = code.end();
-    Optional<IRVariable const&> last_gpr_store[512] {};
+    Optional<IRVariable const&> current_gpr_value[512] {};
 
     while (it != end) {
       auto& op_ = *it;
@@ -52,14 +52,14 @@ void IREmitter::Optimize() {
 
         // TODO: handle constants
         if (op->value.IsVariable()) {
-          last_gpr_store[gpr_id] = op->value.GetVar();
+          current_gpr_value[gpr_id] = op->value.GetVar();
         } else {
-          last_gpr_store[gpr_id] = {};
+          current_gpr_value[gpr_id] = {};
         }
       } else if (klass == IROpcodeClass::LoadGPR) {
         auto  op = lunatic_cast<IRLoadGPR>(op_.get());
         auto  gpr_id  = get_gpr_id(op->reg);
-        auto  var_src = last_gpr_store[gpr_id];
+        auto  var_src = current_gpr_value[gpr_id];
         auto& var_dst = op->result;
 
         if (var_src.HasValue()) {
@@ -70,7 +70,7 @@ void IREmitter::Optimize() {
           code.erase(it_old);
           continue;
         } else {
-          last_gpr_store[gpr_id] = var_dst;
+          current_gpr_value[gpr_id] = var_dst;
         }
       }
 
