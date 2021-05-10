@@ -24,6 +24,7 @@ struct IREmitter {
   auto Code() const -> InstructionList const& { return code; }
   auto Vars() const -> VariableList const& { return variables; }
   auto ToString() const -> std::string;
+  void Optimize();
 
   auto CreateVar(
     IRDataType data_type,

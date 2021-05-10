@@ -45,6 +45,8 @@ struct JIT {
       auto basic_block = new BasicBlock{block_key};
       auto success = translator.Translate(*basic_block, memory);
 
+      basic_block->emitter.Optimize();
+
       if (success) {
         backend.Compile(memory, state, *basic_block);
         block_cache[block_key.value] = basic_block;

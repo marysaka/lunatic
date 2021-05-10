@@ -29,6 +29,85 @@ auto IREmitter::ToString() const -> std::string {
   return source;
 }
 
+void IREmitter::Optimize() {
+  // TODO: come up with a better hashing method.
+  // The mode field doesn't use all values and in most cases it doesn't matter.
+  auto get_gpr_id = [](IRGuestReg reg) -> int {
+    return (static_cast<int>(reg.mode) << 4) | static_cast<int>(reg.reg);
+  };
+
+  // Forward pass: remove redundant register reads
+  {
+    auto it = code.begin();
+    auto end = code.end();
+    Optional<IRVariable const&> last_gpr_store[512] {};
+
+    while (it != end) {
+      auto& op_ = *it;
+      auto klass = op_->GetClass();
+
+      if (klass == IROpcodeClass::StoreGPR) {
+        auto op = lunatic_cast<IRStoreGPR>(op_.get());
+        auto gpr_id = get_gpr_id(op->reg);
+
+        // TODO: handle constants
+        if (op->value.IsVariable()) {
+          last_gpr_store[gpr_id] = op->value.GetVar();
+        } else {
+          last_gpr_store[gpr_id] = {};
+        }
+      } else if (klass == IROpcodeClass::LoadGPR) {
+        auto  op = lunatic_cast<IRLoadGPR>(op_.get());
+        auto  gpr_id  = get_gpr_id(op->reg);
+        auto  var_src = last_gpr_store[gpr_id];
+        auto& var_dst = op->result;
+
+        if (var_src.HasValue()) {
+          auto it_old = it;
+          ++it;
+          // TODO: instead of emitting MOV, try to repoint all subsequent uses of the destination.
+          code.insert(it, std::make_unique<IRMov>(var_dst, var_src.Unwrap(), false));
+          code.erase(it_old);
+          continue;
+        }
+      }
+
+      ++it;
+    }
+  }
+
+  // Backward pass: remove redundant register stores
+  {
+    bool gpr_already_stored[512] {false};
+    auto it = code.rbegin();
+    auto end = code.rend();
+
+    while (it != end) {
+      auto& op_ = *it;
+      auto klass = op_->GetClass();
+
+      if (klass == IROpcodeClass::StoreGPR) {
+        auto op = lunatic_cast<IRStoreGPR>(op_.get());
+        auto gpr_id = get_gpr_id(op->reg);
+
+        // TODO: remove this check once we take care of constants.
+        if (op->value.IsVariable()) {
+          if (gpr_already_stored[gpr_id]) {
+            auto it_old = it;
+            ++it;
+            code.erase(std::next(it_old).base());
+            continue;
+          } else {
+            gpr_already_stored[gpr_id] = true;
+          }
+        }
+      }
+
+      ++it;
+    }
+  }
+}
+
 auto IREmitter::CreateVar(
   IRDataType data_type,
   char const* label
