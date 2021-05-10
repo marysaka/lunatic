@@ -40,7 +40,7 @@ void IREmitter::Optimize() {
   {
     auto it = code.begin();
     auto end = code.end();
-    Optional<IRVariable const&> current_gpr_value[512] {};
+    IRValue current_gpr_value[512] {};
 
     while (it != end) {
       auto& op_ = *it;
@@ -50,23 +50,18 @@ void IREmitter::Optimize() {
         auto op = lunatic_cast<IRStoreGPR>(op_.get());
         auto gpr_id = get_gpr_id(op->reg);
 
-        // TODO: handle constants
-        if (op->value.IsVariable()) {
-          current_gpr_value[gpr_id] = op->value.GetVar();
-        } else {
-          current_gpr_value[gpr_id] = {};
-        }
+        current_gpr_value[gpr_id] = op->value;
       } else if (klass == IROpcodeClass::LoadGPR) {
         auto  op = lunatic_cast<IRLoadGPR>(op_.get());
         auto  gpr_id  = get_gpr_id(op->reg);
         auto  var_src = current_gpr_value[gpr_id];
         auto& var_dst = op->result;
 
-        if (var_src.HasValue()) {
+        if (!var_src.IsNull()) {
           auto it_old = it;
           ++it;
           // TODO: instead of emitting MOV, try to repoint all subsequent uses of the destination.
-          code.insert(it, std::make_unique<IRMov>(var_dst, var_src.Unwrap(), false));
+          code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
           code.erase(it_old);
           continue;
         } else {
