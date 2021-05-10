@@ -60,7 +60,7 @@ void IREmitter::Optimize() {
         if (!var_src.IsNull()) {
           auto it_old = it;
           ++it;
-          // TODO: instead of emitting MOV, try to repoint all subsequent uses of the destination.
+          // TODO: repoint subsequent uses if source is a variable.
           code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
           code.erase(it_old);
           continue;
@@ -87,16 +87,13 @@ void IREmitter::Optimize() {
         auto op = lunatic_cast<IRStoreGPR>(op_.get());
         auto gpr_id = get_gpr_id(op->reg);
 
-        // TODO: remove this check once we take care of constants.
-        if (op->value.IsVariable()) {
-          if (gpr_already_stored[gpr_id]) {
-            auto it_old = it;
-            ++it;
-            code.erase(std::next(it_old).base());
-            continue;
-          } else {
-            gpr_already_stored[gpr_id] = true;
-          }
+        if (gpr_already_stored[gpr_id]) {
+          auto it_old = it;
+          ++it;
+          code.erase(std::next(it_old).base());
+          continue;
+        } else {
+          gpr_already_stored[gpr_id] = true;
         }
       }
 
