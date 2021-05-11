@@ -216,24 +216,20 @@ void X64Backend::CompileUpdateFlags(CompileContext const& context, IRUpdateFlags
   if (op->flag_c) mask |= 0x20000000;
   if (op->flag_v) mask |= 0x10000000;
 
-  // TODO: allocate temporary registers?
-  code.push(rax);
-  code.push(rcx);
+  auto pext_mask_reg = reg_alloc.GetTemporaryHostReg();
+  auto flags_reg = reg_alloc.GetTemporaryHostReg();
 
   // Convert NZCV bits from AX register into the guest format.
   // Clear the bits which are not to be updated.
-  code.mov(ecx, 0xC101);
-  code.pext(eax, eax, ecx);
-  code.shl(eax, 28);
-  code.and_(eax, mask);
+  code.mov(pext_mask_reg, 0xC101);
+  code.pext(flags_reg, eax, pext_mask_reg);
+  code.shl(flags_reg, 28);
+  code.and_(flags_reg, mask);
 
   // Clear the bits to be updated, then OR the new values.
   code.mov(result_reg, input_reg);
   code.and_(result_reg, ~mask);
-  code.or_(result_reg, eax);
-
-  code.pop(rcx);
-  code.pop(rax);
+  code.or_(result_reg, flags_reg);
 }
 
 void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* op) {

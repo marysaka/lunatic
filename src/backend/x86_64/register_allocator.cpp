@@ -166,7 +166,7 @@ auto X64RegisterAllocator::FindFreeHostReg() -> Xbyak::Reg32 {
       free_spill_bitmap[i] = true;
       var_id_to_spill_slot[var_id] = i;
       code.mov(dword[rbp + i * sizeof(u32)], reg);
-      break;
+      return reg;
     }
   }
 
