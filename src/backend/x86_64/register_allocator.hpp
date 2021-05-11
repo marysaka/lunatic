@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <bitset>
 #include <xbyak/xbyak.h>
 #include <vector>
 
@@ -17,13 +18,21 @@ namespace lunatic {
 namespace backend {
 
 struct X64RegisterAllocator {
+  static constexpr int kSpillAreaSize = 32;
+
   X64RegisterAllocator(
     lunatic::frontend::IREmitter const& emitter,
-    Xbyak::CodeGenerator& code,
-    int spill_area_size
+    Xbyak::CodeGenerator& code
   );
 
-  auto GetReg32(
+  /**
+   * Get the host register currently allocated to a variable.
+   * 
+   * @param  var  The variable
+   * @param  location  The current location in the IR program.
+   * @returns the host register
+   */
+  auto GetVariableHostReg(
     lunatic::frontend::IRVariable const& var,
     int location
   ) -> Xbyak::Reg32;
@@ -52,6 +61,7 @@ private:
 
   lunatic::frontend::IREmitter const& emitter;
   Xbyak::CodeGenerator& code;
+  int number_of_vars;
 
   /// Host register that are free and can be allocated.
   std::vector<Xbyak::Reg32> free_host_regs;
@@ -61,10 +71,12 @@ private:
   
   /// Map variable to the last location where it's accessed.
   std::vector<int> var_id_to_point_of_last_use;
-  
-  std::vector<bool> spill_used;
-  
-  std::vector<Optional<u32>> spill_location;
+
+  /// The set of free/unused spill slots.
+  std::bitset<kSpillAreaSize> free_spill_bitmap;
+
+  /// Map variable to the slot it was spilled to (if it is spilled).  
+  std::vector<Optional<int>> var_id_to_spill_slot;
 };
 
 } // namespace lunatic::backend

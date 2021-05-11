@@ -17,8 +17,7 @@ namespace backend {
 
 X64RegisterAllocator::X64RegisterAllocator(
   IREmitter const& emitter,
-  Xbyak::CodeGenerator& code,
-  int spill_area_size
+  Xbyak::CodeGenerator& code
 ) : emitter(emitter), code(code) {
   // rax, rcx and rbp are statically allocated
   free_host_regs = {
@@ -36,21 +35,16 @@ X64RegisterAllocator::X64RegisterAllocator(
     r15d
   };
 
-  auto number_of_vars = emitter.Vars().size();
-
+  number_of_vars = emitter.Vars().size();
   var_id_to_host_reg.resize(number_of_vars);
   var_id_to_point_of_last_use.resize(number_of_vars);
-  spill_used.resize(spill_area_size);
-  spill_location.resize(number_of_vars);
-
-  for (int i = 0; i < spill_area_size; i++) {
-    spill_used[i] = false;
-  }
+  free_spill_bitmap.reset();
+  var_id_to_spill_slot.resize(number_of_vars);
 
   EvaluateVariableLifetimes();
 }
 
-auto X64RegisterAllocator::GetReg32(IRVariable const& var, int location) -> Xbyak::Reg32 {
+auto X64RegisterAllocator::GetVariableHostReg(IRVariable const& var, int location) -> Xbyak::Reg32 {
   // Check if the variable is already allocated to a register at the moment.
   auto maybe_reg = var_id_to_host_reg[var.id];
   if (maybe_reg.HasValue()) {
@@ -63,12 +57,12 @@ auto X64RegisterAllocator::GetReg32(IRVariable const& var, int location) -> Xbya
   auto reg = FindFreeHostReg(location);
   
   // If the variable was spilled previously then restore its previous value.
-  auto maybe_spill = spill_location[var.id];
+  auto maybe_spill = var_id_to_spill_slot[var.id];
   if (maybe_spill.HasValue()) {
     auto slot = maybe_spill.Unwrap();
     code.mov(reg, dword[rbp + slot * sizeof(u32)]);
-    spill_used[slot] = false;
-    spill_location[var.id] = {};
+    free_spill_bitmap[slot] = false;
+    var_id_to_spill_slot[var.id] = {};
   }
 
   var_id_to_host_reg[var.id] = reg;
@@ -115,7 +109,6 @@ auto X64RegisterAllocator::FindFreeHostReg(int location) -> Xbyak::Reg32 {
     return reg;
   }
 
-  auto number_of_vars = var_id_to_host_reg.size();
   auto reg = Xbyak::Reg32{};
   auto var_id = 0;
 
@@ -141,13 +134,11 @@ auto X64RegisterAllocator::FindFreeHostReg(int location) -> Xbyak::Reg32 {
     }
   }
 
-  auto number_of_slots = spill_used.size();
-
   // Spill the variable into one of the free slots.
-  for (int i = 0; i < number_of_slots; i++) {
-    if (!spill_used[i]) {
-      spill_used[i] = true;
-      spill_location[var_id] = i;
+  for (int i = 0; i < kSpillAreaSize; i++) {
+    if (!free_spill_bitmap[i]) {
+      free_spill_bitmap[i] = true;
+      var_id_to_spill_slot[var_id] = i;
       code.mov(dword[rbp + i * sizeof(u32)], reg);
       break;
     }

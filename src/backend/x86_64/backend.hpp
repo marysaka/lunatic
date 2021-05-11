@@ -29,8 +29,6 @@ struct X64Backend : Backend {
   );
 
 private:
-  static constexpr int kSpillAreaSize = 32;
-
   Memory* memory = nullptr;
 
   struct CompileContext {
