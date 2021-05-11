@@ -19,7 +19,10 @@ X64RegisterAllocator::X64RegisterAllocator(
   IREmitter const& emitter,
   Xbyak::CodeGenerator& code
 ) : emitter(emitter), code(code) {
-  // rax, rcx and rbp are statically allocated
+  // Static allocation:
+  //   - rax: host flags via lahf (overflow flag in al)
+  //   - rcx: pointer to guest state (lunatic::frontend::State)
+  //   - rbp: pointer to stack frame / spill area.
   free_host_regs = {
     edx,
     ebx,
