@@ -250,9 +250,7 @@ void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* o
   } else {
     auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
   
-    // TODO: is there a better way that avoids push/pop rcx?
     code.push(rcx);
-
     code.mov(ecx, 33);
     code.cmp(amount_reg, u8(33));
     code.cmovl(ecx, amount_reg);
@@ -261,7 +259,6 @@ void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* o
       code.sahf();
     }
     code.shl(result_reg.cvt64(), cl);
-
     code.pop(rcx);
   }
 
@@ -296,19 +293,14 @@ void X64Backend::CompileLSR(CompileContext const& context, IRLogicalShiftRight* 
     code.shr(result_reg.cvt64(), u8(std::min(amount_value, 33U)));
   } else {
     auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
-    // TODO: is there a better way that avoids push/pop rcx?
     code.push(rcx);
-
     code.mov(ecx, 33);
     code.cmp(amount_reg, u8(33));
     code.cmovl(ecx, amount_reg);
-
     if (op->update_host_flags) {
       code.sahf();
     }
-
     code.shr(result_reg.cvt64(), cl);
-
     code.pop(rcx);
   }
 
@@ -344,19 +336,14 @@ void X64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRigh
     code.sar(result_reg.cvt64(), u8(std::min(amount_value, 33U)));
   } else {
     auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
-    // TODO: is there a better way that avoids push/pop rcx?
     code.push(rcx);
-
     code.mov(ecx, 33);
     code.cmp(amount_reg, u8(33));
     code.cmovl(ecx, amount_reg);
-
     if (op->update_host_flags) {
       code.sahf();
     }
-
     code.sar(result_reg.cvt64(), cl);
-
     code.pop(rcx);
   }
 
@@ -392,17 +379,13 @@ void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
     }
   } else {
     auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
-    // TODO: is there a better way that avoids push/pop rcx?
+
     code.push(rcx);
-
     code.mov(cl, amount_reg.cvt8());
-
     if (op->update_host_flags) {
       code.sahf();
     }
-
     code.ror(result_reg, cl);
-
     code.pop(rcx);
   }
 
@@ -926,21 +909,16 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto source_reg = reg_alloc.GetVariableHostReg(op->source);
+  auto source_reg  = reg_alloc.GetVariableHostReg(op->source);
   auto address_reg = reg_alloc.GetVariableHostReg(op->address);
+  auto scratch_reg = reg_alloc.GetTemporaryHostReg();
   auto flags = op->flags;
 
   auto label_slowmem = Xbyak::Label{};
   auto label_final = Xbyak::Label{};
   auto pagetable = memory->pagetable.get();
 
-  // TODO: properly allocate free registers.
   code.push(rcx);
-  code.push(rdx);
-
-  if (address_reg == edx) {
-    throw std::runtime_error("X64Backend: edx is also address reg");
-  }
 
   if (pagetable != nullptr) {
     code.mov(rcx, u64(pagetable));
@@ -948,29 +926,29 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
     // TODO: check for ITCM and DTCM!!!
 
     // Get the page table entry
-    code.mov(edx, address_reg);
-    code.shr(edx, Memory::kPageShift);
-    code.mov(rcx, qword[rcx + rdx * sizeof(uintptr)]);
+    code.mov(scratch_reg, address_reg);
+    code.shr(scratch_reg, Memory::kPageShift);
+    code.mov(rcx, qword[rcx + scratch_reg.cvt64() * sizeof(uintptr)]);
 
     // Check if the entry is a null pointer.
     code.test(rcx, rcx);
     code.jz(label_slowmem);
 
-    code.mov(edx, address_reg);
+    code.mov(scratch_reg, address_reg);
 
     if (flags & Word) {
-      code.and_(edx, Memory::kPageMask & ~3);
-      code.mov(dword[rcx + rdx], source_reg);
+      code.and_(scratch_reg, Memory::kPageMask & ~3);
+      code.mov(dword[rcx + scratch_reg.cvt64()], source_reg);
     }
 
     if (flags & Half) {
-      code.and_(edx, Memory::kPageMask & ~1);
-      code.mov(word[rcx + rdx], source_reg.cvt16());
+      code.and_(scratch_reg, Memory::kPageMask & ~1);
+      code.mov(word[rcx + scratch_reg.cvt64()], source_reg.cvt16());
     }
 
     if (flags & Byte) {
-      code.and_(edx, Memory::kPageMask);
-      code.mov(byte[rcx + rdx], source_reg.cvt8());
+      code.and_(scratch_reg, Memory::kPageMask);
+      code.mov(byte[rcx + scratch_reg.cvt64()], source_reg.cvt8());
     }
 
     code.jmp(label_final);
@@ -980,6 +958,7 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
   // TODO: determine which registers need to be saved.
   code.push(rax);
+  code.push(rdx);
   code.push(r8);
   code.push(r9);
   code.push(r10);
@@ -1012,10 +991,10 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   code.pop(r10);
   code.pop(r9);
   code.pop(r8);
+  code.pop(rdx);
   code.pop(rax);
 
   code.L(label_final);
-  code.pop(rdx);
   code.pop(rcx);
 }
 
