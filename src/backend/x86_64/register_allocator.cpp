@@ -21,7 +21,7 @@ X64RegisterAllocator::X64RegisterAllocator(
   int spill_area_size
 ) : emitter(emitter), code(code) {
   // rax, rcx and rbp are statically allocated
-  free_list = {
+  free_host_regs = {
     edx,
     ebx,
     esi,
@@ -38,8 +38,8 @@ X64RegisterAllocator::X64RegisterAllocator(
 
   auto number_of_vars = emitter.Vars().size();
 
-  allocation.resize(number_of_vars);
-  expiration_points.resize(number_of_vars);
+  var_id_to_host_reg.resize(number_of_vars);
+  var_id_to_point_of_last_use.resize(number_of_vars);
   spill_used.resize(spill_area_size);
   spill_location.resize(number_of_vars);
 
@@ -47,17 +47,75 @@ X64RegisterAllocator::X64RegisterAllocator(
     spill_used[i] = false;
   }
 
-  CreateVariableExpirationPoints();
+  EvaluateVariableLifetimes();
 }
 
-auto X64RegisterAllocator::GetReg32(int location) -> Xbyak::Reg32 {
-  if (free_list.size() != 0) {
-    auto reg = free_list.back();
-    free_list.pop_back();
+auto X64RegisterAllocator::GetReg32(IRVariable const& var, int location) -> Xbyak::Reg32 {
+  // Check if the variable is already allocated to a register at the moment.
+  auto maybe_reg = var_id_to_host_reg[var.id];
+  if (maybe_reg.HasValue()) {
+    return maybe_reg.Unwrap();
+  }
+
+  // Release any registers that are allocated to expired variables first.
+  ReleaseDeadVariables(location);
+
+  auto reg = FindFreeHostReg(location);
+  
+  // If the variable was spilled previously then restore its previous value.
+  auto maybe_spill = spill_location[var.id];
+  if (maybe_spill.HasValue()) {
+    auto slot = maybe_spill.Unwrap();
+    code.mov(reg, dword[rbp + slot * sizeof(u32)]);
+    spill_used[slot] = false;
+    spill_location[var.id] = {};
+  }
+
+  var_id_to_host_reg[var.id] = reg;
+  return reg;
+}
+
+void X64RegisterAllocator::EvaluateVariableLifetimes() {
+  for (auto const& var : emitter.Vars()) {
+    int expiration_point = -1;
+    int location = 0;
+
+    for (auto const& op : emitter.Code()) {
+      if (op->Writes(*var) || op->Reads(*var)) {
+        expiration_point = location;
+      }
+
+      location++;
+    }
+
+    if (expiration_point != -1) {
+      var_id_to_point_of_last_use[var->id] = expiration_point;
+    }
+  }
+}
+
+void X64RegisterAllocator::ReleaseDeadVariables(int location) {
+  for (auto const& var : emitter.Vars()) {
+    auto expiration_point = var_id_to_point_of_last_use[var->id];
+
+    if (location > expiration_point) {
+      auto maybe_reg = var_id_to_host_reg[var->id];
+      if (maybe_reg.HasValue()) {
+        free_host_regs.push_back(maybe_reg.Unwrap());
+        var_id_to_host_reg[var->id] = {};
+      }
+    }
+  }
+}
+
+auto X64RegisterAllocator::FindFreeHostReg(int location) -> Xbyak::Reg32 {
+  if (free_host_regs.size() != 0) {
+    auto reg = free_host_regs.back();
+    free_host_regs.pop_back();
     return reg;
   }
 
-  auto number_of_vars = allocation.size();
+  auto number_of_vars = var_id_to_host_reg.size();
   auto reg = Xbyak::Reg32{};
   auto var_id = 0;
 
@@ -75,9 +133,9 @@ auto X64RegisterAllocator::GetReg32(int location) -> Xbyak::Reg32 {
       continue;
     }
 
-    if (allocation[i].HasValue()) {
-      reg = allocation[i].Unwrap();
-      allocation[i] = {};
+    if (var_id_to_host_reg[i].HasValue()) {
+      reg = var_id_to_host_reg[i].Unwrap();
+      var_id_to_host_reg[i] = {};
       var_id = i;
       break;
     }
@@ -96,65 +154,6 @@ auto X64RegisterAllocator::GetReg32(int location) -> Xbyak::Reg32 {
   }
 
   throw std::runtime_error("X64RegisterAllocator: out of registers and spill space.");
-}
-
-auto X64RegisterAllocator::GetReg32(IRVariable const& var, int location) -> Xbyak::Reg32 {
-  // Check if the variable is already allocated to a register at the moment.
-  auto maybe_reg = allocation[var.id];
-  if (maybe_reg.HasValue()) {
-    return maybe_reg.Unwrap();
-  }
-
-  // Release any registers that are allocated to expired variables first.
-  ExpireVariables(location);
-
-  auto reg = GetReg32(location);
-  
-  // If the variable was spilled previously then restore its previous value.
-  auto maybe_spill = spill_location[var.id];
-  if (maybe_spill.HasValue()) {
-    auto slot = maybe_spill.Unwrap();
-    code.mov(reg, dword[rbp + slot * sizeof(u32)]);
-    spill_used[slot] = false;
-    spill_location[var.id] = {};
-    fmt::print("Reload from spill :3\n");
-  }
-
-  allocation[var.id] = reg;
-  return reg;
-}
-
-void X64RegisterAllocator::CreateVariableExpirationPoints() {
-  for (auto const& var : emitter.Vars()) {
-    int expiration_point = -1;
-    int location = 0;
-
-    for (auto const& op : emitter.Code()) {
-      if (op->Writes(*var) || op->Reads(*var)) {
-        expiration_point = location;
-      }
-
-      location++;
-    }
-
-    if (expiration_point != -1) {
-      expiration_points[var->id] = expiration_point;
-    }
-  }
-}
-
-void X64RegisterAllocator::ExpireVariables(int location) {
-  for (auto const& var : emitter.Vars()) {
-    auto expiration_point = expiration_points[var->id];
-
-    if (location > expiration_point) {
-      auto maybe_reg = allocation[var->id];
-      if (maybe_reg.HasValue()) {
-        free_list.push_back(maybe_reg.Unwrap());
-        allocation[var->id] = {};
-      }
-    }
-  }
 }
 
 } // namespace lunatic::backend
