@@ -41,23 +41,33 @@ X64RegisterAllocator::X64RegisterAllocator(
   number_of_vars = emitter.Vars().size();
   var_id_to_host_reg.resize(number_of_vars);
   var_id_to_point_of_last_use.resize(number_of_vars);
-  free_spill_bitmap.reset();
   var_id_to_spill_slot.resize(number_of_vars);
 
   EvaluateVariableLifetimes();
 }
 
-auto X64RegisterAllocator::GetVariableHostReg(IRVariable const& var, int location) -> Xbyak::Reg32 {
+void X64RegisterAllocator::SetCurrentLocation(int location) {
+  if (location <= this->location) {
+    return;
+  }
+
+  // Release host regs that hold variables which now are dead.
+  ReleaseDeadVariables();
+
+  // Release host regs the previous opcode allocated temporarily.
+  ReleaseTemporaryHostRegs();
+
+  this->location = location;
+}
+
+auto X64RegisterAllocator::GetVariableHostReg(IRVariable const& var) -> Xbyak::Reg32 {
   // Check if the variable is already allocated to a register at the moment.
   auto maybe_reg = var_id_to_host_reg[var.id];
   if (maybe_reg.HasValue()) {
     return maybe_reg.Unwrap();
   }
 
-  // Release any registers that are allocated to expired variables first.
-  ReleaseDeadVariables(location);
-
-  auto reg = FindFreeHostReg(location);
+  auto reg = FindFreeHostReg();
   
   // If the variable was spilled previously then restore its previous value.
   auto maybe_spill = var_id_to_spill_slot[var.id];
@@ -72,30 +82,36 @@ auto X64RegisterAllocator::GetVariableHostReg(IRVariable const& var, int locatio
   return reg;
 }
 
+auto X64RegisterAllocator::GetTemporaryHostReg() -> Xbyak::Reg32 {
+  auto reg = FindFreeHostReg();
+  temp_host_regs.push_back(reg);
+  return reg;
+}
+
 void X64RegisterAllocator::EvaluateVariableLifetimes() {
   for (auto const& var : emitter.Vars()) {
-    int expiration_point = -1;
+    int point_of_death = -1;
     int location = 0;
 
     for (auto const& op : emitter.Code()) {
       if (op->Writes(*var) || op->Reads(*var)) {
-        expiration_point = location;
+        point_of_death = location;
       }
 
       location++;
     }
 
-    if (expiration_point != -1) {
-      var_id_to_point_of_last_use[var->id] = expiration_point;
+    if (point_of_death != -1) {
+      var_id_to_point_of_last_use[var->id] = point_of_death;
     }
   }
 }
 
-void X64RegisterAllocator::ReleaseDeadVariables(int location) {
+void X64RegisterAllocator::ReleaseDeadVariables() {
   for (auto const& var : emitter.Vars()) {
-    auto expiration_point = var_id_to_point_of_last_use[var->id];
+    auto point_of_death = var_id_to_point_of_last_use[var->id];
 
-    if (location > expiration_point) {
+    if (location > point_of_death) {
       auto maybe_reg = var_id_to_host_reg[var->id];
       if (maybe_reg.HasValue()) {
         free_host_regs.push_back(maybe_reg.Unwrap());
@@ -105,7 +121,14 @@ void X64RegisterAllocator::ReleaseDeadVariables(int location) {
   }
 }
 
-auto X64RegisterAllocator::FindFreeHostReg(int location) -> Xbyak::Reg32 {
+void X64RegisterAllocator::ReleaseTemporaryHostRegs() {
+  for (auto reg : temp_host_regs) {
+    free_host_regs.push_back(reg);
+  }
+  temp_host_regs.clear();
+}
+
+auto X64RegisterAllocator::FindFreeHostReg() -> Xbyak::Reg32 {
   if (free_host_regs.size() != 0) {
     auto reg = free_host_regs.back();
     free_host_regs.pop_back();

@@ -26,38 +26,48 @@ struct X64RegisterAllocator {
   );
 
   /**
+   * Set the current location in the IR program.
+   * 
+   * @param  location The current location in the IR program.
+   * @returns nothing
+   */
+  void SetCurrentLocation(int location);
+
+  /**
    * Get the host register currently allocated to a variable.
    * 
    * @param  var  The variable
-   * @param  location  The current location in the IR program.
    * @returns the host register
    */
   auto GetVariableHostReg(
-    lunatic::frontend::IRVariable const& var,
-    int location
+    lunatic::frontend::IRVariable const& var
   ) -> Xbyak::Reg32;
+
+  /**
+   * Get a temporary host register for use during the current opcode.
+   * 
+   * @returns the host register
+   */
+  auto GetTemporaryHostReg() -> Xbyak::Reg32;
 
 private:
   /// Determine when each variable will be dead.
   void EvaluateVariableLifetimes();
 
-  /**
-   * Release host registers allocated to variables that are dead.
-   *
-   * @param  location  The current location in the IR program.
-   * @returns nothing
-   */
-  void ReleaseDeadVariables(int location);
+  /// Release host registers allocated to variables that are dead.
+  void ReleaseDeadVariables();
+
+  /// Release host registers allocated for temporary storage.
+  void ReleaseTemporaryHostRegs();
 
   /**
    * Find and allocate a host register that is currently unused.
    * If no register is free attempt to spill a variable to the stack to
    * free its register up.
    *
-   * @param  location  The current location in the IR program.
-   * @returns nothing
+   * @returns the host register
    */
-  auto FindFreeHostReg(int location) -> Xbyak::Reg32;
+  auto FindFreeHostReg() -> Xbyak::Reg32;
 
   lunatic::frontend::IREmitter const& emitter;
   Xbyak::CodeGenerator& code;
@@ -77,6 +87,12 @@ private:
 
   /// Map variable to the slot it was spilled to (if it is spilled).  
   std::vector<Optional<int>> var_id_to_spill_slot;
+
+  /// Array of currently allocated scratch registers.
+  std::vector<Xbyak::Reg32> temp_host_regs;
+
+  /// The current IR program location.
+  int location = 0;
 };
 
 } // namespace lunatic::backend
