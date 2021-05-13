@@ -71,7 +71,6 @@ private:
 
   lunatic::frontend::IREmitter const& emitter;
   Xbyak::CodeGenerator& code;
-  int number_of_vars;
 
   /// Host register that are free and can be allocated.
   std::vector<Xbyak::Reg32> free_host_regs;
