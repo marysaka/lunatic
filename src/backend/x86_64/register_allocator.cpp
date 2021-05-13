@@ -51,13 +51,13 @@ void X64RegisterAllocator::SetCurrentLocation(int location) {
     return;
   }
 
+  this->location = location;
+
   // Release host regs that hold variables which now are dead.
   ReleaseDeadVariables();
 
   // Release host regs the previous opcode allocated temporarily.
   ReleaseTemporaryHostRegs();
-
-  this->location = location;
 }
 
 auto X64RegisterAllocator::GetVariableHostReg(IRVariable const& var) -> Xbyak::Reg32 {
