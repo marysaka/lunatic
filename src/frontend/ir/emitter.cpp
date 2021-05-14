@@ -88,9 +88,8 @@ void IREmitter::Optimize() {
         auto gpr_id = get_gpr_id(op->reg);
 
         if (gpr_already_stored[gpr_id]) {
-          auto it_old = it;
-          ++it;
-          code.erase(std::next(it_old).base());
+          it = std::reverse_iterator{code.erase(std::next(it).base())};
+          end = code.rend();
           continue;
         } else {
           gpr_already_stored[gpr_id] = true;
