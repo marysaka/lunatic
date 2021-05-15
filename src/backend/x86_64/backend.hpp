@@ -9,6 +9,7 @@
 
 #include <lunatic/memory.hpp>
 #include <fmt/format.h>
+#include <vector>
 
 #include "backend/backend.hpp"
 #include "frontend/basic_block.hpp"
@@ -37,6 +38,16 @@ private:
     State& state;
     int& location;
   };
+
+  void Push(
+    Xbyak::CodeGenerator& code,
+    std::vector<Xbyak::Reg64> const& regs
+  );
+
+  void Pop(
+    Xbyak::CodeGenerator& code,
+    std::vector<Xbyak::Reg64> const& regs
+  );
 
   void CompileLoadGPR(CompileContext const& context, IRLoadGPR* op);
   void CompileStoreGPR(CompileContext const& context, IRStoreGPR* op);
@@ -79,11 +90,11 @@ private:
   void WriteByte(u32 address, Memory::Bus bus, u8 value) {
     memory->WriteByte(address, value, bus);
   }
-  
+
   void WriteHalf(u32 address, Memory::Bus bus, u16 value) {
     memory->WriteHalf(address, value, bus);
   }
-  
+
   void WriteWord(u32 address, Memory::Bus bus, u32 value) {
     memory->WriteWord(address, value, bus);
   }

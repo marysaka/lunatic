@@ -11,6 +11,11 @@
 
 #include "backend.hpp"
 
+// TODO: optimize cases where an operand variable expires during the IR opcode we're currently compiling.
+// In that case the host register that is assigned to it might be reused for the result variable to do some optimization.
+
+// TODO: right now we only have UInt32 but how to deal with different variable or constant data types?
+
 #define DESTRUCTURE_CONTEXT auto& [code, reg_alloc, state, location] = context;
 
 namespace lunatic {
@@ -19,10 +24,25 @@ namespace backend {
 // using namespace lunatic::frontend;
 using namespace Xbyak::util;
 
-// TODO: optimize cases where an operand variable expires during the IR opcode we're currently compiling.
-// In that case the host register that is assigned to it might be reused for the result variable to do some optimization.
+#ifdef _WIN64
 
-// TODO: right now we only have UInt32 but how to deal with different variable or constant data types?
+#define ABI_MSVC
+
+static constexpr Xbyak::Reg64 kRegArg0 = rcx;
+static constexpr Xbyak::Reg64 kRegArg1 = rdx;
+static constexpr Xbyak::Reg64 kRegArg2 = r8;
+static constexpr Xbyak::Reg64 kRegArg3 = r9;
+
+#else
+
+#define ABI_SYSV
+
+static constexpr Xbyak::Reg64 kRegArg0 = rdi;
+static constexpr Xbyak::Reg64 kRegArg1 = rsi;
+static constexpr Xbyak::Reg64 kRegArg2 = rdx;
+static constexpr Xbyak::Reg64 kRegArg3 = rcx;
+
+#endif
 
 void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) {
   // TODO: do not keep the code in memory forever.
@@ -36,14 +56,12 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
 
   auto stack_displacement = sizeof(u64) + X64RegisterAllocator::kSpillAreaSize * sizeof(u32);
 
-  code->push(rbx);
-  code->push(rsi);
-  code->push(rdi);
-  code->push(rbp);
-  code->push(r12);
-  code->push(r13);
-  code->push(r14);
-  code->push(r15);
+  Push(*code, {rbx, rbp, r12, r13, r14, r15});
+#ifdef ABI_MSVC
+  Push(*code, {rsi, rdi});
+#else
+
+#endif
   code->sub(rsp, stack_displacement);
   code->mov(rbp, rsp);
 
@@ -145,17 +163,33 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
   }
 
   code->add(rsp, stack_displacement);
-  code->pop(r15);
-  code->pop(r14);
-  code->pop(r13);
-  code->pop(r12);
-  code->pop(rbp);
-  code->pop(rdi);
-  code->pop(rsi);
-  code->pop(rbx);
+#ifdef ABI_MSVC
+  Pop(*code, {rsi, rdi});
+#endif
+  Pop(*code, {rbx, rbp, r12, r13, r14, r15});
   code->ret();
 
   basic_block.function = code->getCode<BasicBlock::CompiledFn>();
+}
+
+void X64Backend::Push(
+  Xbyak::CodeGenerator& code,
+  std::vector<Xbyak::Reg64> const& regs
+) {
+  for (auto reg : regs) {
+    code.push(reg);
+  }
+}
+
+void X64Backend::Pop(
+  Xbyak::CodeGenerator& code,
+  std::vector<Xbyak::Reg64> const& regs
+) {
+  auto end = regs.rend();
+
+  for (auto it = regs.rbegin(); it != end; ++it) {
+    code.pop(*it);
+  }
 }
 
 void X64Backend::CompileLoadGPR(CompileContext const& context, IRLoadGPR* op) {
@@ -164,7 +198,7 @@ void X64Backend::CompileLoadGPR(CompileContext const& context, IRLoadGPR* op) {
   auto address  = rcx + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
   auto host_reg = reg_alloc.GetVariableHostReg(op->result);
 
-  code.mov(host_reg, dword[address]);  
+  code.mov(host_reg, dword[address]);
 }
 
 void X64Backend::CompileStoreGPR(CompileContext const& context, IRStoreGPR* op) {
@@ -194,7 +228,7 @@ void X64Backend::CompileStoreCPSR(CompileContext const& context, IRStoreCPSR* op
   DESTRUCTURE_CONTEXT;
 
   auto address = rcx + state.GetOffsetToCPSR();
-  
+
   if (op->value.IsConstant()) {
     code.mov(dword[address], op->value.GetConst().value);
   } else {
@@ -249,7 +283,7 @@ void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* o
     code.shl(result_reg.cvt64(), u8(std::min(amount.GetConst().value, 33U)));
   } else {
     auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
-  
+
     code.push(rcx);
     code.mov(ecx, 33);
     code.cmp(amount_reg, u8(33));
@@ -540,7 +574,7 @@ void X64Backend::CompileSUB(CompileContext const& context, IRSub* op) {
       code.cmc();
     }
   }
-    
+
   if (op->update_host_flags) {
     code.lahf();
     code.seto(al);
@@ -593,7 +627,7 @@ void X64Backend::CompileADD(CompileContext const& context, IRAdd* op) {
       auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
 
       code.mov(result_reg, lhs_reg);
-      code.add(result_reg, imm); 
+      code.add(result_reg, imm);
     }
   } else {
     auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
@@ -628,7 +662,7 @@ void X64Backend::CompileADC(CompileContext const& context, IRAdc* op) {
     auto imm = op->rhs.GetConst().value;
 
     code.mov(result_reg, lhs_reg);
-    code.adc(result_reg, imm); 
+    code.adc(result_reg, imm);
   } else {
     auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
 
@@ -664,7 +698,7 @@ void X64Backend::CompileSBC(CompileContext const& context, IRSbc* op) {
     code.sbb(result_reg, rhs_reg);
     code.cmc();
   }
-    
+
   if (op->update_host_flags) {
     code.lahf();
     code.seto(al);
@@ -708,7 +742,7 @@ void X64Backend::CompileORR(CompileContext const& context, IRBitwiseORR* op) {
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
-    
+
     code.mov(result_reg, lhs_reg);
     code.or_(result_reg, imm);
   } else {
@@ -825,22 +859,20 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   code.L(label_slowmem);
 
   // TODO: determine which registers need to be saved.
-  code.push(rax);
-  code.push(rdx);
-  code.push(r8);
-  code.push(r9);
-  code.push(r10);
-  code.push(r11);
+  Push(code, {rax, rdx, r8, r9, r10, r11});
+#ifdef ABI_SYSV
+  Push(code, {rsi, rdi});
+#endif
 
-  code.mov(edx, address_reg);
+  code.mov(kRegArg1.cvt32(), address_reg);
 
   if (flags & Word) {
-    code.and_(edx, ~3);
+    code.and_(kRegArg1.cvt32(), ~3);
     code.mov(rax, u64((void*)&X64Backend::ReadWord));
   }
 
   if (flags & Half) {
-    code.and_(edx, ~1);
+    code.and_(kRegArg1.cvt32(), ~1);
     code.mov(rax, u64((void*)&X64Backend::ReadHalf));
   }
 
@@ -848,17 +880,16 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
     code.mov(rax, u64((void*)&X64Backend::ReadByte));
   }
 
-  code.mov(rcx, u64(this));
-  code.mov(r8d, u32(Memory::Bus::Data));
+  code.mov(kRegArg0, u64(this));
+  code.mov(kRegArg2.cvt32(), u32(Memory::Bus::Data));
   code.sub(rsp, 0x28);
   code.call(rax);
   code.add(rsp, 0x28);
 
-  code.pop(r11);
-  code.pop(r10);
-  code.pop(r9);
-  code.pop(r8);
-  code.pop(rdx);
+#ifdef ABI_SYSV
+  Pop(code, {rsi, rdi});
+#endif
+  Pop(code, {rdx, r8, r9, r10, r11});
   code.mov(result_reg, eax);
   code.pop(rax);
 
@@ -886,11 +917,11 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
       code.mov(ecx, address_reg);
       code.and_(cl, 1);
       code.shl(cl, 3);
-      code.ror(result_reg.cvt16(), cl); 
+      code.ror(result_reg.cvt16(), cl);
     }
   }
 
-  static constexpr auto kHalfSignedARMv4T = Half | Signed | ARMv4T; 
+  static constexpr auto kHalfSignedARMv4T = Half | Signed | ARMv4T;
 
   // ARM7TDMI/ARMv4T special case: unaligned LDRSH is effectively LDRSB.
   if ((flags & kHalfSignedARMv4T) == kHalfSignedARMv4T) {
@@ -957,22 +988,20 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   code.L(label_slowmem);
 
   // TODO: determine which registers need to be saved.
-  code.push(rax);
-  code.push(rdx);
-  code.push(r8);
-  code.push(r9);
-  code.push(r10);
-  code.push(r11);
+  Push(code, {rax, rdx, r8, r9, r10, r11});
+#ifdef ABI_SYSV
+  Push(code, {rsi, rdi});
+#endif
 
-  code.mov(edx, address_reg);
+  code.mov(kRegArg1.cvt32(), address_reg);
 
   if (flags & Word) {
-    code.and_(edx, ~3);
+    code.and_(kRegArg1.cvt32(), ~3);
     code.mov(rax, u64((void*)&X64Backend::WriteWord));
   }
 
   if (flags & Half) {
-    code.and_(edx, ~1);
+    code.and_(kRegArg1.cvt32(), ~1);
     code.mov(rax, u64((void*)&X64Backend::WriteHalf));
   }
 
@@ -980,19 +1009,17 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
     code.mov(rax, u64((void*)&X64Backend::WriteByte));
   }
 
-  code.mov(rcx, u64(this));
-  code.mov(r8d, u32(Memory::Bus::Data));
-  code.mov(r9d, source_reg);
-  code.sub(rsp, 0x20);
+  code.mov(kRegArg0, u64(this));
+  code.mov(kRegArg2.cvt32(), u32(Memory::Bus::Data));
+  code.mov(kRegArg3.cvt32(), source_reg);
+  code.sub(rsp, 0x28);
   code.call(rax);
-  code.add(rsp, 0x20);
+  code.add(rsp, 0x28);
 
-  code.pop(r11);
-  code.pop(r10);
-  code.pop(r9);
-  code.pop(r8);
-  code.pop(rdx);
-  code.pop(rax);
+#ifdef ABI_SYSV
+  Pop(code, {rsi, rdi});
+#endif
+  Pop(code, {rax, rdx, r8, r9, r10, r11});
 
   code.L(label_final);
   code.pop(rcx);
