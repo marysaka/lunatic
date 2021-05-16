@@ -84,6 +84,9 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
       case IROpcodeClass::StoreGPR:
         CompileStoreGPR(context, lunatic_cast<IRStoreGPR>(op.get()));
         break;
+      case IROpcodeClass::LoadSPSR:
+        CompileLoadSPSR(context, lunatic_cast<IRLoadSPSR>(op.get()));
+        break;
       case IROpcodeClass::LoadCPSR:
         CompileLoadCPSR(context, lunatic_cast<IRLoadCPSR>(op.get()));
         break;
@@ -213,6 +216,15 @@ void X64Backend::CompileStoreGPR(CompileContext const& context, IRStoreGPR* op) 
 
     code.mov(dword[address], host_reg);
   }
+}
+
+void X64Backend::CompileLoadSPSR(CompileContext const& context, IRLoadSPSR* op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto address = rcx + state.GetOffsetToSPSR(op->mode);
+  auto host_reg = reg_alloc.GetVariableHostReg(op->result);
+
+  code.mov(host_reg, dword[address]);
 }
 
 void X64Backend::CompileLoadCPSR(CompileContext const& context, IRLoadCPSR* op) {

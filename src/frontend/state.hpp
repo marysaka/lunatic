@@ -83,6 +83,9 @@ struct State {
   /// \returns pointer to the current program status register (cpsr).
   auto GetPointerToCPSR() -> StatusRegister*;
 
+  /// \returns for a given processor mode the offset to the saved program status register (spsr).
+  auto GetOffsetToSPSR(Mode mode) -> uintptr;
+
   /// \returns the offset to the current program status register (cpsr).
   auto GetOffsetToCPSR() -> uintptr;
 
