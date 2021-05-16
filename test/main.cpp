@@ -34,6 +34,10 @@ struct JIT {
     auto block_key = BasicBlock::Key{state};
     auto match = block_cache.find(block_key.value);
 
+    auto address = block_key.field.address;
+    auto mode = block_key.field.mode;
+    fmt::print("address=0x{:08X} mode=0x{:02X}\n", address, mode);
+
     if (match != block_cache.end()) {
       auto basic_block = match->second;
 
@@ -143,6 +147,11 @@ struct Memory final : lunatic::Memory {
   }
 
   auto ReadWord(u32 address, Bus bus) -> u32 override {
+    if (address == 0x04000004) {
+      vblank_flag ^= 1;
+      return vblank_flag;
+    }
+
     fmt::print("Memory: invalid read32 @ 0x{:08X}\n", address);
     return 0;
   }
@@ -174,7 +183,7 @@ void render_frame() {
 
 int main(int argc, char** argv) {
   size_t size;
-  std::ifstream file { "armwrestler.gba", std::ios::binary };
+  std::ifstream file { "arm.gba", std::ios::binary };
 
   if (!file.good()) {
     fmt::print("Failed to open armwrestler.gba.\n");

@@ -762,6 +762,17 @@ void ARM_Undefined(u32 instruction) {
 }
 
 void ARM_SWI(u32 instruction) {
+  // TODO: remove this, it's just a temporary fix...
+  if ((instruction & 0xFFFFFF) == 0x060000) {
+    auto div = s32(state.r0) / s32(state.r1);
+    auto mod = s32(state.r0) % s32(state.r1);
+
+    state.r0 = u32(div);
+    state.r1 = u32(mod);
+    state.r15 += 4;
+    return;
+  }
+
   // Save current program status register.
   state.spsr[BANK_SVC].v = state.cpsr.v;
 
