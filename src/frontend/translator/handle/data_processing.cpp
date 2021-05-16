@@ -266,7 +266,6 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
   }
 
   if (opcode.reg_dst == GPR::PC && opcode.set_flags) {
-    // TODO: handle switch to thumb mode.
     EmitLoadSPSRToCPSR();
   }
 
@@ -275,7 +274,11 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
       opcode.opcode != Opcode::CMN &&
       opcode.opcode != Opcode::TST &&
       opcode.opcode != Opcode::TEQ) {
-    EmitFlushPipeline();
+    if (opcode.set_flags) {
+      EmitFlush();
+    } else {
+      EmitConstFlush();
+    }
     return Status::BreakBasicBlock;
   } else if (!advance_pc_early) {
     EmitAdvancePC();

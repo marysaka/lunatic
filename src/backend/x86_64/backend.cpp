@@ -156,6 +156,9 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
       case IROpcodeClass::MemoryWrite:
         CompileMemoryWrite(context, lunatic_cast<IRMemoryWrite>(op.get()));
         break;
+      case IROpcodeClass::Flush:
+        CompileFlush(context, lunatic_cast<IRFlush>(op.get()));
+        break;
       default:
         throw std::runtime_error(
           fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
@@ -1036,6 +1039,20 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
   code.L(label_final);
   code.pop(rcx);
+}
+
+void X64Backend::CompileFlush(CompileContext const& context, IRFlush* op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto cpsr_reg = reg_alloc.GetVariableHostReg(op->cpsr_in);
+  auto r15_in_reg = reg_alloc.GetVariableHostReg(op->r15_in);
+  auto r15_out_reg = reg_alloc.GetVariableHostReg(op->r15_out);
+
+  // Thanks to @wheremyfoodat (github.com/wheremyfoodat) for coming up with this.
+  code.test(cpsr_reg, 1 << 5);
+  code.sete(r15_out_reg.cvt8());
+  code.movzx(r15_out_reg, r15_out_reg.cvt8());
+  code.lea(r15_out_reg, dword[r15_in_reg + r15_out_reg * 4 + 4]);
 }
 
 } // namespace lunatic::backend

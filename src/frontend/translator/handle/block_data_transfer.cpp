@@ -71,14 +71,14 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
 
   // Load or store a set of registers from/to memory.
   for (int i = 0; i <= 15; i++)  {
-    if (!bit::get_bit(opcode.reg_list, i)) 
+    if (!bit::get_bit(opcode.reg_list, i))
       continue;
 
     auto  reg  = static_cast<GPR>(i);
     auto& data = emitter->CreateVar(IRDataType::UInt32, "data");
     auto& address_next = emitter->CreateVar(IRDataType::UInt32, "address");
 
-    emitter->ADD(address_next, *address, IRConstant{sizeof(u32)}, false);  
+    emitter->ADD(address_next, *address, IRConstant{sizeof(u32)}, false);
 
     if (opcode.pre_increment == opcode.add) {
       address = &address_next;
@@ -99,7 +99,7 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
 
   if (opcode.user_mode && opcode.load && transfer_pc) {
     // TODO: base writeback happens in which mode? (this is unpredictable)
-    // If writeback happens in the new mode, then this might be difficult 
+    // If writeback happens in the new mode, then this might be difficult
     // to emulate because we cannot know the value of SPSR at compile-time.
     EmitLoadSPSRToCPSR();
   }
@@ -123,14 +123,14 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
   // Flush the pipeline if we loaded R15.
   if (opcode.load && transfer_pc) {
     if (opcode.user_mode) {
-      // flush pipeline based on CPSR.T ...
-      return Status::Unimplemented;
+      EmitFlush();
     } else if (armv5te) {
-      // BX ...
+      // Branch with exchange (unimplemented)
       return Status::Unimplemented;
+    } else {
+      EmitConstFlush();
     }
 
-    EmitFlushPipeline();
     return Status::BreakBasicBlock;
   }
 

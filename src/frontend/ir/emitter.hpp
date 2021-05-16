@@ -33,7 +33,7 @@ struct IREmitter {
 
   void LoadGPR (IRGuestReg reg, IRVariable const& result);
   void StoreGPR(IRGuestReg reg, IRValue value);
-  
+
   void LoadSPSR (IRVariable const& result, State::Mode mode);
   void LoadCPSR (IRVariable const& result);
   void StoreCPSR(IRValue value);
@@ -57,14 +57,14 @@ struct IREmitter {
     IRValue amount,
     bool update_host_flags
   );
-  
+
   void LSR(
     IRVariable const& result,
     IRVariable const& operand,
     IRValue amount,
     bool update_host_flags
   );
-  
+
   void ASR(
     IRVariable const& result,
     IRVariable const& operand,
@@ -171,6 +171,12 @@ struct IREmitter {
     IRMemoryFlags flags,
     IRVariable const& source,
     IRVariable const& address
+  );
+
+  void Flush(
+    IRVariable const& r15_out,
+    IRVariable const& r15_in,
+    IRVariable const& cpsr_in
   );
 
 private:

@@ -42,7 +42,8 @@ enum class IROpcodeClass {
   MOV,
   MVN,
   MemoryRead,
-  MemoryWrite
+  MemoryWrite,
+  Flush
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -580,6 +581,32 @@ struct IRMemoryWrite final : IROpcodeBase<IROpcodeClass::MemoryWrite> {
   }
 };
 
+struct IRFlush final : IROpcodeBase<IROpcodeClass::Flush> {
+  IRFlush(
+    IRVariable const& r15_out,
+    IRVariable const& r15_in,
+    IRVariable const& cpsr_in
+  ) : r15_out(r15_out), r15_in(r15_in), cpsr_in(cpsr_in) {}
+
+  IRVariable const& r15_out;
+  IRVariable const& r15_in;
+  IRVariable const& cpsr_in;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &var == &r15_in || &var == &cpsr_in;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &var == &r15_out;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("flush {}, {}, {}",
+      std::to_string(r15_out),
+      std::to_string(r15_in),
+      std::to_string(cpsr_in));
+  }
+};
 
 } // namespace lunatic::frontend
 } // namespace lunatic

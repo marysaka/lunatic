@@ -36,7 +36,7 @@ struct JIT {
 
     auto address = block_key.field.address;
     auto mode = block_key.field.mode;
-    fmt::print("address=0x{:08X} mode=0x{:02X}\n", address, mode);
+    //fmt::print("address=0x{:08X} mode=0x{:02X}\n", address, mode);
 
     if (match != block_cache.end()) {
       auto basic_block = match->second;

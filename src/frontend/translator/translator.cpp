@@ -79,12 +79,23 @@ void Translator::EmitAdvancePC() {
   emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, r15_out);
 }
 
-void Translator::EmitFlushPipeline() {
+void Translator::EmitConstFlush() {
   auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "r15_in");
   auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "r15_out");
 
   emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, r15_in);
   emitter->ADD(r15_out, r15_in, IRConstant{opcode_size * 2}, false);
+  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, r15_out);
+}
+
+void Translator::EmitFlush() {
+  auto& cpsr_in = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
+  auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "r15_in");
+  auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "r15_out");
+
+  emitter->LoadCPSR(cpsr_in);
+  emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, r15_in);
+  emitter->Flush(r15_out, r15_in, cpsr_in);
   emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, r15_out);
 }
 

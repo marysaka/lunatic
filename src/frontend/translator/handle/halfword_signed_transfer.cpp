@@ -109,7 +109,7 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
       return Status::Unimplemented;
     }
 
-    EmitFlushPipeline();
+    EmitConstFlush();
     return Status::BreakBasicBlock;
   }
 

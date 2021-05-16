@@ -108,7 +108,7 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> Status {
       return Status::Unimplemented;
     }
 
-    EmitFlushPipeline();
+    EmitConstFlush();
     return Status::BreakBasicBlock;
   }
 

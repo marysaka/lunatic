@@ -73,6 +73,7 @@ private:
   void CompileMVN(CompileContext const& context, IRMvn* op);
   void CompileMemoryRead(CompileContext const& context, IRMemoryRead* op);
   void CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op);
+  void CompileFlush(CompileContext const& context, IRFlush* op);
 
   // TODO: get rid of the thunks eventually.
 

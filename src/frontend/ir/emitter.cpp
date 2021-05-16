@@ -365,5 +365,13 @@ void IREmitter::STR(
   Push<IRMemoryWrite>(flags, source, address);
 }
 
+void IREmitter::Flush(
+  IRVariable const& r15_out,
+  IRVariable const& r15_in,
+  IRVariable const& cpsr_in
+) {
+  Push<IRFlush>(r15_out, r15_in, cpsr_in);
+}
+
 } // namespace lunatic::frontend
 } // namespace lunatic

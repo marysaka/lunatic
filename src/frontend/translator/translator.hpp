@@ -34,7 +34,8 @@ struct Translator final : ARMDecodeClient<Status> {
   void EmitUpdateNZC();
   void EmitUpdateNZCV();
   void EmitAdvancePC();
-  void EmitFlushPipeline();
+  void EmitConstFlush();
+  void EmitFlush();
   void EmitLoadSPSRToCPSR();
 
   Mode mode;
