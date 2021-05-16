@@ -165,7 +165,7 @@ struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {
 
   auto ToString() -> std::string override {
     return fmt::format("stcpsr {}", std::to_string(value));
-  }  
+  }
 };
 
 struct IRClearCarry final : IROpcodeBase<IROpcodeClass::ClearCarry> {
@@ -182,7 +182,7 @@ struct IRClearCarry final : IROpcodeBase<IROpcodeClass::ClearCarry> {
   }
 };
 
-struct IRSetCarry final : IROpcodeBase<IROpcodeClass::ClearCarry> {
+struct IRSetCarry final : IROpcodeBase<IROpcodeClass::SetCarry> {
   auto Reads(IRVariable const& var) -> bool override {
     return false;
   }
