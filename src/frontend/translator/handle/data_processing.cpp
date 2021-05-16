@@ -22,7 +22,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
 
   // TODO: clean this unholy mess up.
   // TODO: do not update the carry flag if it will be overwritten.
-  auto shifter_update_carry = opcode.set_flags && 
+  auto shifter_update_carry = opcode.set_flags &&
     opcode.opcode != Opcode::ADC &&
     opcode.opcode != Opcode::SBC &&
     opcode.opcode != Opcode::RSC;
@@ -265,12 +265,16 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
     }
   }
 
-  if (opcode.reg_dst == GPR::PC) {
-    // TODO: handle CMP, CMN, TST and TEQ opcodes.
+  if (opcode.reg_dst == GPR::PC && opcode.set_flags) {
     // TODO: handle switch to thumb mode.
-    if (opcode.set_flags) {
-      EmitLoadSPSRToCPSR();
-    }
+    EmitLoadSPSRToCPSR();
+  }
+
+  if (opcode.reg_dst == GPR::PC &&
+      opcode.opcode != Opcode::CMP &&
+      opcode.opcode != Opcode::CMN &&
+      opcode.opcode != Opcode::TST &&
+      opcode.opcode != Opcode::TEQ) {
     EmitFlushPipeline();
     return Status::BreakBasicBlock;
   } else if (!advance_pc_early) {
