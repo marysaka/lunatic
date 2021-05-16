@@ -936,10 +936,11 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   static constexpr auto kHalfSignedARMv4T = Half | Signed | ARMv4T;
 
   // ARM7TDMI/ARMv4T special case: unaligned LDRSH is effectively LDRSB.
+  // TODO: this can probably be optimized by checking for misalignment early.
   if ((flags & kHalfSignedARMv4T) == kHalfSignedARMv4T) {
     auto label_aligned = Xbyak::Label{};
 
-    code.bt(address_reg, 1);
+    code.bt(address_reg, 0);
     code.jnc(label_aligned);
     code.shr(result_reg, 8);
     code.movsx(result_reg, result_reg.cvt8());
