@@ -129,8 +129,6 @@ struct Memory final : lunatic::Memory {
   }
 
   auto ReadHalf(u32 address, Bus bus) -> u16 override {
-//    fmt::print("hi<3\n");
-
     if (address == 0x04000004) {
       vblank_flag ^= 1;
       return vblank_flag;
@@ -150,8 +148,8 @@ struct Memory final : lunatic::Memory {
   }
 
   void WriteByte(u32 address, u8  value, Bus bus) override {}
-  void WriteHalf(u32 address, u16 value, Bus bus) override {fmt::print("another hi<3\n");}
-  void WriteWord(u32 address, u32 value, Bus bus) override {fmt::print("another hi<3\n");}
+  void WriteHalf(u32 address, u16 value, Bus bus) override {}
+  void WriteWord(u32 address, u32 value, Bus bus) override {}
 
   u8 pram[0x400];
   u8 vram[0x20000];
