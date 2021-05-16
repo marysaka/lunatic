@@ -929,7 +929,7 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
       code.mov(ecx, address_reg);
       code.and_(cl, 1);
       code.shl(cl, 3);
-      code.ror(result_reg.cvt16(), cl);
+      code.ror(result_reg, cl);
     }
   }
 
