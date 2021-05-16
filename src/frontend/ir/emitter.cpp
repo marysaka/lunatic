@@ -124,7 +124,12 @@ void IREmitter::StoreGPR(IRGuestReg reg, IRValue value) {
 }
 
 void IREmitter::LoadSPSR (IRVariable const& result, State::Mode mode) {
-  Push<IRLoadSPSR>(result, mode);
+  // TODO: I'm not sure if here is the right place to handle this.
+  if (mode == State::Mode::User || mode == State::Mode::System) {
+    Push<IRLoadCPSR>(result);
+  } else {
+    Push<IRLoadSPSR>(result, mode);
+  }
 }
 
 void IREmitter::LoadCPSR(IRVariable const& result) {
