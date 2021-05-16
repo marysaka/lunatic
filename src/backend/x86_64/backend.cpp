@@ -285,8 +285,8 @@ void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* o
     auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
 
     code.push(rcx);
-    code.mov(ecx, 33);
-    code.cmp(amount_reg, u8(33));
+    code.mov(cl, 33);
+    code.cmp(amount_reg.cvt8(), u8(33));
     code.cmovl(ecx, amount_reg);
 
     if (op->update_host_flags) {
@@ -328,8 +328,8 @@ void X64Backend::CompileLSR(CompileContext const& context, IRLogicalShiftRight* 
   } else {
     auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
     code.push(rcx);
-    code.mov(ecx, 33);
-    code.cmp(amount_reg, u8(33));
+    code.mov(cl, 33);
+    code.cmp(amount_reg.cvt8(), u8(33));
     code.cmovl(ecx, amount_reg);
     if (op->update_host_flags) {
       code.sahf();
@@ -371,8 +371,8 @@ void X64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRigh
   } else {
     auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
     code.push(rcx);
-    code.mov(ecx, 33);
-    code.cmp(amount_reg, u8(33));
+    code.mov(cl, 33);
+    code.cmp(amount_reg.cvt8(), u8(33));
     code.cmovl(ecx, amount_reg);
     if (op->update_host_flags) {
       code.sahf();
