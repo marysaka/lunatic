@@ -125,10 +125,12 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
     if (opcode.user_mode) {
       EmitFlush();
     } else if (armv5te) {
-      // Branch with exchange (unimplemented)
-      return Status::Unimplemented;
+      // Branch with exchange
+      auto& address = emitter->CreateVar(IRDataType::UInt32, "address");
+      emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, address);
+      EmitFlushExchange(address);
     } else {
-      EmitConstFlush();
+      EmitFlushNoSwitch();
     }
 
     return Status::BreakBasicBlock;

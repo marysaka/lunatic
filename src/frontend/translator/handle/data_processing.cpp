@@ -277,7 +277,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
     if (opcode.set_flags) {
       EmitFlush();
     } else {
-      EmitConstFlush();
+      EmitFlushNoSwitch();
     }
     return Status::BreakBasicBlock;
   } else if (!advance_pc_early) {

@@ -104,11 +104,13 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> Status {
 
   if (opcode.load && opcode.reg_dst == GPR::PC) {
     if (armv5te) {
-      // TODO: handle switch to thumb mode.
-      return Status::Unimplemented;
+      // Branch with exchange
+      auto& address = emitter->CreateVar(IRDataType::UInt32, "address");
+      emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, address);
+      EmitFlushExchange(address);
+    } else {
+      EmitFlushNoSwitch();
     }
-
-    EmitConstFlush();
     return Status::BreakBasicBlock;
   }
 

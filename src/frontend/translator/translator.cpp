@@ -75,24 +75,15 @@ void Translator::EmitAdvancePC() {
   emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, IRConstant{code_address + opcode_size * 3});
 }
 
-void Translator::EmitConstFlush() {
-  auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "address_in");
-  auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "address_out");
-
-  emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, r15_in);
-  emitter->ADD(r15_out, r15_in, IRConstant{opcode_size * 2}, false);
-  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, r15_out);
-}
-
 void Translator::EmitFlush() {
   auto& cpsr_in = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
-  auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "address_in");
-  auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "address_out");
+  auto& address_in  = emitter->CreateVar(IRDataType::UInt32, "address_in");
+  auto& address_out = emitter->CreateVar(IRDataType::UInt32, "address_out");
 
   emitter->LoadCPSR(cpsr_in);
-  emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, r15_in);
-  emitter->Flush(r15_out, r15_in, cpsr_in);
-  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, r15_out);
+  emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, address_in);
+  emitter->Flush(address_out, address_in, cpsr_in);
+  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, address_out);
 }
 
 void Translator::EmitFlushExchange(const IRVariable& address) {
@@ -104,6 +95,15 @@ void Translator::EmitFlushExchange(const IRVariable& address) {
   emitter->FlushExchange(address_out, cpsr_out, address, cpsr_in);
   emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, address_out);
   emitter->StoreCPSR(cpsr_out);
+}
+
+void Translator::EmitFlushNoSwitch() {
+  auto& address_in  = emitter->CreateVar(IRDataType::UInt32, "address_in");
+  auto& address_out = emitter->CreateVar(IRDataType::UInt32, "address_out");
+
+  emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, address_in);
+  emitter->ADD(address_out, address_in, IRConstant{opcode_size * 2}, false);
+  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, address_out);
 }
 
 void Translator::EmitLoadSPSRToCPSR() {
