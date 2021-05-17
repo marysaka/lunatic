@@ -366,11 +366,20 @@ void IREmitter::STR(
 }
 
 void IREmitter::Flush(
-  IRVariable const& r15_out,
-  IRVariable const& r15_in,
+  IRVariable const& address_out,
+  IRVariable const& address_in,
   IRVariable const& cpsr_in
 ) {
-  Push<IRFlush>(r15_out, r15_in, cpsr_in);
+  Push<IRFlush>(address_out, address_in, cpsr_in);
+}
+
+void IREmitter::FlushExchange(
+  IRVariable const& address_out,
+  IRVariable const& cpsr_out,
+  IRVariable const& address_in,
+  IRVariable const& cpsr_in
+) {
+  Push<IRFlushExchange>(address_out, cpsr_out, address_in, cpsr_in);
 }
 
 } // namespace lunatic::frontend

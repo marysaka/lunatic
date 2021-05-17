@@ -174,8 +174,15 @@ struct IREmitter {
   );
 
   void Flush(
-    IRVariable const& r15_out,
-    IRVariable const& r15_in,
+    IRVariable const& address_out,
+    IRVariable const& address_in,
+    IRVariable const& cpsr_in
+  );
+
+  void FlushExchange(
+    IRVariable const& address_out,
+    IRVariable const& cpsr_out,
+    IRVariable const& address_in,
     IRVariable const& cpsr_in
   );
 

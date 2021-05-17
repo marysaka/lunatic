@@ -159,6 +159,9 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
       case IROpcodeClass::Flush:
         CompileFlush(context, lunatic_cast<IRFlush>(op.get()));
         break;
+      case IROpcodeClass::FlushExchange:
+        CompileExchange(context, lunatic_cast<IRFlushExchange>(op.get()));
+        break;
       default:
         throw std::runtime_error(
           fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
@@ -1045,14 +1048,50 @@ void X64Backend::CompileFlush(CompileContext const& context, IRFlush* op) {
   DESTRUCTURE_CONTEXT;
 
   auto cpsr_reg = reg_alloc.GetVariableHostReg(op->cpsr_in);
-  auto r15_in_reg = reg_alloc.GetVariableHostReg(op->r15_in);
-  auto r15_out_reg = reg_alloc.GetVariableHostReg(op->r15_out);
+  auto r15_in_reg = reg_alloc.GetVariableHostReg(op->address_in);
+  auto r15_out_reg = reg_alloc.GetVariableHostReg(op->address_out);
 
   // Thanks to @wheremyfoodat (github.com/wheremyfoodat) for coming up with this.
   code.test(cpsr_reg, 1 << 5);
   code.sete(r15_out_reg.cvt8());
   code.movzx(r15_out_reg, r15_out_reg.cvt8());
   code.lea(r15_out_reg, dword[r15_in_reg + r15_out_reg * 4 + 4]);
+}
+
+void X64Backend::CompileExchange(const CompileContext &context, IRFlushExchange *op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto address_out_reg = reg_alloc.GetVariableHostReg(op->address_out);
+  auto address_in_reg = reg_alloc.GetVariableHostReg(op->address_in);
+  auto cpsr_out_reg = reg_alloc.GetVariableHostReg(op->cpsr_out);
+  auto cpsr_in_reg = reg_alloc.GetVariableHostReg(op->cpsr_in);
+
+  auto label_arm = Xbyak::Label{};
+  auto label_done = Xbyak::Label{};
+
+  // TODO: fix this horrible codegen.
+  // a) try to make this branch-less
+  // b) do we always need to mask with ~1 / ~3?
+
+  code.mov(address_out_reg, address_in_reg);
+  code.mov(cpsr_out_reg, cpsr_in_reg);
+
+  code.test(address_in_reg, 1);
+  code.je(label_arm);
+
+  // Thumb
+  code.or_(cpsr_out_reg, 1 << 5);
+  code.and_(address_out_reg, ~1);
+  code.add(address_out_reg, sizeof(u16) * 2);
+  code.jmp(label_done);
+
+  // ARM
+  code.L(label_arm);
+  code.and_(cpsr_out_reg, ~(1 << 5));
+  code.and_(address_out_reg, ~3);
+  code.add(address_out_reg, sizeof(u32) * 2);
+
+  code.L(label_done);
 }
 
 } // namespace lunatic::backend

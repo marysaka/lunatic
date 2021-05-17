@@ -11,6 +11,7 @@
 
 #include "common/bit.hpp"
 #include "definition/block_data_transfer.hpp"
+#include "definition/branch_exchange.hpp"
 #include "definition/data_processing.hpp"
 #include "definition/halfword_signed_transfer.hpp"
 #include "definition/single_data_transfer.hpp"
@@ -26,6 +27,7 @@ struct ARMDecodeClient {
   using return_type = T;
 
   virtual auto Handle(ARMDataProcessing const& opcode) -> T = 0;
+  virtual auto Handle(ARMBranchExchange const& opcode) -> T = 0;
   virtual auto Handle(ARMHalfwordSignedTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBlockDataTransfer const& opcode) -> T = 0;
@@ -120,7 +122,7 @@ template<typename T, typename U = typename T::return_type>
 inline auto decode_arm(u32 instruction, T& client) -> U {
   auto opcode = instruction & 0x0FFFFFFF;
   auto condition = bit::get_field<u32, Condition>(instruction, 28, 4);
-  
+
   using namespace detail;
 
   // TODO: use string pattern based approach to decoding.
@@ -134,7 +136,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
       // Extra load/stores (A3-5)
       bool set_flags = opcode & (1 << 20);
       auto opcode2 = (opcode >> 21) & 0xF;
-      
+
       if ((opcode & 0x90) == 0x90) {
         // Multiplies (A3-3)
         // Extra load/stores (A3-5)
@@ -162,8 +164,12 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         }
 
         if ((opcode & 0x6000F0) == 0x200010) {
-          // return ARMInstrType::BranchAndExchange;
-          return client.Undefined(instruction);
+          // Branch and exchange (no link)
+          return client.Handle(ARMBranchExchange{
+            .condition = condition,
+            .reg = bit::get_field<u32, GPR>(opcode, 0, 4),
+            .link = false
+          });
         }
 
         if ((opcode & 0x6000F0) == 0x200020) {
@@ -177,8 +183,12 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         }
 
         if ((opcode & 0x6000F0) == 0x200030) {
-          // return ARMInstrType::BranchLinkExchange;
-          return client.Undefined(instruction);
+          // Branch and exchange with link
+          return client.Handle(ARMBranchExchange{
+            .condition = condition,
+            .reg = bit::get_field<u32, GPR>(opcode, 0, 4),
+            .link = true
+            });
         }
 
         if ((opcode & 0xF0) == 0x50) {
@@ -190,15 +200,15 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
           // return ARMInstrType::Breakpoint;
           return client.Undefined(instruction);
         }
-        
+
         if ((opcode & 0x90) == 0x80) {
-          // Signed halfword multiply (ARMv5 upwards): 
+          // Signed halfword multiply (ARMv5 upwards):
           // SMLAxy, SMLAWy, SMULWy, SMLALxy, SMULxy
           // return ARMInstrType::SignedHalfwordMultiply;
           return client.Undefined(instruction);
         }
       }
-      
+
       // Data processing immediate shift
       // Data processing register shift
       return decode_data_processing(condition, opcode, client);
@@ -239,7 +249,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         return client.Undefined(instruction);
       }
 
-      return decode_single_data_transfer(condition, opcode, client); 
+      return decode_single_data_transfer(condition, opcode, client);
     }
     case 0b100: {
       // Load/store multiple
@@ -269,7 +279,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         // return ARMInstrType::CoprocessorRegisterXfer;
         return client.Undefined(instruction);
       }
-      
+
       // return ARMInstrType::SoftwareInterrupt;
       return client.Undefined(instruction);
     }

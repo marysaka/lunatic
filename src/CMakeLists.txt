@@ -12,6 +12,7 @@ set(SOURCES
   backend/x86_64/register_allocator.cpp
   frontend/ir/emitter.cpp
   frontend/translator/handle/block_data_transfer.cpp
+  frontend/translator/handle/branch_exchange.cpp
   frontend/translator/handle/data_processing.cpp
   frontend/translator/handle/halfword_signed_transfer.cpp
   frontend/translator/handle/single_data_transfer.cpp
@@ -28,6 +29,7 @@ set(HEADERS
   backend/x86_64/register_allocator.hpp
   backend/backend.hpp
   frontend/decode/definition/block_data_transfer.hpp
+  frontend/decode/definition/branch_exchange.hpp
   frontend/decode/definition/common.hpp
   frontend/decode/definition/data_processing.hpp
   frontend/decode/definition/halfword_signed_transfer.hpp

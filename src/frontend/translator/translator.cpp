@@ -11,10 +11,11 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
-  auto address = block.key.field.address;
+  code_address = block.key.field.address;
 
-  if (address & 1) {
+  if (code_address & 1) {
     // Thumb mode is not supported right now.
+    code_address &= ~1;
     return false;
   }
 
@@ -25,7 +26,7 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
   static constexpr int kMaxBlockSize = 32;
 
   for (int i = 0; i < kMaxBlockSize; i++) {
-    auto instruction = memory.FastRead<u32, Memory::Bus::Code>(address);
+    auto instruction = memory.FastRead<u32, Memory::Bus::Code>(code_address);
     auto status = decode_arm(instruction, *this);
 
     if (status == Status::Unimplemented) {
@@ -42,7 +43,7 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
       break;
     }
 
-    address += sizeof(u32);
+    code_address += sizeof(u32);
   }
 
   return true;
@@ -71,17 +72,12 @@ void Translator::EmitUpdateNZCV() {
 }
 
 void Translator::EmitAdvancePC() {
-  auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "r15_in");
-  auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "r15_out");
-
-  emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, r15_in);
-  emitter->ADD(r15_out, r15_in, IRConstant{opcode_size}, false);
-  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, r15_out);
+  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, IRConstant{code_address + opcode_size * 3});
 }
 
 void Translator::EmitConstFlush() {
-  auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "r15_in");
-  auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "r15_out");
+  auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "address_in");
+  auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "address_out");
 
   emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, r15_in);
   emitter->ADD(r15_out, r15_in, IRConstant{opcode_size * 2}, false);
@@ -90,13 +86,24 @@ void Translator::EmitConstFlush() {
 
 void Translator::EmitFlush() {
   auto& cpsr_in = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
-  auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "r15_in");
-  auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "r15_out");
+  auto& r15_in  = emitter->CreateVar(IRDataType::UInt32, "address_in");
+  auto& r15_out = emitter->CreateVar(IRDataType::UInt32, "address_out");
 
   emitter->LoadCPSR(cpsr_in);
   emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, r15_in);
   emitter->Flush(r15_out, r15_in, cpsr_in);
   emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, r15_out);
+}
+
+void Translator::EmitFlushExchange(const IRVariable& address) {
+  auto& address_out = emitter->CreateVar(IRDataType::UInt32, "address_out");
+  auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
+  auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  emitter->LoadCPSR(cpsr_in);
+  emitter->FlushExchange(address_out, cpsr_out, address, cpsr_in);
+  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, address_out);
+  emitter->StoreCPSR(cpsr_out);
 }
 
 void Translator::EmitLoadSPSRToCPSR() {

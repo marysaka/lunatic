@@ -74,6 +74,7 @@ private:
   void CompileMemoryRead(CompileContext const& context, IRMemoryRead* op);
   void CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op);
   void CompileFlush(CompileContext const& context, IRFlush* op);
+  void CompileExchange(CompileContext const& context, IRFlushExchange* op);
 
   // TODO: get rid of the thunks eventually.
 

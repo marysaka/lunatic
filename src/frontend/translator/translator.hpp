@@ -26,6 +26,7 @@ struct Translator final : ARMDecodeClient<Status> {
   auto Translate(BasicBlock& block, Memory& memory) -> bool;
 
   auto Handle(ARMDataProcessing const& opcode) -> Status override;
+  auto Handle(ARMBranchExchange const& opcode) -> Status override;
   auto Handle(ARMHalfwordSignedTransfer const& opcode) -> Status override;
   auto Handle(ARMSingleDataTransfer const& opcode) -> Status override;
   auto Handle(ARMBlockDataTransfer const& opcode) -> Status override;
@@ -36,10 +37,12 @@ struct Translator final : ARMDecodeClient<Status> {
   void EmitAdvancePC();
   void EmitConstFlush();
   void EmitFlush();
+  void EmitFlushExchange(IRVariable const& address);
   void EmitLoadSPSRToCPSR();
 
   Mode mode;
   u32 opcode_size;
+  u32 code_address;
   bool armv5te = false;
   IREmitter* emitter = nullptr;
 };

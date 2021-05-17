@@ -43,7 +43,8 @@ enum class IROpcodeClass {
   MVN,
   MemoryRead,
   MemoryWrite,
-  Flush
+  Flush,
+  FlushExchange
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -583,27 +584,57 @@ struct IRMemoryWrite final : IROpcodeBase<IROpcodeClass::MemoryWrite> {
 
 struct IRFlush final : IROpcodeBase<IROpcodeClass::Flush> {
   IRFlush(
-    IRVariable const& r15_out,
-    IRVariable const& r15_in,
+    IRVariable const& address_out,
+    IRVariable const& address_in,
     IRVariable const& cpsr_in
-  ) : r15_out(r15_out), r15_in(r15_in), cpsr_in(cpsr_in) {}
+  ) : address_out(address_out), address_in(address_in), cpsr_in(cpsr_in) {}
 
-  IRVariable const& r15_out;
-  IRVariable const& r15_in;
+  IRVariable const& address_out;
+  IRVariable const& address_in;
   IRVariable const& cpsr_in;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &var == &r15_in || &var == &cpsr_in;
+    return &var == &address_in || &var == &cpsr_in;
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &r15_out;
+    return &var == &address_out;
   }
 
   auto ToString() -> std::string override {
     return fmt::format("flush {}, {}, {}",
-      std::to_string(r15_out),
-      std::to_string(r15_in),
+      std::to_string(address_out),
+      std::to_string(address_in),
+      std::to_string(cpsr_in));
+  }
+};
+
+struct IRFlushExchange final : IROpcodeBase<IROpcodeClass::FlushExchange> {
+  IRFlushExchange(
+    IRVariable const& address_out,
+    IRVariable const& cpsr_out,
+    IRVariable const& address_in,
+    IRVariable const& cpsr_in
+  ) : address_out(address_out), cpsr_out(cpsr_out), address_in(address_in), cpsr_in(cpsr_in) {}
+
+  IRVariable const& address_out;
+  IRVariable const& cpsr_out;
+  IRVariable const& address_in;
+  IRVariable const& cpsr_in;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &var == &address_in || &var == &cpsr_in;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &var == &address_out || &var == &cpsr_out;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("flushxchg {}, {}, {}, {}",
+      std::to_string(address_out),
+      std::to_string(cpsr_out),
+      std::to_string(address_in),
       std::to_string(cpsr_in));
   }
 };
