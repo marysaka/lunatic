@@ -63,6 +63,15 @@ inline auto decode_data_processing(Condition condition, u32 opcode, T& client) -
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_branch_exchange(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMBranchExchange{
+    .condition = condition,
+    .reg = bit::get_field<u32, GPR>(opcode, 0, 4),
+    .link = bit::get_bit<u32, bool>(opcode, 5)
+  });
+}
+
 // TODO: the name of this instruction group is a misnormer...
 template<typename T, typename U = typename T::return_type>
 inline auto decode_halfword_signed_transfer(Condition condition, u32 opcode, T& client) -> U {
@@ -113,6 +122,23 @@ inline auto decode_block_data_transfer(Condition condition, u32 opcode, T& clien
     .load = bit::get_bit<u32, bool>(opcode, 20),
     .reg_base = bit::get_field<u32, GPR>(opcode, 16, 4),
     .reg_list = bit::get_field<u32, u16>(opcode, 0, 16)
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_branch_relative(Condition condition, u32 opcode, T& client) -> U {
+  auto offset = opcode & 0xFFFFFF;
+
+  if (offset & 0x800000) {
+    offset |= 0xFF000000;
+  }
+
+  offset *= sizeof(u32);
+
+  return client.Handle(ARMBranchRelative{
+    .condition = condition,
+    .offset = s32(offset),
+    .link = bit::get_bit<u32, bool>(opcode, 24)
   });
 }
 
@@ -167,11 +193,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
 
         if ((opcode & 0x6000F0) == 0x200010) {
           // Branch and exchange (no link)
-          return client.Handle(ARMBranchExchange{
-            .condition = condition,
-            .reg = bit::get_field<u32, GPR>(opcode, 0, 4),
-            .link = false
-          });
+          return decode_branch_exchange(condition, opcode, client);
         }
 
         if ((opcode & 0x6000F0) == 0x200020) {
@@ -186,11 +208,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
 
         if ((opcode & 0x6000F0) == 0x200030) {
           // Branch and exchange with link
-          return client.Handle(ARMBranchExchange{
-            .condition = condition,
-            .reg = bit::get_field<u32, GPR>(opcode, 0, 4),
-            .link = true
-            });
+          return decode_branch_exchange(condition, opcode, client);
         }
 
         if ((opcode & 0xF0) == 0x50) {
@@ -259,17 +277,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
     }
     case 0b101: {
       // Branch and branch with link
-      // TODO: clean this up...
-      auto offset = opcode & 0xFFFFFF;
-      if (offset & 0x800000) {
-        offset |= 0xFF000000;
-      }
-      offset <<= 2;
-      return client.Handle(ARMBranchRelative{
-        .condition = condition,
-        .offset = s32(offset),
-        .link = bit::get_bit<u32, bool>(opcode, 24)
-      });
+      return decode_branch_relative(condition, opcode, client);
     }
     case 0b110: {
       // Coprocessor load/store and double register transfers

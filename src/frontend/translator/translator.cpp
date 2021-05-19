@@ -17,8 +17,6 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
     // Thumb mode is not supported right now.
     code_address &= ~1;
     return false;
-  } else {
-    code_address &= ~3;
   }
 
   mode = block.key.field.mode;
