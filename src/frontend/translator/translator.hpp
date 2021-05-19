@@ -30,6 +30,7 @@ struct Translator final : ARMDecodeClient<Status> {
   auto Handle(ARMHalfwordSignedTransfer const& opcode) -> Status override;
   auto Handle(ARMSingleDataTransfer const& opcode) -> Status override;
   auto Handle(ARMBlockDataTransfer const& opcode) -> Status override;
+  auto Handle(ARMBranchRelative const& opcode) -> Status override;
   auto Undefined(u32 opcode) -> Status override;
 
   void EmitUpdateNZC();

@@ -10,18 +10,18 @@
 namespace lunatic {
 namespace frontend {
 
-auto Translator::Handle(ARMBranchExchange const& opcode) -> Status {
+auto Translator::Handle(ARMBranchRelative const& opcode) -> Status {
   if (opcode.condition != Condition::AL) {
     return Status::Unimplemented;
   }
 
-  if (armv5te && opcode.link) {
+  auto target_addr = IRConstant{code_address + opcode.offset + opcode_size * 4};
+
+  if (opcode.link) {
     emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{code_address + opcode_size});
   }
 
-  auto& address = emitter->CreateVar(IRDataType::UInt32, "address");
-  emitter->LoadGPR(IRGuestReg{opcode.reg, mode}, address);
-  EmitFlushExchange(address);
+  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, target_addr);
 
   return Status::BreakBasicBlock;
 }

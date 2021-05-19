@@ -12,6 +12,7 @@
 #include "common/bit.hpp"
 #include "definition/block_data_transfer.hpp"
 #include "definition/branch_exchange.hpp"
+#include "definition/branch_relative.hpp"
 #include "definition/data_processing.hpp"
 #include "definition/halfword_signed_transfer.hpp"
 #include "definition/single_data_transfer.hpp"
@@ -31,6 +32,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMHalfwordSignedTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBlockDataTransfer const& opcode) -> T = 0;
+  virtual auto Handle(ARMBranchRelative const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
 };
 
@@ -257,8 +259,17 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
     }
     case 0b101: {
       // Branch and branch with link
-      // return ARMInstrType::BranchAndLink;
-      return client.Undefined(instruction);
+      // TODO: clean this up...
+      auto offset = opcode & 0xFFFFFF;
+      if (offset & 0x800000) {
+        offset |= 0xFF000000;
+      }
+      offset <<= 2;
+      return client.Handle(ARMBranchRelative{
+        .condition = condition,
+        .offset = s32(offset),
+        .link = bit::get_bit<u32, bool>(opcode, 24)
+      });
     }
     case 0b110: {
       // Coprocessor load/store and double register transfers
