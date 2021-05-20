@@ -71,11 +71,25 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
 
   for (auto const& micro_block : basic_block.micro_blocks) {
     auto& emitter = micro_block.emitter;
+    auto condition = micro_block.condition;
     auto reg_alloc = X64RegisterAllocator{emitter, *code};
     auto location = 0;
     auto context = CompileContext{*code, reg_alloc, state, location};
 
-    // TODO: check condition code!!!
+    auto label_skip = Xbyak::Label{};
+    auto label_done = Xbyak::Label{};
+
+    if (condition != Condition::AL) {
+      // TODO: optimize this
+      code->mov(edx, static_cast<u32>(condition) << 4);
+      code->mov(r8d, dword[rcx + state.GetOffsetToCPSR()]);
+      code->shr(r8d, 28);
+      code->or_(edx, r8d);
+      code->mov(r8, u64(condition_table));
+      code->mov(dl, byte[r8 + rdx]);
+      code->test(dl, dl);
+      code->je(label_skip, Xbyak::CodeGenerator::T_NEAR);
+    }
 
     for (auto const &op : emitter.Code()) {
       reg_alloc.SetCurrentLocation(location);
@@ -163,7 +177,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
           CompileFlush(context, lunatic_cast<IRFlush>(op.get()));
           break;
         case IROpcodeClass::FlushExchange:
-          CompileExchange(context, lunatic_cast<IRFlushExchange>(op.get()));
+          CompileFlushExchange(context, lunatic_cast<IRFlushExchange>(op.get()));
           break;
         default:
           throw std::runtime_error(
@@ -173,6 +187,16 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
 
       location++;
     }
+
+    code->jmp(label_done);
+
+    code->L(label_skip);
+    code->add(
+      dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
+      micro_block.number_of_opcodes * sizeof(u32)
+    );
+
+    code->L(label_done);
   }
 
   code->add(rsp, stack_displacement);
@@ -183,6 +207,33 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
   code->ret();
 
   basic_block.function = code->getCode<BasicBlock::CompiledFn>();
+}
+
+void X64Backend::BuildConditionTable() {
+  // TODO: Ugh, clean this mess up...
+  for (int flags = 0; flags < 16; flags++) {
+    bool n = flags & 8;
+    bool z = flags & 4;
+    bool c = flags & 2;
+    bool v = flags & 1;
+
+    condition_table[static_cast<int>(Condition::EQ)][flags] = z;
+    condition_table[static_cast<int>(Condition::NE)][flags] = !z;
+    condition_table[static_cast<int>(Condition::CS)][flags] =  c;
+    condition_table[static_cast<int>(Condition::CC)][flags] = !c;
+    condition_table[static_cast<int>(Condition::MI)][flags] =  n;
+    condition_table[static_cast<int>(Condition::PL)][flags] = !n;
+    condition_table[static_cast<int>(Condition::VS)][flags] =  v;
+    condition_table[static_cast<int>(Condition::VC)][flags] = !v;
+    condition_table[static_cast<int>(Condition::HI)][flags] =  c && !z;
+    condition_table[static_cast<int>(Condition::LS)][flags] = !c ||  z;
+    condition_table[static_cast<int>(Condition::GE)][flags] = n == v;
+    condition_table[static_cast<int>(Condition::LT)][flags] = n != v;
+    condition_table[static_cast<int>(Condition::GT)][flags] = !(z || (n != v));
+    condition_table[static_cast<int>(Condition::LE)][flags] =  (z || (n != v));
+    condition_table[static_cast<int>(Condition::AL)][flags] = true;
+    condition_table[static_cast<int>(Condition::NV)][flags] = false;
+  }
 }
 
 void X64Backend::Push(
@@ -1062,7 +1113,7 @@ void X64Backend::CompileFlush(CompileContext const& context, IRFlush* op) {
   code.lea(r15_out_reg, dword[r15_in_reg + r15_out_reg * 4 + 4]);
 }
 
-void X64Backend::CompileExchange(const CompileContext &context, IRFlushExchange *op) {
+void X64Backend::CompileFlushExchange(const CompileContext &context, IRFlushExchange *op) {
   DESTRUCTURE_CONTEXT;
 
   auto address_out_reg = reg_alloc.GetVariableHostReg(op->address_out);

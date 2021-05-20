@@ -23,6 +23,8 @@ namespace lunatic {
 namespace backend {
 
 struct X64Backend : Backend {
+  X64Backend() { BuildConditionTable(); }
+
   void Compile(
     Memory& memory,
     State& state,
@@ -30,14 +32,19 @@ struct X64Backend : Backend {
   );
 
 private:
-  Memory* memory = nullptr;
-
   struct CompileContext {
     Xbyak::CodeGenerator& code;
     X64RegisterAllocator& reg_alloc;
     State& state;
     int& location;
   };
+
+  Memory* memory = nullptr;
+
+  // TODO: this *really* shouldn't live here.
+  bool condition_table[16][16];
+
+  void BuildConditionTable();
 
   void Push(
     Xbyak::CodeGenerator& code,
@@ -74,7 +81,7 @@ private:
   void CompileMemoryRead(CompileContext const& context, IRMemoryRead* op);
   void CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op);
   void CompileFlush(CompileContext const& context, IRFlush* op);
-  void CompileExchange(CompileContext const& context, IRFlushExchange* op);
+  void CompileFlushExchange(CompileContext const& context, IRFlushExchange* op);
 
   // TODO: get rid of the thunks eventually.
 

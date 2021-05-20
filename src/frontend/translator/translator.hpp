@@ -19,6 +19,7 @@ namespace frontend {
 enum class Status {
   Continue,
   BreakBasicBlock,
+  BreakMicroBlock,
   Unimplemented
 };
 

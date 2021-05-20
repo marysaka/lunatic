@@ -11,10 +11,6 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> Status {
-  if (opcode.condition != Condition::AL) {
-    return Status::Unimplemented;
-  }
-
   if (!opcode.pre_increment && opcode.writeback) {
     // LDRT and STRT are not supported right now.
     return Status::Unimplemented;

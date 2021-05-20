@@ -37,6 +37,7 @@ struct BasicBlock {
   struct MicroBlock {
     Condition condition;
     IREmitter emitter;
+    int number_of_opcodes = 0;
   };
 
   std::vector<MicroBlock> micro_blocks;

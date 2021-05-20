@@ -11,10 +11,6 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMMoveStatusRegister const& opcode) -> Status {
-  if (opcode.condition != Condition::AL) {
-    return Status::Unimplemented;
-  }
-
   u32 mask = 0;
 
   if (opcode.fsxc & 1) mask |= 0x000000FF;

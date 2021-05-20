@@ -24,7 +24,7 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
   mode = block.key.field.mode;
   opcode_size = (block.key.field.address & 1) ? sizeof(u16) : sizeof(u32);
 
-  static constexpr int kMaxBlockSize = 32;
+  static constexpr int kMaxBlockSize = 64;
 
   auto micro_block = MicroBlock{};
 
@@ -34,19 +34,33 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
     auto instruction = memory.FastRead<u32, Memory::Bus::Code>(code_address);
     auto condition = bit::get_field<u32, Condition>(instruction, 28, 4);
 
+    // ARMv5TE+ treats condition code 'NV' as a separate
+    // encoding space for unpredicated instructions.
+    if (armv5te && condition == Condition::NV) {
+      condition = Condition::AL;
+    }
+
     if (i == 0) {
       micro_block.condition = condition;
-    } else if (condition != micro_block.condition) {
-      // TODO: handle unconditional instructions on ARMv5TE+
+    }
+
+    auto break_micro_block = [&]() {
       block.micro_blocks.push_back(std::move(micro_block));
       micro_block = {
         .condition = condition
       };
       emitter = &micro_block.emitter;
+    };
+
+    if (condition != micro_block.condition) {
+      break_micro_block();
     }
 
-    // TODO: it's redundant now that decode_arm decodes the condition code...?
     auto status = decode_arm(instruction, *this);
+
+    if (status == Status::BreakMicroBlock && condition != Condition::AL) {
+      break_micro_block();
+    }
 
     if (status == Status::Unimplemented) {
       /* TODO: this is not optimal.
@@ -57,6 +71,7 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
       return i != 0;
     }
 
+    micro_block.number_of_opcodes++;
     block.cycle_count++;
 
     if (status == Status::BreakBasicBlock) {

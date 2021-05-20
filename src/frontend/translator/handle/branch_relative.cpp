@@ -11,10 +11,6 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMBranchRelative const& opcode) -> Status {
-  if (opcode.condition != Condition::AL) {
-    return Status::Unimplemented;
-  }
-
   auto target_addr = IRConstant{code_address + opcode.offset + opcode_size * 4};
 
   if (opcode.link) {

@@ -11,10 +11,6 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMBranchExchange const& opcode) -> Status {
-  if (opcode.condition != Condition::AL) {
-    return Status::Unimplemented;
-  }
-
   if (armv5te && opcode.link) {
     emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{code_address + opcode_size});
   }

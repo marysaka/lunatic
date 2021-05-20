@@ -11,10 +11,6 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
-  if (opcode.condition != Condition::AL) {
-    return Status::Unimplemented;
-  }
-
   auto offset = IRValue{};
 
   if (opcode.immediate) {

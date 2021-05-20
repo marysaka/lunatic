@@ -13,10 +13,6 @@ namespace frontend {
 auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
   using Opcode = ARMDataProcessing::Opcode;
 
-  if (opcode.condition != Condition::AL) {
-    return Status::Unimplemented;
-  }
-
   auto op2 = IRValue{};
   bool advance_pc_early = false;
 
@@ -282,6 +278,10 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
     return Status::BreakBasicBlock;
   } else if (!advance_pc_early) {
     EmitAdvancePC();
+  }
+
+  if (opcode.set_flags) {
+    return Status::BreakMicroBlock;
   }
 
   return Status::Continue;
