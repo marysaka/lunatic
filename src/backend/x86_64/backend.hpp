@@ -59,6 +59,7 @@ private:
   void CompileLoadGPR(CompileContext const& context, IRLoadGPR* op);
   void CompileStoreGPR(CompileContext const& context, IRStoreGPR* op);
   void CompileLoadSPSR(CompileContext const& context, IRLoadSPSR* op);
+  void CompileStoreSPSR(CompileContext const& context, IRStoreSPSR* op);
   void CompileLoadCPSR(CompileContext const& context, IRLoadCPSR* op);
   void CompileStoreCPSR(CompileContext const& context, IRStoreCPSR* op);
   void CompileUpdateFlags(CompileContext const& context, IRUpdateFlags* op);

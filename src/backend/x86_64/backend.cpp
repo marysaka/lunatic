@@ -104,6 +104,9 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
         case IROpcodeClass::LoadSPSR:
           CompileLoadSPSR(context, lunatic_cast<IRLoadSPSR>(op.get()));
           break;
+        case IROpcodeClass::StoreSPSR:
+          CompileStoreSPSR(context, lunatic_cast<IRStoreSPSR>(op.get()));
+          break;
         case IROpcodeClass::LoadCPSR:
           CompileLoadCPSR(context, lunatic_cast<IRLoadCPSR>(op.get()));
           break;
@@ -286,6 +289,20 @@ void X64Backend::CompileLoadSPSR(CompileContext const& context, IRLoadSPSR* op) 
   auto host_reg = reg_alloc.GetVariableHostReg(op->result);
 
   code.mov(host_reg, dword[address]);
+}
+
+void X64Backend::CompileStoreSPSR(const CompileContext &context, IRStoreSPSR *op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto address = rcx + state.GetOffsetToSPSR(op->mode);
+
+  if (op->value.IsConstant()) {
+    code.mov(dword[address], op->value.GetConst().value);
+  } else {
+    auto host_reg = reg_alloc.GetVariableHostReg(op->value.GetVar());
+
+    code.mov(dword[address], host_reg);
+  }
 }
 
 void X64Backend::CompileLoadCPSR(CompileContext const& context, IRLoadCPSR* op) {
