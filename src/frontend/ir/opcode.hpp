@@ -20,6 +20,7 @@ enum class IROpcodeClass {
   LoadGPR,
   StoreGPR,
   LoadSPSR,
+  StoreSPSR,
   LoadCPSR,
   StoreCPSR,
   ClearCarry,
@@ -129,6 +130,25 @@ struct IRLoadSPSR final : IROpcodeBase<IROpcodeClass::LoadSPSR> {
 
   auto ToString() -> std::string override {
     return fmt::format("ldspsr.{} {}", std::to_string(mode), std::to_string(result));
+  }
+};
+
+struct IRStoreSPSR final : IROpcodeBase<IROpcodeClass::StoreSPSR> {
+  IRStoreSPSR(IRValue value, State::Mode mode) : value(value), mode(mode) {}
+
+  IRValue value;
+  State::Mode mode;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return value.IsVariable() && (&var == &value.GetVar());
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("stspsr.{} {}", std::to_string(mode), std::to_string(value));
   }
 };
 

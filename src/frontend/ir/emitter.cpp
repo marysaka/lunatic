@@ -132,6 +132,14 @@ void IREmitter::LoadSPSR (IRVariable const& result, State::Mode mode) {
   }
 }
 
+void IREmitter::StoreSPSR(IRValue value, State::Mode mode) {
+  // TODO: I'm not sure if here is the right place to handle this.
+  if (mode == State::Mode::User || mode == State::Mode::System) {
+    return;
+  }
+  Push<IRStoreSPSR>(value, mode);
+}
+
 void IREmitter::LoadCPSR(IRVariable const& result) {
   Push<IRLoadCPSR>(result);
 }
