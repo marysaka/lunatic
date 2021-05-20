@@ -26,6 +26,8 @@ struct Translator final : ARMDecodeClient<Status> {
   auto Translate(BasicBlock& block, Memory& memory) -> bool;
 
   auto Handle(ARMDataProcessing const& opcode) -> Status override;
+  auto Handle(ARMMoveStatusRegister const& opcode) -> Status override;
+  auto Handle(ARMMoveRegisterStatus const& opcode) -> Status override;
   auto Handle(ARMBranchExchange const& opcode) -> Status override;
   auto Handle(ARMHalfwordSignedTransfer const& opcode) -> Status override;
   auto Handle(ARMSingleDataTransfer const& opcode) -> Status override;

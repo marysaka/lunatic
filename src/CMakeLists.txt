@@ -17,6 +17,7 @@ set(SOURCES
   frontend/translator/handle/data_processing.cpp
   frontend/translator/handle/halfword_signed_transfer.cpp
   frontend/translator/handle/single_data_transfer.cpp
+  frontend/translator/handle/status_transfer.cpp
   frontend/translator/translator.cpp
   frontend/basic_block.cpp
   frontend/state.cpp
@@ -36,6 +37,7 @@ set(HEADERS
   frontend/decode/definition/data_processing.hpp
   frontend/decode/definition/halfword_signed_transfer.hpp
   frontend/decode/definition/single_data_transfer.hpp
+  frontend/decode/definition/status_transfer.hpp
   frontend/decode/arm.hpp
   frontend/ir/emitter.hpp
   frontend/ir/opcode.hpp

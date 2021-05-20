@@ -16,6 +16,7 @@
 #include "definition/data_processing.hpp"
 #include "definition/halfword_signed_transfer.hpp"
 #include "definition/single_data_transfer.hpp"
+#include "definition/status_transfer.hpp"
 
 namespace lunatic {
 namespace frontend {
@@ -28,6 +29,8 @@ struct ARMDecodeClient {
   using return_type = T;
 
   virtual auto Handle(ARMDataProcessing const& opcode) -> T = 0;
+  virtual auto Handle(ARMMoveStatusRegister const& opcode) -> T = 0;
+  virtual auto Handle(ARMMoveRegisterStatus const& opcode) -> T = 0;
   virtual auto Handle(ARMBranchExchange const& opcode) -> T = 0;
   virtual auto Handle(ARMHalfwordSignedTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
@@ -60,6 +63,27 @@ inline auto decode_data_processing(Condition condition, u32 opcode, T& client) -
       .value = bit::get_field<u32, u8>(opcode, 0, 8),
       .shift = bit::get_field(opcode, 8, 4) * 2
     }
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_move_status_register(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMMoveStatusRegister{
+    .condition = condition,
+    .immediate = bit::get_bit<u32, bool>(opcode, 25),
+    .spsr = bit::get_bit<u32, bool>(opcode, 22),
+    .fsxc = bit::get_field<u32, int>(opcode, 16, 4),
+    .reg = bit::get_field<u32, GPR>(opcode, 0, 4),
+    .imm = bit::rotate_right(u32(u8(opcode)), bit::get_field(opcode, 8, 4) * 2)
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_move_register_status(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMMoveRegisterStatus{
+    .condition = condition,
+    .spsr = bit::get_bit<u32, bool>(opcode, 25),
+    .reg = bit::get_field<u32, GPR>(opcode, 12, 4)
   });
 }
 
@@ -188,7 +212,10 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         // Miscellaneous instructions (A3-4)
         if ((opcode & 0xF0) == 0) {
           // return ARMInstrType::StatusTransfer;
-          return client.Undefined(instruction);
+          if (bit::get_bit(opcode, 21)) {
+            return decode_move_status_register(condition, opcode, client);
+          }
+          return decode_move_register_status(condition, opcode, client);
         }
 
         if ((opcode & 0x6000F0) == 0x200010) {
@@ -250,7 +277,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
           case 0b1001:
           case 0b1011:
             // return ARMInstrType::StatusTransfer;
-            return client.Undefined(instruction);
+            return decode_move_status_register(condition, opcode, client);
         }
       }
 
