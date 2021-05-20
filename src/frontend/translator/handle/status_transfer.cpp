@@ -9,7 +9,17 @@ auto Translator::Handle(ARMMoveStatusRegister const& opcode) -> Status {
 }
 
 auto Translator::Handle(ARMMoveRegisterStatus const& opcode) -> Status {
-  return Status::Unimplemented;
+  auto& psr = emitter->CreateVar(IRDataType::UInt32, "psr");
+
+  if (opcode.spsr) {
+    emitter->LoadSPSR(psr, mode);
+  } else {
+    emitter->LoadCPSR(psr);
+  }
+
+  emitter->StoreGPR(IRGuestReg{opcode.reg, mode}, psr);
+
+  return Status::Continue;
 }
 
 } // namespace lunatic::frontend
