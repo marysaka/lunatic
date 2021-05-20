@@ -11,6 +11,8 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
+  using MicroBlock = BasicBlock::MicroBlock;
+
   code_address = block.key.field.address;
 
   if (code_address & 1) {
@@ -21,12 +23,29 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
 
   mode = block.key.field.mode;
   opcode_size = (block.key.field.address & 1) ? sizeof(u16) : sizeof(u32);
-  emitter = &block.emitter;
 
   static constexpr int kMaxBlockSize = 32;
 
+  auto micro_block = MicroBlock{};
+
+  emitter = &micro_block.emitter;
+
   for (int i = 0; i < kMaxBlockSize; i++) {
     auto instruction = memory.FastRead<u32, Memory::Bus::Code>(code_address);
+    auto condition = bit::get_field<u32, Condition>(instruction, 28, 4);
+
+    if (i == 0) {
+      micro_block.condition = condition;
+    } else if (condition != micro_block.condition) {
+      // TODO: handle unconditional instructions on ARMv5TE+
+      block.micro_blocks.push_back(std::move(micro_block));
+      micro_block = {
+        .condition = condition
+      };
+      emitter = &micro_block.emitter;
+    }
+
+    // TODO: it's redundant now that decode_arm decodes the condition code...?
     auto status = decode_arm(instruction, *this);
 
     if (status == Status::Unimplemented) {
@@ -34,6 +53,7 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
        * Let the callee know that we have something to run,
        * but that the interpreter has to take over after that instead...
        */
+      block.micro_blocks.push_back(std::move(micro_block));
       return i != 0;
     }
 
@@ -46,6 +66,7 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
     code_address += sizeof(u32);
   }
 
+  block.micro_blocks.push_back(std::move(micro_block));
   return true;
 }
 

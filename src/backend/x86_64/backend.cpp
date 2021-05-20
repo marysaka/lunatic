@@ -46,15 +46,10 @@ static constexpr Xbyak::Reg64 kRegArg3 = rcx;
 
 void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) {
   // TODO: do not keep the code in memory forever.
-  auto& emitter = basic_block.emitter;
-  auto  code = new Xbyak::CodeGenerator{};
-  auto  reg_alloc = X64RegisterAllocator{emitter, *code};
-  auto  location = 0;
-  auto  context = CompileContext{*code, reg_alloc, state, location};
+  auto code = new Xbyak::CodeGenerator{};
+  auto stack_displacement = sizeof(u64) + X64RegisterAllocator::kSpillAreaSize * sizeof(u32);
 
   this->memory = &memory;
-
-  auto stack_displacement = sizeof(u64) + X64RegisterAllocator::kSpillAreaSize * sizeof(u32);
 
   Push(*code, {rbx, rbp, r12, r13, r14, r15});
 #ifdef ABI_MSVC
@@ -74,101 +69,110 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
   code->bt(edx, 29); // CF = value of bit 29
   code->lahf();
 
-  for (auto const& op : emitter.Code()) {
-    reg_alloc.SetCurrentLocation(location);
+  for (auto const& micro_block : basic_block.micro_blocks) {
+    auto& emitter = micro_block.emitter;
+    auto reg_alloc = X64RegisterAllocator{emitter, *code};
+    auto location = 0;
+    auto context = CompileContext{*code, reg_alloc, state, location};
 
-    switch (op->GetClass()) {
-      case IROpcodeClass::LoadGPR:
-        CompileLoadGPR(context, lunatic_cast<IRLoadGPR>(op.get()));
-        break;
-      case IROpcodeClass::StoreGPR:
-        CompileStoreGPR(context, lunatic_cast<IRStoreGPR>(op.get()));
-        break;
-      case IROpcodeClass::LoadSPSR:
-        CompileLoadSPSR(context, lunatic_cast<IRLoadSPSR>(op.get()));
-        break;
-      case IROpcodeClass::LoadCPSR:
-        CompileLoadCPSR(context, lunatic_cast<IRLoadCPSR>(op.get()));
-        break;
-      case IROpcodeClass::StoreCPSR:
-        CompileStoreCPSR(context, lunatic_cast<IRStoreCPSR>(op.get()));
-        break;
-      case IROpcodeClass::ClearCarry:
-        code->and_(ah, ~1);
-        break;
-      case IROpcodeClass::SetCarry:
-        code->or_(ah, 1);
-        break;
-      case IROpcodeClass::UpdateFlags:
-        CompileUpdateFlags(context, lunatic_cast<IRUpdateFlags>(op.get()));
-        break;
-      case IROpcodeClass::LSL:
-        CompileLSL(context, lunatic_cast<IRLogicalShiftLeft>(op.get()));
-        break;
-      case IROpcodeClass::LSR:
-        CompileLSR(context, lunatic_cast<IRLogicalShiftRight>(op.get()));
-        break;
-      case IROpcodeClass::ASR:
-        CompileASR(context, lunatic_cast<IRArithmeticShiftRight>(op.get()));
-        break;
-      case IROpcodeClass::ROR:
-        CompileROR(context, lunatic_cast<IRRotateRight>(op.get()));
-        break;
-      case IROpcodeClass::AND:
-        CompileAND(context, lunatic_cast<IRBitwiseAND>(op.get()));
-        break;
-      case IROpcodeClass::BIC:
-        CompileBIC(context, lunatic_cast<IRBitwiseBIC>(op.get()));
-        break;
-      case IROpcodeClass::EOR:
-        CompileEOR(context, lunatic_cast<IRBitwiseEOR>(op.get()));
-        break;
-      case IROpcodeClass::SUB:
-        CompileSUB(context, lunatic_cast<IRSub>(op.get()));
-        break;
-      case IROpcodeClass::RSB:
-        CompileRSB(context, lunatic_cast<IRRsb>(op.get()));
-        break;
-      case IROpcodeClass::ADD:
-        CompileADD(context, lunatic_cast<IRAdd>(op.get()));
-        break;
-      case IROpcodeClass::ADC:
-        CompileADC(context, lunatic_cast<IRAdc>(op.get()));
-        break;
-      case IROpcodeClass::SBC:
-        CompileSBC(context, lunatic_cast<IRSbc>(op.get()));
-        break;
-      case IROpcodeClass::RSC:
-        CompileRSC(context, lunatic_cast<IRRsc>(op.get()));
-        break;
-      case IROpcodeClass::ORR:
-        CompileORR(context, lunatic_cast<IRBitwiseORR>(op.get()));
-        break;
-      case IROpcodeClass::MOV:
-        CompileMOV(context, lunatic_cast<IRMov>(op.get()));
-        break;
-      case IROpcodeClass::MVN:
-        CompileMVN(context, lunatic_cast<IRMvn>(op.get()));
-        break;
-      case IROpcodeClass::MemoryRead:
-        CompileMemoryRead(context, lunatic_cast<IRMemoryRead>(op.get()));
-        break;
-      case IROpcodeClass::MemoryWrite:
-        CompileMemoryWrite(context, lunatic_cast<IRMemoryWrite>(op.get()));
-        break;
-      case IROpcodeClass::Flush:
-        CompileFlush(context, lunatic_cast<IRFlush>(op.get()));
-        break;
-      case IROpcodeClass::FlushExchange:
-        CompileExchange(context, lunatic_cast<IRFlushExchange>(op.get()));
-        break;
-      default:
-        throw std::runtime_error(
+    // TODO: check condition code!!!
+
+    for (auto const &op : emitter.Code()) {
+      reg_alloc.SetCurrentLocation(location);
+
+      switch (op->GetClass()) {
+        case IROpcodeClass::LoadGPR:
+          CompileLoadGPR(context, lunatic_cast<IRLoadGPR>(op.get()));
+          break;
+        case IROpcodeClass::StoreGPR:
+          CompileStoreGPR(context, lunatic_cast<IRStoreGPR>(op.get()));
+          break;
+        case IROpcodeClass::LoadSPSR:
+          CompileLoadSPSR(context, lunatic_cast<IRLoadSPSR>(op.get()));
+          break;
+        case IROpcodeClass::LoadCPSR:
+          CompileLoadCPSR(context, lunatic_cast<IRLoadCPSR>(op.get()));
+          break;
+        case IROpcodeClass::StoreCPSR:
+          CompileStoreCPSR(context, lunatic_cast<IRStoreCPSR>(op.get()));
+          break;
+        case IROpcodeClass::ClearCarry:
+          code->and_(ah, ~1);
+          break;
+        case IROpcodeClass::SetCarry:
+          code->or_(ah, 1);
+          break;
+        case IROpcodeClass::UpdateFlags:
+          CompileUpdateFlags(context, lunatic_cast<IRUpdateFlags>(op.get()));
+          break;
+        case IROpcodeClass::LSL:
+          CompileLSL(context, lunatic_cast<IRLogicalShiftLeft>(op.get()));
+          break;
+        case IROpcodeClass::LSR:
+          CompileLSR(context, lunatic_cast<IRLogicalShiftRight>(op.get()));
+          break;
+        case IROpcodeClass::ASR:
+          CompileASR(context, lunatic_cast<IRArithmeticShiftRight>(op.get()));
+          break;
+        case IROpcodeClass::ROR:
+          CompileROR(context, lunatic_cast<IRRotateRight>(op.get()));
+          break;
+        case IROpcodeClass::AND:
+          CompileAND(context, lunatic_cast<IRBitwiseAND>(op.get()));
+          break;
+        case IROpcodeClass::BIC:
+          CompileBIC(context, lunatic_cast<IRBitwiseBIC>(op.get()));
+          break;
+        case IROpcodeClass::EOR:
+          CompileEOR(context, lunatic_cast<IRBitwiseEOR>(op.get()));
+          break;
+        case IROpcodeClass::SUB:
+          CompileSUB(context, lunatic_cast<IRSub>(op.get()));
+          break;
+        case IROpcodeClass::RSB:
+          CompileRSB(context, lunatic_cast<IRRsb>(op.get()));
+          break;
+        case IROpcodeClass::ADD:
+          CompileADD(context, lunatic_cast<IRAdd>(op.get()));
+          break;
+        case IROpcodeClass::ADC:
+          CompileADC(context, lunatic_cast<IRAdc>(op.get()));
+          break;
+        case IROpcodeClass::SBC:
+          CompileSBC(context, lunatic_cast<IRSbc>(op.get()));
+          break;
+        case IROpcodeClass::RSC:
+          CompileRSC(context, lunatic_cast<IRRsc>(op.get()));
+          break;
+        case IROpcodeClass::ORR:
+          CompileORR(context, lunatic_cast<IRBitwiseORR>(op.get()));
+          break;
+        case IROpcodeClass::MOV:
+          CompileMOV(context, lunatic_cast<IRMov>(op.get()));
+          break;
+        case IROpcodeClass::MVN:
+          CompileMVN(context, lunatic_cast<IRMvn>(op.get()));
+          break;
+        case IROpcodeClass::MemoryRead:
+          CompileMemoryRead(context, lunatic_cast<IRMemoryRead>(op.get()));
+          break;
+        case IROpcodeClass::MemoryWrite:
+          CompileMemoryWrite(context, lunatic_cast<IRMemoryWrite>(op.get()));
+          break;
+        case IROpcodeClass::Flush:
+          CompileFlush(context, lunatic_cast<IRFlush>(op.get()));
+          break;
+        case IROpcodeClass::FlushExchange:
+          CompileExchange(context, lunatic_cast<IRFlushExchange>(op.get()));
+          break;
+        default:
+          throw std::runtime_error(
           fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
-        );
-    }
+          );
+      }
 
-    location++;
+      location++;
+    }
   }
 
   code->add(rsp, stack_displacement);

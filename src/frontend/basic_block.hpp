@@ -8,7 +8,9 @@
 #pragma once
 
 #include <lunatic/integer.hpp>
+#include <vector>
 
+#include "decode/definition/common.hpp"
 #include "ir/emitter.hpp"
 #include "state.hpp"
 
@@ -29,9 +31,15 @@ struct BasicBlock {
     u64 value = 0;
   } key;
 
+  // TODO: handle timing based on conditional flow.
   int cycle_count = 0;
 
-  IREmitter emitter;
+  struct MicroBlock {
+    Condition condition;
+    IREmitter emitter;
+  };
+
+  std::vector<MicroBlock> micro_blocks;
 
   // Function pointer to the compiled function.
   CompiledFn function = nullptr;
