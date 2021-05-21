@@ -185,7 +185,7 @@ void render_frame() {
 
 int main(int argc, char** argv) {
   size_t size;
-  std::ifstream file { "armwrestler.gba", std::ios::binary };
+  std::ifstream file { "arm.gba", std::ios::binary };
 
   if (!file.good()) {
     fmt::print("Failed to open armwrestler.gba.\n");

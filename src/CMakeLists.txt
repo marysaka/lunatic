@@ -16,6 +16,7 @@ set(SOURCES
   frontend/translator/handle/branch_relative.cpp
   frontend/translator/handle/data_processing.cpp
   frontend/translator/handle/halfword_signed_transfer.cpp
+  frontend/translator/handle/single_data_swap.cpp
   frontend/translator/handle/single_data_transfer.cpp
   frontend/translator/handle/status_transfer.cpp
   frontend/translator/translator.cpp
@@ -36,6 +37,7 @@ set(HEADERS
   frontend/decode/definition/common.hpp
   frontend/decode/definition/data_processing.hpp
   frontend/decode/definition/halfword_signed_transfer.hpp
+  frontend/decode/definition/single_data_swap.hpp
   frontend/decode/definition/single_data_transfer.hpp
   frontend/decode/definition/status_transfer.hpp
   frontend/decode/arm.hpp

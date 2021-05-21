@@ -15,6 +15,7 @@
 #include "definition/branch_relative.hpp"
 #include "definition/data_processing.hpp"
 #include "definition/halfword_signed_transfer.hpp"
+#include "definition/single_data_swap.hpp"
 #include "definition/single_data_transfer.hpp"
 #include "definition/status_transfer.hpp"
 
@@ -33,6 +34,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMMoveRegisterStatus const& opcode) -> T = 0;
   virtual auto Handle(ARMBranchExchange const& opcode) -> T = 0;
   virtual auto Handle(ARMHalfwordSignedTransfer const& opcode) -> T = 0;
+  virtual auto Handle(ARMSingleDataSwap const& opcode) -> T = 0;
   virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBlockDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBranchRelative const& opcode) -> T = 0;
@@ -111,6 +113,17 @@ inline auto decode_halfword_signed_transfer(Condition condition, u32 opcode, T& 
     .reg_base = bit::get_field<u32, GPR>(opcode, 16, 4),
     .offset_imm = (opcode & 0xF) | ((opcode >> 4) & 0xF0),
     .offset_reg = bit::get_field<u32, GPR>(opcode, 0, 4)
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_single_data_swap(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMSingleDataSwap{
+    .condition = condition,
+    .byte = bit::get_bit<u32, bool>(opcode, 22),
+    .reg_src  = bit::get_field<u32, GPR>(opcode,  0, 4),
+    .reg_dst  = bit::get_field<u32, GPR>(opcode, 12, 4),
+    .reg_base = bit::get_field<u32, GPR>(opcode, 16, 4)
   });
 }
 
@@ -201,8 +214,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
               // return ARMInstrType::Multiply;
               return client.Undefined(instruction);
             case 0b10:
-              // return ARMInstrType::SingleDataSwap;
-              return client.Undefined(instruction);
+              return decode_single_data_swap(condition, opcode, client);
             case 0b11:
               // return ARMInstrType::LoadStoreExclusive;
               return client.Undefined(instruction);
