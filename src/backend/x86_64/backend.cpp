@@ -80,14 +80,12 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     auto label_done = Xbyak::Label{};
 
     if (condition != Condition::AL) {
-      // TODO: optimize this
-      code->mov(edx, static_cast<u32>(condition) << 4);
-      code->mov(r8d, dword[rcx + state.GetOffsetToCPSR()]);
-      code->shr(r8d, 28);
-      code->or_(edx, r8d);
-      code->mov(r8, u64(condition_table));
-      code->mov(dl, byte[r8 + rdx]);
-      code->test(dl, dl);
+      // TODO: can this be optimized more?
+      // Maybe perform a conditional jump based on flags in eax?
+      code->mov(r8, u64(&condition_table[static_cast<int>(condition)]));
+      code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+      code->shr(edx, 28);
+      code->cmp(byte[r8 + rdx], 0);
       code->je(label_skip, Xbyak::CodeGenerator::T_NEAR);
     }
 
