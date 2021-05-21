@@ -159,11 +159,11 @@ void IREmitter::SetCarry() {
   Push<IRSetCarry>();
 }
 
-void IREmitter::UpdateNZCV(
+void IREmitter::UpdateNZ(
   IRVariable const& result,
   IRVariable const& input
 ) {
-  Push<IRUpdateFlags>(result, input, true, true, true, true);
+  Push<IRUpdateFlags>(result, input, true, true, false, false);
 }
 
 void IREmitter::UpdateNZC(
@@ -171,6 +171,13 @@ void IREmitter::UpdateNZC(
   IRVariable const& input
 ) {
   Push<IRUpdateFlags>(result, input, true, true, true, false);
+}
+
+void IREmitter::UpdateNZCV(
+  IRVariable const& result,
+  IRVariable const& input
+) {
+  Push<IRUpdateFlags>(result, input, true, true, true, true);
 }
 
 void IREmitter::LSL(
@@ -355,6 +362,14 @@ void IREmitter::MVN(
   bool update_host_flags
 ) {
   Push<IRMvn>(result, source, update_host_flags);
+}
+
+void IREmitter::MUL(
+  IRVariable const& result,
+  IRVariable const& lhs,
+  IRVariable const& rhs
+) {
+  Push<IRMultiply>(result, lhs, rhs);
 }
 
 void IREmitter::LDR(

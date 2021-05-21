@@ -79,6 +79,7 @@ private:
   void CompileORR(CompileContext const& context, IRBitwiseORR* op);
   void CompileMOV(CompileContext const& context, IRMov* op);
   void CompileMVN(CompileContext const& context, IRMvn* op);
+  void CompileMUL(CompileContext const& context, IRMultiply* op);
   void CompileMemoryRead(CompileContext const& context, IRMemoryRead* op);
   void CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op);
   void CompileFlush(CompileContext const& context, IRFlush* op);

@@ -29,14 +29,16 @@ struct Translator final : ARMDecodeClient<Status> {
   auto Handle(ARMDataProcessing const& opcode) -> Status override;
   auto Handle(ARMMoveStatusRegister const& opcode) -> Status override;
   auto Handle(ARMMoveRegisterStatus const& opcode) -> Status override;
+  auto Handle(ARMMultiply const& opcode) -> Status override;
+  auto Handle(ARMSingleDataSwap const& opcode) -> Status override;
   auto Handle(ARMBranchExchange const& opcode) -> Status override;
   auto Handle(ARMHalfwordSignedTransfer const& opcode) -> Status override;
-  auto Handle(ARMSingleDataSwap const& opcode) -> Status override;
   auto Handle(ARMSingleDataTransfer const& opcode) -> Status override;
   auto Handle(ARMBlockDataTransfer const& opcode) -> Status override;
   auto Handle(ARMBranchRelative const& opcode) -> Status override;
   auto Undefined(u32 opcode) -> Status override;
 
+  void EmitUpdateNZ();
   void EmitUpdateNZC();
   void EmitUpdateNZCV();
   void EmitAdvancePC();

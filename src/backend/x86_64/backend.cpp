@@ -168,6 +168,9 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
         case IROpcodeClass::MVN:
           CompileMVN(context, lunatic_cast<IRMvn>(op.get()));
           break;
+        case IROpcodeClass::MUL:
+          CompileMUL(context, lunatic_cast<IRMultiply>(op.get()));
+          break;
         case IROpcodeClass::MemoryRead:
           CompileMemoryRead(context, lunatic_cast<IRMemoryRead>(op.get()));
           break;
@@ -885,6 +888,19 @@ void X64Backend::CompileMVN(CompileContext const& context, IRMvn* op) {
     code.bt(ax, 8); // CF = value of bit8
     code.lahf();
   }
+}
+
+void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs);
+
+  code.mov(result_reg, lhs_reg);
+  code.imul(result_reg, rhs_reg);
+  //code.imul(result_reg, lhs_reg, rhs_reg);
+
 }
 
 void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* op) {

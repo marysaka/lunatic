@@ -42,6 +42,7 @@ enum class IROpcodeClass {
   ORR,
   MOV,
   MVN,
+  MUL,
   MemoryRead,
   MemoryWrite,
   Flush,
@@ -518,6 +519,33 @@ struct IRMvn final : IROpcodeBase<IROpcodeClass::MVN> {
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(source));
+  }
+};
+
+struct IRMultiply final : IROpcodeBase<IROpcodeClass::MUL> {
+  IRMultiply(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRVariable const& rhs
+  ) : result(result), lhs(lhs), rhs(rhs) {}
+
+  IRVariable const& result;
+  IRVariable const& lhs;
+  IRVariable const& rhs;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &var == &lhs || &var == &rhs;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &var == &result;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("mul {}, {}, {}",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
   }
 };
 

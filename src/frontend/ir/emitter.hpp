@@ -42,12 +42,17 @@ struct IREmitter {
   void ClearCarry();
   void SetCarry();
 
-  void UpdateNZCV(
+  void UpdateNZ(
     IRVariable const& result,
     IRVariable const& input
   );
 
   void UpdateNZC(
+    IRVariable const& result,
+    IRVariable const& input
+  );
+
+  void UpdateNZCV(
     IRVariable const& result,
     IRVariable const& input
   );
@@ -160,6 +165,12 @@ struct IREmitter {
     IRVariable const& result,
     IRValue source,
     bool update_host_flags
+  );
+
+  void MUL(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRVariable const& rhs
   );
 
   void LDR(

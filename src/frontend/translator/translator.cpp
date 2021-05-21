@@ -89,6 +89,15 @@ auto Translator::Undefined(u32 opcode) -> Status {
   return Status::Unimplemented;
 }
 
+void Translator::EmitUpdateNZ() {
+  auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
+  auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  emitter->LoadCPSR(cpsr_in);
+  emitter->UpdateNZ(cpsr_out, cpsr_in);
+  emitter->StoreCPSR(cpsr_out);
+}
+
 void Translator::EmitUpdateNZC() {
   auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
   auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
