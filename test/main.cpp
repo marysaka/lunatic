@@ -160,7 +160,30 @@ struct Memory final : lunatic::Memory {
 
   void WriteByte(u32 address, u8  value, Bus bus) override {}
   void WriteHalf(u32 address, u16 value, Bus bus) override {}
-  void WriteWord(u32 address, u32 value, Bus bus) override {}
+
+  void WriteWord(u32 address, u32 value, Bus bus) override {
+    switch (address) {
+      case 0x0400'00D4: {
+        dma3_src = value;
+        break;
+      }
+      case 0x0400'00D8: {
+        dma3_dst = value;
+        break;
+      }
+      case 0x0400'00DC: {
+        if (value & 0x8000'0000) {
+          auto count = value & 0xFFFF;
+          for (int i = 0; i < count; i++) {
+            FastWrite<u32, Bus::System>(dma3_dst, FastRead<u32, Bus::System>(dma3_src));
+            dma3_dst += sizeof(u32);
+            dma3_src += sizeof(u32);
+          }
+        }
+        break;
+      }
+    }
+  }
 
   u8 pram[0x400];
   u8 vram[0x20000];
@@ -170,6 +193,8 @@ struct Memory final : lunatic::Memory {
 
   int vblank_flag;
   u16 keyinput = 0xFFFF;
+  u32 dma3_src = 0;
+  u32 dma3_dst = 0;
 };
 
 static Memory g_memory;
@@ -185,7 +210,7 @@ void render_frame() {
 
 int main(int argc, char** argv) {
   size_t size;
-  std::ifstream file { "arm.gba", std::ios::binary };
+  std::ifstream file { "mandelbrot.gba", std::ios::binary };
 
   if (!file.good()) {
     fmt::print("Failed to open armwrestler.gba.\n");
