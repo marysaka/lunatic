@@ -16,6 +16,7 @@
 #include "definition/data_processing.hpp"
 #include "definition/halfword_signed_transfer.hpp"
 #include "definition/multiply.hpp"
+#include "definition/multiply_long.hpp"
 #include "definition/single_data_swap.hpp"
 #include "definition/single_data_transfer.hpp"
 #include "definition/status_transfer.hpp"
@@ -34,6 +35,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMMoveStatusRegister const& opcode) -> T = 0;
   virtual auto Handle(ARMMoveRegisterStatus const& opcode) -> T = 0;
   virtual auto Handle(ARMMultiply const& opcode) -> T = 0;
+  virtual auto Handle(ARMMultiplyLong const& opcode) -> T = 0;
   virtual auto Handle(ARMSingleDataSwap const& opcode) -> T = 0;
   virtual auto Handle(ARMBranchExchange const& opcode) -> T = 0;
   virtual auto Handle(ARMHalfwordSignedTransfer const& opcode) -> T = 0;
@@ -101,6 +103,20 @@ inline auto decode_multiply(Condition condition, u32 opcode, T& client) -> U {
     .reg_op2 = bit::get_field<u32, GPR>(opcode,  8, 4),
     .reg_op3 = bit::get_field<u32, GPR>(opcode, 12, 4),
     .reg_dst = bit::get_field<u32, GPR>(opcode, 16, 4)
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_multiply_long(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMMultiplyLong{
+    .condition = condition,
+    .sign_extend = bit::get_bit<u32, bool>(opcode, 22),
+    .accumulate = bit::get_bit<u32, bool>(opcode, 21),
+    .set_flags = bit::get_bit<u32, bool>(opcode, 20),
+    .reg_op1 = bit::get_field<u32, GPR>(opcode,  0, 4),
+    .reg_op2 = bit::get_field<u32, GPR>(opcode,  8, 4),
+    .reg_dst_lo = bit::get_field<u32, GPR>(opcode, 12, 4),
+    .reg_dst_hi = bit::get_field<u32, GPR>(opcode, 16, 4)
   });
 }
 
@@ -228,10 +244,16 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
             case 0b01: {
               auto op = bit::get_field(opcode, 21, 4);
               switch (op) {
-                case 0:
-                case 1:
+                case 0b000:
+                case 0b001:
                   // MUL, MLA
                   return decode_multiply(condition, opcode, client);
+                case 0b100:
+                case 0b101:
+                case 0b110:
+                case 0b111:
+                  // UMULL, UMLAL, SMULL, SMLAL
+                  return decode_multiply_long(condition, opcode, client);
                 default:
                   return client.Undefined(instruction);
               }
