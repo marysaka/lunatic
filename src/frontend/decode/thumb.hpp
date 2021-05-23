@@ -17,11 +17,13 @@ namespace frontend {
 
 namespace detail {
 
+using DPOpcode = ARMDataProcessing::Opcode;
+
 template<typename T, typename U = typename T::return_type>
 inline auto decode_move_shifted_register(u16 opcode, T& client) -> U {
   return client.Handle(ARMDataProcessing{
     .condition = Condition::AL,
-    .opcode = ARMDataProcessing::Opcode::MOV,
+    .opcode = DPOpcode::MOV,
     .immediate = false,
     .set_flags = true,
     .reg_dst = bit::get_field<u16, GPR>(opcode, 0, 3),
@@ -32,6 +34,30 @@ inline auto decode_move_shifted_register(u16 opcode, T& client) -> U {
         .immediate = true,
         .amount_imm = bit::get_field(opcode, 6, 5)
       }
+    }
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_add_sub(u16 opcode, T& client) -> U {
+  return client.Handle(ARMDataProcessing{
+    .condition = Condition::AL,
+    .opcode = bit::get_bit(opcode, 9) ? DPOpcode::SUB : DPOpcode::ADD,
+    .immediate = bit::get_bit<u16, bool>(opcode, 10),
+    .set_flags = true,
+    .reg_dst = bit::get_field<u16, GPR>(opcode, 0, 3),
+    .reg_op1 = bit::get_field<u16, GPR>(opcode, 3, 3),
+    .op2_reg = {
+      .reg = bit::get_field<u16, GPR>(opcode, 6, 3),
+      .shift = {
+        .type = Shift::LSL,
+        .immediate = true,
+        .amount_imm = 0
+      }
+    },
+    .op2_imm = {
+      .value = bit::get_field<u16, u8>(opcode, 6, 3),
+      .shift = 0
     }
   });
 }
@@ -47,7 +73,7 @@ inline auto decode_thumb(u16 instruction, T& client) -> U {
   // TODO: use string pattern based approach to decoding.
 
   if ((instruction & 0xF800) <  0x1800) return decode_move_shifted_register(instruction, client);
-//  if ((instruction & 0xF800) == 0x1800) return ThumbInstrType::AddSub;
+  if ((instruction & 0xF800) == 0x1800) return decode_add_sub(instruction, client);
 //  if ((instruction & 0xE000) == 0x2000) return ThumbInstrType::MoveCompareAddSubImm;
 //  if ((instruction & 0xFC00) == 0x4000) return ThumbInstrType::ALU;
 //  if ((instruction & 0xFC00) == 0x4400) return ThumbInstrType::HighRegisterOps;
