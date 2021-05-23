@@ -62,6 +62,31 @@ inline auto decode_add_sub(u16 opcode, T& client) -> U {
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_mov_cmp_add_sub_imm(u16 opcode, T& client) -> U {
+  DPOpcode op;
+
+  switch (bit::get_field(opcode, 11, 2)) {
+    case 0b00: op = DPOpcode::MOV; break;
+    case 0b01: op = DPOpcode::CMP; break;
+    case 0b10: op = DPOpcode::ADD; break;
+    case 0b11: op = DPOpcode::SUB; break;
+  }
+
+  return client.Handle(ARMDataProcessing{
+    .condition = Condition::AL,
+    .opcode = op,
+    .immediate = true,
+    .set_flags = true,
+    .reg_dst = bit::get_field<u16, GPR>(opcode, 8, 3),
+    .reg_op1 = bit::get_field<u16, GPR>(opcode, 8, 3),
+    .op2_imm = {
+      .value = bit::get_field<u16, u8>(opcode, 0, 8),
+      .shift = 0
+    }
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
@@ -74,7 +99,7 @@ inline auto decode_thumb(u16 instruction, T& client) -> U {
 
   if ((instruction & 0xF800) <  0x1800) return decode_move_shifted_register(instruction, client);
   if ((instruction & 0xF800) == 0x1800) return decode_add_sub(instruction, client);
-//  if ((instruction & 0xE000) == 0x2000) return ThumbInstrType::MoveCompareAddSubImm;
+  if ((instruction & 0xE000) == 0x2000) return decode_mov_cmp_add_sub_imm(instruction, client);
 //  if ((instruction & 0xFC00) == 0x4000) return ThumbInstrType::ALU;
 //  if ((instruction & 0xFC00) == 0x4400) return ThumbInstrType::HighRegisterOps;
 //  if ((instruction & 0xF800) == 0x4800) return ThumbInstrType::LoadStoreRelativePC;
