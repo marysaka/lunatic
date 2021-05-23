@@ -12,7 +12,11 @@ namespace frontend {
 
 auto Translator::Handle(ARMBranchExchange const& opcode) -> Status {
   if (armv5te && opcode.link) {
-    emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{code_address + opcode_size});
+    auto link_address = code_address + opcode_size;
+    if (thumb_mode) {
+      link_address |= 1;
+    }
+    emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{link_address});
   }
 
   auto& address = emitter->CreateVar(IRDataType::UInt32, "address");

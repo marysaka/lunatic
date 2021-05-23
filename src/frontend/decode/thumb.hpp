@@ -38,6 +38,13 @@ enum class ThumbDataOp {
   MVN = 15
 };
 
+enum class ThumbHighRegOp {
+  ADD = 0,
+  CMP = 1,
+  MOV = 2,
+  BLX = 3
+};
+
 template<typename T, typename U = typename T::return_type>
 inline auto decode_move_shifted_register(u16 opcode, T& client) -> U {
   return client.Handle(ARMDataProcessing{
@@ -196,6 +203,77 @@ inline auto decode_alu(u16 opcode, T& client) -> U {
   }
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_high_register_ops(u16 opcode, T& client) -> U {
+  auto op = bit::get_field<u16, ThumbHighRegOp>(opcode, 8, 2);
+  auto high1 = bit::get_bit(opcode, 7) * 8;
+  auto high2 = bit::get_bit(opcode, 6) * 8;
+  auto reg_dst = static_cast<GPR>(bit::get_field(opcode, 0, 3) | high1);
+  auto reg_src = static_cast<GPR>(bit::get_field(opcode, 3, 3) | high2);
+
+  switch (op) {
+    case ThumbHighRegOp::ADD: {
+      return client.Handle(ARMDataProcessing{
+        .condition = Condition::AL,
+        .opcode = ARMDataOp::ADD,
+        .immediate = false,
+        .set_flags = false,
+        .reg_dst = reg_dst,
+        .reg_op1 = reg_dst,
+        .op2_reg = {
+          .reg = reg_src,
+          .shift = {
+            .type = Shift::LSL,
+            .immediate = true,
+            .amount_imm = 0
+          }
+        }
+      });
+    }
+    case ThumbHighRegOp::CMP: {
+      return client.Handle(ARMDataProcessing{
+        .condition = Condition::AL,
+        .opcode = ARMDataOp::CMP,
+        .immediate = false,
+        .set_flags = true,
+        .reg_op1 = reg_dst,
+        .op2_reg = {
+          .reg = reg_src,
+          .shift = {
+            .type = Shift::LSL,
+            .immediate = true,
+            .amount_imm = 0
+          }
+        }
+      });
+    }
+    case ThumbHighRegOp::MOV: {
+      return client.Handle(ARMDataProcessing{
+        .condition = Condition::AL,
+        .opcode = ARMDataOp::MOV,
+        .immediate = false,
+        .set_flags = false,
+        .reg_dst = reg_dst,
+        .op2_reg = {
+          .reg = reg_src,
+          .shift = {
+            .type = Shift::LSL,
+            .immediate = true,
+            .amount_imm = 0
+          }
+        }
+      });
+    }
+    case ThumbHighRegOp::BLX: {
+      return client.Handle(ARMBranchExchange{
+        .condition = Condition::AL,
+        .reg = reg_src,
+        .link = high1 != 0
+      });
+    }
+  }
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
@@ -210,7 +288,7 @@ inline auto decode_thumb(u16 instruction, T& client) -> U {
   if ((instruction & 0xF800) == 0x1800) return decode_add_sub(instruction, client);
   if ((instruction & 0xE000) == 0x2000) return decode_mov_cmp_add_sub_imm(instruction, client);
   if ((instruction & 0xFC00) == 0x4000) return decode_alu(instruction, client);
-//  if ((instruction & 0xFC00) == 0x4400) return ThumbInstrType::HighRegisterOps;
+  if ((instruction & 0xFC00) == 0x4400) return decode_high_register_ops(instruction, client);
 //  if ((instruction & 0xF800) == 0x4800) return ThumbInstrType::LoadStoreRelativePC;
 //  if ((instruction & 0xF200) == 0x5000) return ThumbInstrType::LoadStoreOffsetReg;
 //  if ((instruction & 0xF200) == 0x5200) return ThumbInstrType::LoadStoreSigned;
