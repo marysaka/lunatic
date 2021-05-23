@@ -17,12 +17,61 @@ namespace frontend {
 
 namespace detail {
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_move_shifted_register(u16 opcode, T& client) -> U {
+  return client.Handle(ARMDataProcessing{
+    .condition = Condition::AL,
+    .opcode = ARMDataProcessing::Opcode::MOV,
+    .immediate = false,
+    .set_flags = true,
+    .reg_dst = bit::get_field<u16, GPR>(opcode, 0, 3),
+    .op2_reg = {
+      .reg = bit::get_field<u16, GPR>(opcode, 3, 3),
+      .shift = {
+        .type = bit::get_field<u16, Shift>(opcode, 11, 2),
+        .immediate = true,
+        .amount_imm = bit::get_field(opcode, 6, 5)
+      }
+    }
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
 /// passes the resulting structure to a client and returns the client's return value.
 template<typename T, typename U = typename T::return_type>
 inline auto decode_thumb(u16 instruction, T& client) -> U {
+  using namespace detail;
+
+  // TODO: use string pattern based approach to decoding.
+
+  if ((instruction & 0xF800) <  0x1800) return decode_move_shifted_register(instruction, client);
+//  if ((instruction & 0xF800) == 0x1800) return ThumbInstrType::AddSub;
+//  if ((instruction & 0xE000) == 0x2000) return ThumbInstrType::MoveCompareAddSubImm;
+//  if ((instruction & 0xFC00) == 0x4000) return ThumbInstrType::ALU;
+//  if ((instruction & 0xFC00) == 0x4400) return ThumbInstrType::HighRegisterOps;
+//  if ((instruction & 0xF800) == 0x4800) return ThumbInstrType::LoadStoreRelativePC;
+//  if ((instruction & 0xF200) == 0x5000) return ThumbInstrType::LoadStoreOffsetReg;
+//  if ((instruction & 0xF200) == 0x5200) return ThumbInstrType::LoadStoreSigned;
+//  if ((instruction & 0xE000) == 0x6000) return ThumbInstrType::LoadStoreOffsetImm;
+//  if ((instruction & 0xF000) == 0x8000) return ThumbInstrType::LoadStoreHword;
+//  if ((instruction & 0xF000) == 0x9000) return ThumbInstrType::LoadStoreRelativeSP;
+//  if ((instruction & 0xF000) == 0xA000) return ThumbInstrType::LoadAddress;
+//  if ((instruction & 0xFF00) == 0xB000) return ThumbInstrType::AddOffsetToSP;
+//  if ((instruction & 0xFF00) == 0xB200) return ThumbInstrType::SignOrZeroExtend;
+//  if ((instruction & 0xF600) == 0xB400) return ThumbInstrType::PushPop;
+//  if ((instruction & 0xFFE0) == 0xB640) return ThumbInstrType::SetEndianess;
+//  if ((instruction & 0xFFE0) == 0xB660) return ThumbInstrType::ChangeProcessorState;
+//  if ((instruction & 0xFF00) == 0xBA00) return ThumbInstrType::ReverseBytes;
+//  if ((instruction & 0xFF00) == 0xBE00) return ThumbInstrType::SoftwareBreakpoint;
+//  if ((instruction & 0xF000) == 0xC000) return ThumbInstrType::LoadStoreMultiple;
+//  if ((instruction & 0xFF00) <  0xDF00) return ThumbInstrType::ConditionalBranch;
+//  if ((instruction & 0xFF00) == 0xDF00) return ThumbInstrType::SoftwareInterrupt;
+//  if ((instruction & 0xF800) == 0xE000) return ThumbInstrType::UnconditionalBranch;
+//  if ((instruction & 0xF800) == 0xE800) return ThumbInstrType::LongBranchLinkExchangeSuffix;
+//  if ((instruction & 0xF800) == 0xF000) return ThumbInstrType::LongBranchLinkPrefix;
+//  if ((instruction & 0xF800) == 0xF800) return ThumbInstrType::LongBranchLinkSuffix;
 
   // TODO: this is broken. can't distinguish between undefined ARM or Thumb opcode.
   return client.Undefined(instruction);
