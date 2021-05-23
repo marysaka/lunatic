@@ -10,6 +10,7 @@
 #include <lunatic/memory.hpp>
 
 #include "frontend/decode/arm.hpp"
+#include "frontend/decode/thumb.hpp"
 #include "frontend/basic_block.hpp"
 
 namespace lunatic {
@@ -39,6 +40,12 @@ struct Translator final : ARMDecodeClient<Status> {
   auto Handle(ARMBranchRelative const& opcode) -> Status override;
   auto Undefined(u32 opcode) -> Status override;
 
+private:
+  static constexpr int kMaxBlockSize = 64;
+
+  auto TranslateARM(BasicBlock& block, Memory& memory) -> bool;
+  auto TranslateThumb(BasicBlock& block, Memory& memory) -> bool;
+
   void EmitUpdateNZ();
   void EmitUpdateNZC();
   void EmitUpdateNZCV();
@@ -48,9 +55,11 @@ struct Translator final : ARMDecodeClient<Status> {
   void EmitFlushNoSwitch();
   void EmitLoadSPSRToCPSR();
 
-  Mode mode;
-  u32 opcode_size;
+  // TODO: deduce opcode_size from thumb_mode. this is redundant.
   u32 code_address;
+  bool thumb_mode;
+  u32 opcode_size;
+  Mode mode;
   bool armv5te = false;
   IREmitter* emitter = nullptr;
 };

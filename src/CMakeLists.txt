@@ -45,6 +45,7 @@ set(HEADERS
   frontend/decode/definition/single_data_transfer.hpp
   frontend/decode/definition/status_transfer.hpp
   frontend/decode/arm.hpp
+  frontend/decode/thumb.hpp
   frontend/ir/emitter.hpp
   frontend/ir/opcode.hpp
   frontend/ir/register.hpp

@@ -11,22 +11,20 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
-  using MicroBlock = BasicBlock::MicroBlock;
-
-  code_address = block.key.field.address;
-
-  if (code_address & 1) {
-    // Thumb mode is not supported right now.
-    code_address &= ~1;
-    return false;
-  }
-
+  code_address = block.key.field.address & ~1;
+  thumb_mode = block.key.field.address & 1;
+  opcode_size = thumb_mode ? sizeof(u16) : sizeof(u32);
   mode = block.key.field.mode;
-  opcode_size = (block.key.field.address & 1) ? sizeof(u16) : sizeof(u32);
 
-  static constexpr int kMaxBlockSize = 64;
+  if (thumb_mode) {
+    return TranslateThumb(block, memory);
+  }
+  return TranslateARM(block, memory);
+}
 
-  auto micro_block = MicroBlock{};
+
+auto Translator::TranslateARM(BasicBlock& block, Memory& memory) -> bool {
+  auto micro_block = BasicBlock::MicroBlock{};
 
   emitter = &micro_block.emitter;
 
@@ -47,7 +45,7 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
     auto break_micro_block = [&]() {
       block.micro_blocks.push_back(std::move(micro_block));
       micro_block = {
-        .condition = condition
+      .condition = condition
       };
       emitter = &micro_block.emitter;
     };
@@ -63,10 +61,6 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
     }
 
     if (status == Status::Unimplemented) {
-      /* TODO: this is not optimal.
-       * Let the callee know that we have something to run,
-       * but that the interpreter has to take over after that instead...
-       */
       block.micro_blocks.push_back(std::move(micro_block));
       return i != 0;
     }
@@ -79,6 +73,38 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
     }
 
     code_address += sizeof(u32);
+  }
+
+  block.micro_blocks.push_back(std::move(micro_block));
+  return true;
+}
+
+auto Translator::TranslateThumb(BasicBlock& block, Memory& memory) -> bool {
+  auto micro_block = BasicBlock::MicroBlock{
+    .condition = Condition::AL
+  };
+
+  emitter = &micro_block.emitter;
+
+  for (int i = 0; i < kMaxBlockSize; i++) {
+    auto instruction = memory.FastRead<u16, Memory::Bus::Code>(code_address);
+
+    // TODO: need to break the micro block from inside conditional branches somehow.
+    auto status = decode_thumb(instruction, *this);
+
+    if (status == Status::Unimplemented) {
+      block.micro_blocks.push_back(std::move(micro_block));
+      return i != 0;
+    }
+
+    micro_block.number_of_opcodes++;
+    block.cycle_count++;
+
+    if (status == Status::BreakBasicBlock) {
+      break;
+    }
+
+    code_address += sizeof(u16);
   }
 
   block.micro_blocks.push_back(std::move(micro_block));
