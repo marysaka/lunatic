@@ -290,6 +290,26 @@ inline auto decode_load_relative_pc(u16 opcode, T& client) -> U {
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_load_store_offset_reg(u16 opcode, T& client) -> U {
+  return client.Handle(ARMSingleDataTransfer{
+    .condition = Condition::AL,
+    .immediate = false,
+    .pre_increment = true,
+    .add = true,
+    .byte = bit::get_bit<u16, bool>(opcode, 10),
+    .writeback = false,
+    .load = bit::get_bit<u16, bool>(opcode, 11),
+    .reg_dst = bit::get_field<u16, GPR>(opcode, 0, 3),
+    .reg_base = bit::get_field<u16, GPR>(opcode, 3, 3),
+    .offset_reg = {
+      .reg = bit::get_field<u16, GPR>(opcode, 6, 3),
+      .shift = Shift::LSL,
+      .amount = 0
+    }
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
@@ -306,7 +326,7 @@ inline auto decode_thumb(u16 instruction, T& client) -> U {
   if ((instruction & 0xFC00) == 0x4000) return decode_alu(instruction, client);
   if ((instruction & 0xFC00) == 0x4400) return decode_high_register_ops(instruction, client);
   if ((instruction & 0xF800) == 0x4800) return decode_load_relative_pc(instruction, client);
-//  if ((instruction & 0xF200) == 0x5000) return ThumbInstrType::LoadStoreOffsetReg;
+  if ((instruction & 0xF200) == 0x5000) return decode_load_store_offset_reg(instruction, client);
 //  if ((instruction & 0xF200) == 0x5200) return ThumbInstrType::LoadStoreSigned;
 //  if ((instruction & 0xE000) == 0x6000) return ThumbInstrType::LoadStoreOffsetImm;
 //  if ((instruction & 0xF000) == 0x8000) return ThumbInstrType::LoadStoreHword;
