@@ -53,7 +53,15 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> Status {
   auto& base_old = emitter->CreateVar(IRDataType::UInt32, "base_old");
   auto& base_new = emitter->CreateVar(IRDataType::UInt32, "base_new");
 
-  emitter->LoadGPR(IRGuestReg{opcode.reg_base, mode}, base_old);
+  if (opcode.reg_base == GPR::PC) {
+    /* This handles an edge-case in PC-relative loads in Thumb-mode.
+     * The value of PC will be word-aligned before forming the final address,
+     * so that no rotated read will happen.
+     */
+    emitter->MOV(base_old, IRConstant{(code_address & ~3) + opcode_size * 2}, false);
+  } else {
+    emitter->LoadGPR(IRGuestReg{opcode.reg_base, mode}, base_old);
+  }
 
   if (opcode.add) {
     emitter->ADD(base_new, base_old, offset, false);

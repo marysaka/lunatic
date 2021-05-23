@@ -276,7 +276,6 @@ inline auto decode_high_register_ops(u16 opcode, T& client) -> U {
 
 template<typename T, typename U = typename T::return_type>
 inline auto decode_load_relative_pc(u16 opcode, T& client) -> U {
-  // TODO: force-align PC before forming the final address
   return client.Handle(ARMSingleDataTransfer{
     .condition = Condition::AL,
     .immediate = true,
