@@ -478,6 +478,17 @@ inline auto decode_ldm_stm(u16 opcode, T& client) -> U {
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_unconditional_branch(u16 opcode, T& client) -> U {
+  auto offset = (bit::get_field<u16, s32>(opcode, 0, 11) << 21) >> 20;
+
+  return client.Handle(ARMBranchRelative{
+    .condition = Condition::AL,
+    .offset = offset,
+    .link = false
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
@@ -510,7 +521,7 @@ inline auto decode_thumb(u16 instruction, T& client) -> U {
   if ((instruction & 0xF000) == 0xC000) return decode_ldm_stm(instruction, client);
 //  if ((instruction & 0xFF00) <  0xDF00) return ThumbInstrType::ConditionalBranch;
 //  if ((instruction & 0xFF00) == 0xDF00) return ThumbInstrType::SoftwareInterrupt;
-//  if ((instruction & 0xF800) == 0xE000) return ThumbInstrType::UnconditionalBranch;
+  if ((instruction & 0xF800) == 0xE000) return decode_unconditional_branch(instruction, client);
 //  if ((instruction & 0xF800) == 0xE800) return ThumbInstrType::LongBranchLinkExchangeSuffix;
 //  if ((instruction & 0xF800) == 0xF000) return ThumbInstrType::LongBranchLinkPrefix;
 //  if ((instruction & 0xF800) == 0xF800) return ThumbInstrType::LongBranchLinkSuffix;

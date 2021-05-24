@@ -12,8 +12,8 @@ namespace frontend {
 
 auto Translator::Handle(ARMMultiplyLong const& opcode) -> Status {
 
-  EmitAdvancePC();
-  return Status::Continue;
+  //EmitAdvancePC();
+  return Status::Unimplemented;
 }
 
 } // namespace lunatic::frontend
