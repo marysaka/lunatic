@@ -198,7 +198,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     code->L(label_skip);
     code->add(
       dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
-      micro_block.number_of_opcodes * opcode_size
+      micro_block.length * opcode_size
     );
 
     code->L(label_done);

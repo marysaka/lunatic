@@ -42,22 +42,22 @@ struct JIT {
       auto basic_block = match->second;
 
       basic_block->function();
-      return basic_block->cycle_count;
+      return basic_block->length;
     } else {
       // TODO: because BasícBlock is not copyable right now
       // we use dynamic allocation, but that's probably not optimal.
       auto basic_block = new BasicBlock{block_key};
-      auto success = translator.Translate(*basic_block, memory);
 
-      for (auto& micro_block : basic_block->micro_blocks) {
-        micro_block.emitter.Optimize();
-      }
+      translator.Translate(*basic_block, memory);
 
-      if (success) {
+      if (basic_block->length > 0) {
+        for (auto& micro_block : basic_block->micro_blocks) {
+          micro_block.emitter.Optimize();
+        }
         backend.Compile(memory, state, *basic_block);
         block_cache[block_key.value] = basic_block;
         basic_block->function();
-        return basic_block->cycle_count;
+        return basic_block->length;
       } else {
         delete basic_block;
       }

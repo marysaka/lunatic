@@ -32,12 +32,12 @@ struct BasicBlock {
   } key;
 
   // TODO: handle timing based on conditional flow.
-  int cycle_count = 0;
+  int length = 0;
 
   struct MicroBlock {
     Condition condition;
     IREmitter emitter;
-    int number_of_opcodes = 0;
+    int length = 0;
   };
 
   std::vector<MicroBlock> micro_blocks;

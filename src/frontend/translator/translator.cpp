@@ -26,6 +26,18 @@ auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
 auto Translator::TranslateARM(BasicBlock& block, Memory& memory) -> bool {
   auto micro_block = BasicBlock::MicroBlock{};
 
+  auto add_micro_block = [&]() {
+    block.micro_blocks.push_back(std::move(micro_block));
+  };
+
+  auto break_micro_block = [&](Condition condition) {
+    add_micro_block();
+    micro_block = {
+      .condition = condition
+    };
+    emitter = &micro_block.emitter;
+  };
+
   emitter = &micro_block.emitter;
 
   for (int i = 0; i < kMaxBlockSize; i++) {
@@ -40,33 +52,22 @@ auto Translator::TranslateARM(BasicBlock& block, Memory& memory) -> bool {
 
     if (i == 0) {
       micro_block.condition = condition;
-    }
-
-    auto break_micro_block = [&]() {
-      block.micro_blocks.push_back(std::move(micro_block));
-      micro_block = {
-        .condition = condition
-      };
-      emitter = &micro_block.emitter;
-    };
-
-    if (condition != micro_block.condition) {
-      break_micro_block();
+    } else if (condition != micro_block.condition) {
+      break_micro_block(condition);
     }
 
     auto status = decode_arm(instruction, *this);
 
-    if (status == Status::BreakMicroBlock && condition != Condition::AL) {
-      break_micro_block();
-    }
-
     if (status == Status::Unimplemented) {
-      block.micro_blocks.push_back(std::move(micro_block));
-      return i != 0;
+      break;
     }
 
-    micro_block.number_of_opcodes++;
-    block.cycle_count++;
+    block.length++;
+    micro_block.length++;
+
+    if (status == Status::BreakMicroBlock && condition != Condition::AL) {
+      break_micro_block(condition);
+    }
 
     if (status == Status::BreakBasicBlock) {
       break;
@@ -75,7 +76,7 @@ auto Translator::TranslateARM(BasicBlock& block, Memory& memory) -> bool {
     code_address += sizeof(u32);
   }
 
-  block.micro_blocks.push_back(std::move(micro_block));
+  add_micro_block();
   return true;
 }
 
@@ -107,12 +108,11 @@ auto Translator::TranslateThumb(BasicBlock& block, Memory& memory) -> bool {
     auto status = decode_thumb(instruction, *this);
 
     if (status == Status::Unimplemented) {
-      block.micro_blocks.push_back(std::move(micro_block));
-      return i != 0;
+      break;
     }
 
-    micro_block.number_of_opcodes++;
-    block.cycle_count++;
+    block.length++;
+    micro_block.length++;
 
     if (status == Status::BreakBasicBlock) {
       break;
