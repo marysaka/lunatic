@@ -87,6 +87,10 @@ void Translator::TranslateThumb(BasicBlock& basic_block, Memory& memory) {
 
   emitter = &micro_block.emitter;
 
+  auto add_micro_block = [&]() {
+    basic_block.micro_blocks.push_back(std::move(micro_block));
+  };
+
   for (int i = 0; i < kMaxBlockSize; i++) {
     auto instruction = memory.FastRead<u16, Memory::Bus::Code>(code_address);
 
@@ -97,7 +101,7 @@ void Translator::TranslateThumb(BasicBlock& basic_block, Memory& memory) {
       if (i == 0) {
         micro_block.condition = condition;
       } else {
-        basic_block.micro_blocks.push_back(std::move(micro_block));
+        add_micro_block();
         micro_block = {
           .condition = condition
         };
@@ -121,7 +125,7 @@ void Translator::TranslateThumb(BasicBlock& basic_block, Memory& memory) {
     code_address += sizeof(u16);
   }
 
-  basic_block.micro_blocks.push_back(std::move(micro_block));
+  add_micro_block();
 }
 
 auto Translator::Undefined(u32 opcode) -> Status {
