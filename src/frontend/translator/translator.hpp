@@ -25,7 +25,7 @@ enum class Status {
 };
 
 struct Translator final : ARMDecodeClient<Status> {
-  auto Translate(BasicBlock& block, Memory& memory) -> bool;
+  void Translate(BasicBlock& basic_block, Memory& memory);
 
   auto Handle(ARMDataProcessing const& opcode) -> Status override;
   auto Handle(ARMMoveStatusRegister const& opcode) -> Status override;
@@ -43,8 +43,8 @@ struct Translator final : ARMDecodeClient<Status> {
 private:
   static constexpr int kMaxBlockSize = 64;
 
-  auto TranslateARM(BasicBlock& block, Memory& memory) -> bool;
-  auto TranslateThumb(BasicBlock& block, Memory& memory) -> bool;
+  void TranslateARM(BasicBlock& basic_block, Memory& memory);
+  void TranslateThumb(BasicBlock& basic_block, Memory& memory);
 
   void EmitUpdateNZ();
   void EmitUpdateNZC();

@@ -10,24 +10,25 @@
 namespace lunatic {
 namespace frontend {
 
-auto Translator::Translate(BasicBlock& block, Memory& memory) -> bool {
-  code_address = block.key.field.address & ~1;
-  thumb_mode = block.key.field.address & 1;
+void Translator::Translate(BasicBlock& basic_block, Memory& memory) {
+  code_address = basic_block.key.field.address & ~1;
+  thumb_mode = basic_block.key.field.address & 1;
   opcode_size = thumb_mode ? sizeof(u16) : sizeof(u32);
-  mode = block.key.field.mode;
+  mode = basic_block.key.field.mode;
 
   if (thumb_mode) {
-    return TranslateThumb(block, memory);
+    TranslateThumb(basic_block, memory);
+  } else {
+    TranslateARM(basic_block, memory);
   }
-  return TranslateARM(block, memory);
 }
 
 
-auto Translator::TranslateARM(BasicBlock& block, Memory& memory) -> bool {
+void Translator::TranslateARM(BasicBlock& basic_block, Memory& memory) {
   auto micro_block = BasicBlock::MicroBlock{};
 
   auto add_micro_block = [&]() {
-    block.micro_blocks.push_back(std::move(micro_block));
+    basic_block.micro_blocks.push_back(std::move(micro_block));
   };
 
   auto break_micro_block = [&](Condition condition) {
@@ -62,7 +63,7 @@ auto Translator::TranslateARM(BasicBlock& block, Memory& memory) -> bool {
       break;
     }
 
-    block.length++;
+    basic_block.length++;
     micro_block.length++;
 
     if (status == Status::BreakMicroBlock && condition != Condition::AL) {
@@ -77,10 +78,9 @@ auto Translator::TranslateARM(BasicBlock& block, Memory& memory) -> bool {
   }
 
   add_micro_block();
-  return true;
 }
 
-auto Translator::TranslateThumb(BasicBlock& block, Memory& memory) -> bool {
+void Translator::TranslateThumb(BasicBlock& basic_block, Memory& memory) {
   auto micro_block = BasicBlock::MicroBlock{
     .condition = Condition::AL
   };
@@ -97,7 +97,7 @@ auto Translator::TranslateThumb(BasicBlock& block, Memory& memory) -> bool {
       if (i == 0) {
         micro_block.condition = condition;
       } else {
-        block.micro_blocks.push_back(std::move(micro_block));
+        basic_block.micro_blocks.push_back(std::move(micro_block));
         micro_block = {
           .condition = condition
         };
@@ -111,7 +111,7 @@ auto Translator::TranslateThumb(BasicBlock& block, Memory& memory) -> bool {
       break;
     }
 
-    block.length++;
+    basic_block.length++;
     micro_block.length++;
 
     if (status == Status::BreakBasicBlock) {
@@ -121,8 +121,7 @@ auto Translator::TranslateThumb(BasicBlock& block, Memory& memory) -> bool {
     code_address += sizeof(u16);
   }
 
-  block.micro_blocks.push_back(std::move(micro_block));
-  return true;
+  basic_block.micro_blocks.push_back(std::move(micro_block));
 }
 
 auto Translator::Undefined(u32 opcode) -> Status {
