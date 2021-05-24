@@ -14,6 +14,7 @@
 #include "definition/branch_exchange.hpp"
 #include "definition/branch_relative.hpp"
 #include "definition/data_processing.hpp"
+#include "definition/exception.hpp"
 #include "definition/halfword_signed_transfer.hpp"
 #include "definition/multiply.hpp"
 #include "definition/multiply_long.hpp"
@@ -43,6 +44,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBlockDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBranchRelative const& opcode) -> T = 0;
+  virtual auto Handle(ARMException const& opcode) -> T = 0;
   virtual auto Handle(ThumbBranchLinkSuffix const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
 };
@@ -209,6 +211,15 @@ inline auto decode_branch_relative(Condition condition, u32 opcode, T& client) -
     .condition = condition,
     .offset = s32(offset),
     .link = bit::get_bit<u32, bool>(opcode, 24)
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_svc(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMException{
+    .condition = condition,
+    .exception = Exception::Supervisor,
+    .svc_comment = opcode & 0x00FFFFFF
   });
 }
 
@@ -385,8 +396,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         return client.Undefined(instruction);
       }
 
-      // return ARMInstrType::SoftwareInterrupt;
-      return client.Undefined(instruction);
+      return decode_svc(condition, opcode, client);
     }
   }
 

@@ -15,6 +15,7 @@ set(SOURCES
   frontend/translator/handle/branch_exchange.cpp
   frontend/translator/handle/branch_relative.cpp
   frontend/translator/handle/data_processing.cpp
+  frontend/translator/handle/exception.cpp
   frontend/translator/handle/halfword_signed_transfer.cpp
   frontend/translator/handle/multiply.cpp
   frontend/translator/handle/multiply_long.cpp
@@ -39,6 +40,7 @@ set(HEADERS
   frontend/decode/definition/branch_exchange.hpp
   frontend/decode/definition/common.hpp
   frontend/decode/definition/data_processing.hpp
+  frontend/decode/definition/exception.hpp
   frontend/decode/definition/halfword_signed_transfer.hpp
   frontend/decode/definition/multiply.hpp
   frontend/decode/definition/multiply_long.hpp

@@ -491,6 +491,15 @@ inline auto decode_conditional_branch(u16 opcode, T& client) -> U {
 }
 
 template<typename T, typename U = typename T::return_type>
+inline auto decode_svc(u16 opcode, T& client) -> U {
+  return client.Handle(ARMException{
+    .condition = Condition::AL,
+    .exception = Exception::Supervisor,
+    .svc_comment = u32(bit::get_field(opcode, 0, 8) << 16)
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
 inline auto decode_unconditional_branch(u16 opcode, T& client) -> U {
   auto offset = (bit::get_field<u16, s32>(opcode, 0, 11) << 21) >> 20;
 
@@ -554,7 +563,7 @@ inline auto decode_thumb(u16 opcode, T& client) -> U {
 //  if ((opcode & 0xFF00) == 0xBE00) return ThumbInstrType::SoftwareBreakpoint;
   if ((opcode & 0xF000) == 0xC000) return decode_ldm_stm(opcode, client);
   if ((opcode & 0xFF00) <  0xDF00) return decode_conditional_branch(opcode, client);
-//  if ((opcode & 0xFF00) == 0xDF00) return ThumbInstrType::SoftwareInterrupt;
+  if ((opcode & 0xFF00) == 0xDF00) return decode_svc(opcode, client);
   if ((opcode & 0xF800) == 0xE000) return decode_unconditional_branch(opcode, client);
   if ((opcode & 0xF800) == 0xE800) return decode_branch_link_suffix(opcode, client, true);
   if ((opcode & 0xF800) == 0xF000) return decode_branch_link_prefix(opcode, client);

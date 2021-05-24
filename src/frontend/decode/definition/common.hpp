@@ -40,6 +40,16 @@ enum class Shift {
   ROR = 3
 };
 
+enum class Exception {
+  Reset = 0x00,
+  Undefined = 0x04,
+  Supervisor = 0x08,
+  PrefetchAbort = 0x0C,
+  DataAbort = 0x10,
+  IRQ = 0x18,
+  FIQ = 0x1C
+};
+
 using GPR = State::GPR;
 using Mode = State::Mode;
 
