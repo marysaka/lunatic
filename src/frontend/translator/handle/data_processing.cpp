@@ -137,7 +137,11 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
       auto& op1 = emitter->CreateVar(IRDataType::UInt32, "op1");
       auto& result = emitter->CreateVar(IRDataType::UInt32, "result");
 
-      emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
+      if (opcode.reg_op1 == GPR::PC && opcode.thumb_load_address) {
+        emitter->MOV(op1, IRConstant{(code_address & ~3) + opcode_size * 2}, false);
+      } else {
+        emitter->LoadGPR(IRGuestReg{opcode.reg_op1, mode}, op1);
+      }
       emitter->ADD(result, op1, op2, opcode.set_flags);
       emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
 

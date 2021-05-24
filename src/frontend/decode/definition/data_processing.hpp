@@ -46,16 +46,18 @@ struct ARMDataProcessing {
     struct {
       Shift type;
       bool immediate;
-      GPR  amount_reg; 
+      GPR  amount_reg;
       uint amount_imm;
     } shift;
   } op2_reg;
 
   /// Valid if immediate = true
   struct {
-    u8   value;
+    uint value;
     uint shift;
   } op2_imm;
+
+  bool thumb_load_address = false;
 };
 
 } // namespace lunatic::frontend

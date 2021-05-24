@@ -410,6 +410,23 @@ inline auto decode_load_store_relative_sp(u16 opcode, T& client) -> U {
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_load_address(u16 opcode, T& client) -> U {
+  return client.Handle(ARMDataProcessing{
+    .condition = Condition::AL,
+    .opcode = ARMDataOp::ADD,
+    .immediate = true,
+    .set_flags = false,
+    .reg_dst = bit::get_field<u16, GPR>(opcode, 8, 3),
+    .reg_op1 = bit::get_bit(opcode, 11) ? GPR::SP : GPR::PC,
+    .op2_imm = {
+      .value = uint(bit::get_field(opcode, 0, 8) << 2),
+      .shift = 0
+    },
+    .thumb_load_address = true
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
@@ -431,7 +448,7 @@ inline auto decode_thumb(u16 instruction, T& client) -> U {
   if ((instruction & 0xE000) == 0x6000) return decode_load_store_offset_imm(instruction, client);
   if ((instruction & 0xF000) == 0x8000) return decode_load_store_half(instruction, client);
   if ((instruction & 0xF000) == 0x9000) return decode_load_store_relative_sp(instruction, client);
-//  if ((instruction & 0xF000) == 0xA000) return ThumbInstrType::LoadAddress;
+  if ((instruction & 0xF000) == 0xA000) return decode_load_address(instruction, client);
 //  if ((instruction & 0xFF00) == 0xB000) return ThumbInstrType::AddOffsetToSP;
 //  if ((instruction & 0xFF00) == 0xB200) return ThumbInstrType::SignOrZeroExtend;
 //  if ((instruction & 0xF600) == 0xB400) return ThumbInstrType::PushPop;
