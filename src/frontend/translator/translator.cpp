@@ -45,7 +45,7 @@ auto Translator::TranslateARM(BasicBlock& block, Memory& memory) -> bool {
     auto break_micro_block = [&]() {
       block.micro_blocks.push_back(std::move(micro_block));
       micro_block = {
-      .condition = condition
+        .condition = condition
       };
       emitter = &micro_block.emitter;
     };
@@ -89,7 +89,21 @@ auto Translator::TranslateThumb(BasicBlock& block, Memory& memory) -> bool {
   for (int i = 0; i < kMaxBlockSize; i++) {
     auto instruction = memory.FastRead<u16, Memory::Bus::Code>(code_address);
 
-    // TODO: need to break the micro block from inside conditional branches somehow.
+    // HACK: detect conditional branches and break the micro block early.
+    if ((instruction & 0xF000) == 0xD000 && (instruction & 0xF00) != 0xF00) {
+      auto condition = bit::get_field<u16, Condition>(instruction, 8, 4);
+
+      if (i == 0) {
+        micro_block.condition = condition;
+      } else {
+        block.micro_blocks.push_back(std::move(micro_block));
+        micro_block = {
+          .condition = condition
+        };
+        emitter = &micro_block.emitter;
+      }
+    }
+
     auto status = decode_thumb(instruction, *this);
 
     if (status == Status::Unimplemented) {

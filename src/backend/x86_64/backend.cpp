@@ -75,6 +75,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     auto reg_alloc = X64RegisterAllocator{emitter, *code};
     auto location = 0;
     auto context = CompileContext{*code, reg_alloc, state, location};
+    auto opcode_size = (basic_block.key.field.address & 1) ? sizeof(u16) : sizeof(u32);
 
     auto label_skip = Xbyak::Label{};
     auto label_done = Xbyak::Label{};
@@ -197,7 +198,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     code->L(label_skip);
     code->add(
       dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
-      micro_block.number_of_opcodes * sizeof(u32)
+      micro_block.number_of_opcodes * opcode_size
     );
 
     code->L(label_done);
@@ -899,8 +900,6 @@ void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
 
   code.mov(result_reg, lhs_reg);
   code.imul(result_reg, rhs_reg);
-  //code.imul(result_reg, lhs_reg, rhs_reg);
-
 }
 
 void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* op) {
