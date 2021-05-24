@@ -464,6 +464,20 @@ inline auto decode_push_pop(u16 opcode, T& client) -> U {
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_ldm_stm(u16 opcode, T& client) -> U {
+  return client.Handle(ARMBlockDataTransfer{
+    .condition = Condition::AL,
+    .pre_increment = false,
+    .add = true,
+    .user_mode = false,
+    .writeback = true,
+    .load = bit::get_bit<u16, bool>(opcode, 11),
+    .reg_base = bit::get_field<u16, GPR>(opcode, 8, 3),
+    .reg_list = bit::get_field(opcode, 0, 8)
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
@@ -493,7 +507,7 @@ inline auto decode_thumb(u16 instruction, T& client) -> U {
 //  if ((instruction & 0xFFE0) == 0xB660) return ThumbInstrType::ChangeProcessorState;
 //  if ((instruction & 0xFF00) == 0xBA00) return ThumbInstrType::ReverseBytes;
 //  if ((instruction & 0xFF00) == 0xBE00) return ThumbInstrType::SoftwareBreakpoint;
-//  if ((instruction & 0xF000) == 0xC000) return ThumbInstrType::LoadStoreMultiple;
+  if ((instruction & 0xF000) == 0xC000) return decode_ldm_stm(instruction, client);
 //  if ((instruction & 0xFF00) <  0xDF00) return ThumbInstrType::ConditionalBranch;
 //  if ((instruction & 0xFF00) == 0xDF00) return ThumbInstrType::SoftwareInterrupt;
 //  if ((instruction & 0xF800) == 0xE000) return ThumbInstrType::UnconditionalBranch;
