@@ -54,10 +54,6 @@ auto Translator::Handle(ARMMoveStatusRegister const& opcode) -> Status {
 }
 
 auto Translator::Handle(ARMMoveRegisterStatus const& opcode) -> Status {
-  if (opcode.condition != Condition::AL) {
-    return Status::Unimplemented;
-  }
-
   auto& psr = emitter->CreateVar(IRDataType::UInt32, "psr");
 
   if (opcode.spsr) {
