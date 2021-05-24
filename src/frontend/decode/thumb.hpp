@@ -427,6 +427,43 @@ inline auto decode_load_address(u16 opcode, T& client) -> U {
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_add_sp_offset(u16 opcode, T& client) -> U {
+  return client.Handle(ARMDataProcessing{
+    .condition = Condition::AL,
+    .opcode = bit::get_bit(opcode, 7) ? ARMDataOp::SUB : ARMDataOp::ADD,
+    .immediate = true,
+    .set_flags = false,
+    .reg_dst = GPR::SP,
+    .reg_op1 = GPR::SP,
+    .op2_imm = {
+      .value = uint(bit::get_field(opcode, 0, 7) << 2),
+      .shift = 0
+    }
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_push_pop(u16 opcode, T& client) -> U {
+  bool load  = bit::get_bit(opcode, 11);
+  auto rlist = bit::get_field(opcode, 0, 8);
+
+  if (bit::get_bit(opcode,  8)) {
+    rlist |= (1 << (load ? 15 : 14));
+  }
+
+  return client.Handle(ARMBlockDataTransfer{
+    .condition = Condition::AL,
+    .pre_increment = !load,
+    .add = load,
+    .user_mode = false,
+    .writeback = true,
+    .load = load,
+    .reg_base = GPR::SP,
+    .reg_list = rlist
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
@@ -449,9 +486,9 @@ inline auto decode_thumb(u16 instruction, T& client) -> U {
   if ((instruction & 0xF000) == 0x8000) return decode_load_store_half(instruction, client);
   if ((instruction & 0xF000) == 0x9000) return decode_load_store_relative_sp(instruction, client);
   if ((instruction & 0xF000) == 0xA000) return decode_load_address(instruction, client);
-//  if ((instruction & 0xFF00) == 0xB000) return ThumbInstrType::AddOffsetToSP;
+  if ((instruction & 0xFF00) == 0xB000) return decode_add_sp_offset(instruction, client);
 //  if ((instruction & 0xFF00) == 0xB200) return ThumbInstrType::SignOrZeroExtend;
-//  if ((instruction & 0xF600) == 0xB400) return ThumbInstrType::PushPop;
+  if ((instruction & 0xF600) == 0xB400) return decode_push_pop(instruction, client);
 //  if ((instruction & 0xFFE0) == 0xB640) return ThumbInstrType::SetEndianess;
 //  if ((instruction & 0xFFE0) == 0xB660) return ThumbInstrType::ChangeProcessorState;
 //  if ((instruction & 0xFF00) == 0xBA00) return ThumbInstrType::ReverseBytes;
