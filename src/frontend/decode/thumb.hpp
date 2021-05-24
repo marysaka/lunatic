@@ -420,7 +420,7 @@ inline auto decode_load_address(u16 opcode, T& client) -> U {
     .reg_dst = bit::get_field<u16, GPR>(opcode, 8, 3),
     .reg_op1 = bit::get_bit(opcode, 11) ? GPR::SP : GPR::PC,
     .op2_imm = {
-      .value = uint(bit::get_field(opcode, 0, 8) << 2),
+      .value = u32(bit::get_field(opcode, 0, 8) << 2),
       .shift = 0
     },
     .thumb_load_address = true
@@ -437,7 +437,7 @@ inline auto decode_add_sp_offset(u16 opcode, T& client) -> U {
     .reg_dst = GPR::SP,
     .reg_op1 = GPR::SP,
     .op2_imm = {
-      .value = uint(bit::get_field(opcode, 0, 7) << 2),
+      .value = u32(bit::get_field(opcode, 0, 7) << 2),
       .shift = 0
     }
   });
@@ -501,6 +501,24 @@ inline auto decode_unconditional_branch(u16 opcode, T& client) -> U {
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_branch_link_prefix(u16 opcode, T& client) -> U {
+  s32 offset = (bit::get_field<u16, s32>(opcode, 0, 11) << 21) >> 9;
+
+  return client.Handle(ARMDataProcessing{
+    .condition = Condition::AL,
+    .opcode = ARMDataOp::ADD,
+    .immediate = true,
+    .set_flags = false,
+    .reg_dst = GPR::LR,
+    .reg_op1 = GPR::PC,
+    .op2_imm = {
+      .value = u32(offset),
+      .shift = 0
+    }
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
@@ -524,18 +542,14 @@ inline auto decode_thumb(u16 instruction, T& client) -> U {
   if ((instruction & 0xF000) == 0x9000) return decode_load_store_relative_sp(instruction, client);
   if ((instruction & 0xF000) == 0xA000) return decode_load_address(instruction, client);
   if ((instruction & 0xFF00) == 0xB000) return decode_add_sp_offset(instruction, client);
-//  if ((instruction & 0xFF00) == 0xB200) return ThumbInstrType::SignOrZeroExtend;
   if ((instruction & 0xF600) == 0xB400) return decode_push_pop(instruction, client);
-//  if ((instruction & 0xFFE0) == 0xB640) return ThumbInstrType::SetEndianess;
-//  if ((instruction & 0xFFE0) == 0xB660) return ThumbInstrType::ChangeProcessorState;
-//  if ((instruction & 0xFF00) == 0xBA00) return ThumbInstrType::ReverseBytes;
 //  if ((instruction & 0xFF00) == 0xBE00) return ThumbInstrType::SoftwareBreakpoint;
   if ((instruction & 0xF000) == 0xC000) return decode_ldm_stm(instruction, client);
   if ((instruction & 0xFF00) <  0xDF00) return decode_conditional_branch(instruction, client);
 //  if ((instruction & 0xFF00) == 0xDF00) return ThumbInstrType::SoftwareInterrupt;
   if ((instruction & 0xF800) == 0xE000) return decode_unconditional_branch(instruction, client);
 //  if ((instruction & 0xF800) == 0xE800) return ThumbInstrType::LongBranchLinkExchangeSuffix;
-//  if ((instruction & 0xF800) == 0xF000) return ThumbInstrType::LongBranchLinkPrefix;
+  if ((instruction & 0xF800) == 0xF000) return decode_branch_link_prefix(instruction, client);
 //  if ((instruction & 0xF800) == 0xF800) return ThumbInstrType::LongBranchLinkSuffix;
 
   // TODO: this is broken. can't distinguish between undefined ARM or Thumb opcode.

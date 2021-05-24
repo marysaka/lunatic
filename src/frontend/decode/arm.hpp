@@ -66,7 +66,7 @@ inline auto decode_data_processing(Condition condition, u32 opcode, T& client) -
       }
     },
     .op2_imm = {
-      .value = bit::get_field<u32, u8>(opcode, 0, 8),
+      .value = bit::get_field(opcode, 0, 8),
       .shift = bit::get_field(opcode, 8, 4) * 2
     }
   });

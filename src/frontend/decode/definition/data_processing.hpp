@@ -53,7 +53,7 @@ struct ARMDataProcessing {
 
   /// Valid if immediate = true
   struct {
-    uint value;
+    u32  value;
     uint shift;
   } op2_imm;
 
