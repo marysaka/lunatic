@@ -20,6 +20,7 @@
 #include "definition/single_data_swap.hpp"
 #include "definition/single_data_transfer.hpp"
 #include "definition/status_transfer.hpp"
+#include "definition/thumb_bl_suffix.hpp"
 
 namespace lunatic {
 namespace frontend {
@@ -42,6 +43,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBlockDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBranchRelative const& opcode) -> T = 0;
+  virtual auto Handle(ThumbBranchLinkSuffix const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
 };
 

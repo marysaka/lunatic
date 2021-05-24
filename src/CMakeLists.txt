@@ -21,6 +21,7 @@ set(SOURCES
   frontend/translator/handle/single_data_swap.cpp
   frontend/translator/handle/single_data_transfer.cpp
   frontend/translator/handle/status_transfer.cpp
+  frontend/translator/handle/thumb_bl_suffix.cpp
   frontend/translator/translator.cpp
   frontend/basic_block.cpp
   frontend/state.cpp
@@ -44,6 +45,7 @@ set(HEADERS
   frontend/decode/definition/single_data_swap.hpp
   frontend/decode/definition/single_data_transfer.hpp
   frontend/decode/definition/status_transfer.hpp
+  frontend/decode/definition/thumb_bl_suffix.hpp
   frontend/decode/arm.hpp
   frontend/decode/thumb.hpp
   frontend/ir/emitter.hpp

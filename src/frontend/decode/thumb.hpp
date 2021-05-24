@@ -503,7 +503,7 @@ inline auto decode_unconditional_branch(u16 opcode, T& client) -> U {
 
 template<typename T, typename U = typename T::return_type>
 inline auto decode_branch_link_prefix(u16 opcode, T& client) -> U {
-  s32 offset = (bit::get_field<u16, s32>(opcode, 0, 11) << 21) >> 9;
+  auto offset = (bit::get_field<u16, s32>(opcode, 0, 11) << 21) >> 9;
 
   return client.Handle(ARMDataProcessing{
     .condition = Condition::AL,
@@ -519,41 +519,49 @@ inline auto decode_branch_link_prefix(u16 opcode, T& client) -> U {
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_branch_link_suffix(u16 opcode, T& client, bool exchange) -> U {
+  return client.Handle(ThumbBranchLinkSuffix{
+    .offset = bit::get_field<u16, u32>(opcode, 0, 11) << 1,
+    .exchange = exchange
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
 /// passes the resulting structure to a client and returns the client's return value.
 template<typename T, typename U = typename T::return_type>
-inline auto decode_thumb(u16 instruction, T& client) -> U {
+inline auto decode_thumb(u16 opcode, T& client) -> U {
   using namespace detail;
 
   // TODO: use string pattern based approach to decoding.
 
-  if ((instruction & 0xF800) <  0x1800) return decode_move_shifted_register(instruction, client);
-  if ((instruction & 0xF800) == 0x1800) return decode_add_sub(instruction, client);
-  if ((instruction & 0xE000) == 0x2000) return decode_mov_cmp_add_sub_imm(instruction, client);
-  if ((instruction & 0xFC00) == 0x4000) return decode_alu(instruction, client);
-  if ((instruction & 0xFC00) == 0x4400) return decode_high_register_ops(instruction, client);
-  if ((instruction & 0xF800) == 0x4800) return decode_load_relative_pc(instruction, client);
-  if ((instruction & 0xF200) == 0x5000) return decode_load_store_offset_reg(instruction, client);
-  if ((instruction & 0xF200) == 0x5200) return decode_load_store_signed(instruction, client);
-  if ((instruction & 0xE000) == 0x6000) return decode_load_store_offset_imm(instruction, client);
-  if ((instruction & 0xF000) == 0x8000) return decode_load_store_half(instruction, client);
-  if ((instruction & 0xF000) == 0x9000) return decode_load_store_relative_sp(instruction, client);
-  if ((instruction & 0xF000) == 0xA000) return decode_load_address(instruction, client);
-  if ((instruction & 0xFF00) == 0xB000) return decode_add_sp_offset(instruction, client);
-  if ((instruction & 0xF600) == 0xB400) return decode_push_pop(instruction, client);
-//  if ((instruction & 0xFF00) == 0xBE00) return ThumbInstrType::SoftwareBreakpoint;
-  if ((instruction & 0xF000) == 0xC000) return decode_ldm_stm(instruction, client);
-  if ((instruction & 0xFF00) <  0xDF00) return decode_conditional_branch(instruction, client);
-//  if ((instruction & 0xFF00) == 0xDF00) return ThumbInstrType::SoftwareInterrupt;
-  if ((instruction & 0xF800) == 0xE000) return decode_unconditional_branch(instruction, client);
-//  if ((instruction & 0xF800) == 0xE800) return ThumbInstrType::LongBranchLinkExchangeSuffix;
-  if ((instruction & 0xF800) == 0xF000) return decode_branch_link_prefix(instruction, client);
-//  if ((instruction & 0xF800) == 0xF800) return ThumbInstrType::LongBranchLinkSuffix;
+  if ((opcode & 0xF800) <  0x1800) return decode_move_shifted_register(opcode, client);
+  if ((opcode & 0xF800) == 0x1800) return decode_add_sub(opcode, client);
+  if ((opcode & 0xE000) == 0x2000) return decode_mov_cmp_add_sub_imm(opcode, client);
+  if ((opcode & 0xFC00) == 0x4000) return decode_alu(opcode, client);
+  if ((opcode & 0xFC00) == 0x4400) return decode_high_register_ops(opcode, client);
+  if ((opcode & 0xF800) == 0x4800) return decode_load_relative_pc(opcode, client);
+  if ((opcode & 0xF200) == 0x5000) return decode_load_store_offset_reg(opcode, client);
+  if ((opcode & 0xF200) == 0x5200) return decode_load_store_signed(opcode, client);
+  if ((opcode & 0xE000) == 0x6000) return decode_load_store_offset_imm(opcode, client);
+  if ((opcode & 0xF000) == 0x8000) return decode_load_store_half(opcode, client);
+  if ((opcode & 0xF000) == 0x9000) return decode_load_store_relative_sp(opcode, client);
+  if ((opcode & 0xF000) == 0xA000) return decode_load_address(opcode, client);
+  if ((opcode & 0xFF00) == 0xB000) return decode_add_sp_offset(opcode, client);
+  if ((opcode & 0xF600) == 0xB400) return decode_push_pop(opcode, client);
+//  if ((opcode & 0xFF00) == 0xBE00) return ThumbInstrType::SoftwareBreakpoint;
+  if ((opcode & 0xF000) == 0xC000) return decode_ldm_stm(opcode, client);
+  if ((opcode & 0xFF00) <  0xDF00) return decode_conditional_branch(opcode, client);
+//  if ((opcode & 0xFF00) == 0xDF00) return ThumbInstrType::SoftwareInterrupt;
+  if ((opcode & 0xF800) == 0xE000) return decode_unconditional_branch(opcode, client);
+  if ((opcode & 0xF800) == 0xE800) return decode_branch_link_suffix(opcode, client, true);
+  if ((opcode & 0xF800) == 0xF000) return decode_branch_link_prefix(opcode, client);
+  if ((opcode & 0xF800) == 0xF800) return decode_branch_link_suffix(opcode, client, false);
 
   // TODO: this is broken. can't distinguish between undefined ARM or Thumb opcode.
-  return client.Undefined(instruction);
+  return client.Undefined(opcode);
 }
 
 } // namespace lunatic::frontend
