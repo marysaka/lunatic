@@ -92,7 +92,7 @@ template<typename T, typename U = typename T::return_type>
 inline auto decode_move_register_status(Condition condition, u32 opcode, T& client) -> U {
   return client.Handle(ARMMoveRegisterStatus{
     .condition = condition,
-    .spsr = bit::get_bit<u32, bool>(opcode, 25),
+    .spsr = bit::get_bit<u32, bool>(opcode, 22),
     .reg = bit::get_field<u32, GPR>(opcode, 12, 4)
   });
 }
