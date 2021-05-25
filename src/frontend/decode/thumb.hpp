@@ -343,7 +343,7 @@ inline auto decode_load_store_signed(u16 opcode, T& client) -> U {
     }
   }
 
-  client.Handle(ARMHalfwordSignedTransfer{
+  return client.Handle(ARMHalfwordSignedTransfer{
     .condition = Condition::AL,
     .pre_increment = true,
     .add = true,
