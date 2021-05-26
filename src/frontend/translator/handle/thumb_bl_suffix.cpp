@@ -19,7 +19,7 @@ auto Translator::Handle(ThumbBranchLinkSuffix const& opcode) -> Status {
   emitter->ADD(pc1, lr, IRConstant{opcode.offset}, false);
   emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{u32((code_address + sizeof(u16)) | 1)});
 
-  if (opcode.exchange) {
+  if (armv5te && opcode.exchange) {
     // TODO: since we always switch to ARM mode this generates bad code.
     emitter->ORR(pc2, pc1, IRConstant{1}, false);
     EmitFlushExchange(pc2);

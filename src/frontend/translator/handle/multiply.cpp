@@ -41,6 +41,11 @@ auto Translator::Handle(ARMMultiply const& opcode) -> Status {
   }
 
   EmitAdvancePC();
+
+  if (opcode.set_flags) {
+    return Status::BreakMicroBlock;
+  }
+
   return Status::Continue;
 }
 
