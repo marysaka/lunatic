@@ -30,10 +30,20 @@ auto IREmitter::ToString() const -> std::string {
 }
 
 void IREmitter::Optimize() {
-  // TODO: come up with a better hashing method.
-  // The mode field doesn't use all values and in most cases it doesn't matter.
+  // TODO: come up with a hashing method that produces smaller hashes.
   auto get_gpr_id = [](IRGuestReg reg) -> int {
-    return (static_cast<int>(reg.mode) << 4) | static_cast<int>(reg.reg);
+    auto id = static_cast<int>(reg.reg);
+    auto mode = reg.mode;
+
+    if (id <= 7 || (id <= 12 && mode != State::Mode::FIQ) || id == 15) {
+      return id;
+    }
+
+    if (mode == State::Mode::User) {
+      mode = State::Mode::System;
+    }
+
+    return (static_cast<int>(mode) << 4) | id;
   };
 
   // Forward pass: remove redundant register reads
@@ -58,11 +68,17 @@ void IREmitter::Optimize() {
         auto& var_dst = op->result;
 
         if (!var_src.IsNull()) {
-          auto it_old = it;
-          ++it;
-          // TODO: repoint subsequent uses if source is a variable.
+          it = code.erase(it);
+
+          // TODO: do not copy source, repoint destination to source instead.
+          // This would only work reliably if source is a variable.
           code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
-          code.erase(it_old);
+
+          if (var_src.IsVariable()) {
+            // Destination is a younger variable that now contains the current GPR value. 
+            // This helps to reduce the lifetime of the source variable.
+            current_gpr_value[gpr_id] = var_dst;
+          }
           continue;
         } else {
           current_gpr_value[gpr_id] = var_dst;
@@ -95,6 +111,7 @@ void IREmitter::Optimize() {
           gpr_already_stored[gpr_id] = true;
         }
       }
+
 
       ++it;
     }

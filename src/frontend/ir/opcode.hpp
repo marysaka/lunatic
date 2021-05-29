@@ -340,7 +340,7 @@ struct IRBinaryOpBase : IROpcodeBase<_klass> {
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &lhs == &var || (rhs.IsVariable() && &rhs.GetVar() == &var);
+    return &lhs == &var || (rhs.IsVariable() && (&rhs.GetVar() == &var));
   }
 
   auto Writes(IRVariable const& var) -> bool override {
