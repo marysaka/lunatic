@@ -1097,7 +1097,13 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   Push(code, {rsi, rdi});
 #endif
 
-  code.mov(kRegArg1.cvt32(), address_reg);
+  if (kRegArg1.cvt32() == source_reg) {
+    code.mov(kRegArg3.cvt32(), address_reg);
+    code.xchg(kRegArg1.cvt32(), kRegArg3.cvt32());
+  } else {
+    code.mov(kRegArg1.cvt32(), address_reg);
+    code.mov(kRegArg3.cvt32(), source_reg);
+  }
 
   if (flags & Word) {
     code.and_(kRegArg1.cvt32(), ~3);
@@ -1115,7 +1121,6 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
   code.mov(kRegArg0, u64(this));
   code.mov(kRegArg2.cvt32(), u32(Memory::Bus::Data));
-  code.mov(kRegArg3.cvt32(), source_reg);
   code.sub(rsp, 0x28);
   code.call(rax);
   code.add(rsp, 0x28);
