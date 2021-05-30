@@ -186,7 +186,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
           break;
         default:
           throw std::runtime_error(
-          fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
+            fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
           );
       }
 
