@@ -430,9 +430,10 @@ void IREmitter::MVN(
 void IREmitter::MUL(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRVariable const& rhs
+  IRVariable const& rhs,
+  bool update_host_flags
 ) {
-  Push<IRMultiply>(result, lhs, rhs);
+  Push<IRMultiply>(result, lhs, rhs, update_host_flags);
 }
 
 void IREmitter::LDR(

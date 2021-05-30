@@ -290,7 +290,11 @@ struct IRLogicalShiftLeft final : IRShifterBase<IROpcodeClass::LSL> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("lsl {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
+    return fmt::format("lsl{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(operand),
+      std::to_string(amount));
   }
 };
 
@@ -298,7 +302,11 @@ struct IRLogicalShiftRight final : IRShifterBase<IROpcodeClass::LSR> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("lsr {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
+    return fmt::format("lsr{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(operand),
+      std::to_string(amount));
   }
 };
 
@@ -306,7 +314,11 @@ struct IRArithmeticShiftRight final : IRShifterBase<IROpcodeClass::ASR> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("asr {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
+    return fmt::format("asr{} {}, {}, {}",
+      update_host_flags ? "s": "",
+      std::to_string(result),
+      std::to_string(operand),
+      std::to_string(amount));
   }
 };
 
@@ -314,7 +326,11 @@ struct IRRotateRight final : IRShifterBase<IROpcodeClass::ROR> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("ror {}, {}, {}", std::to_string(result), std::to_string(operand), std::to_string(amount));
+    return fmt::format("ror{} {}, {}, {}",
+      update_host_flags ? "s" : "",
+      std::to_string(result),
+      std::to_string(operand),
+      std::to_string(amount));
   }
 };
 
@@ -526,12 +542,14 @@ struct IRMultiply final : IROpcodeBase<IROpcodeClass::MUL> {
   IRMultiply(
     IRVariable const& result,
     IRVariable const& lhs,
-    IRVariable const& rhs
-  ) : result(result), lhs(lhs), rhs(rhs) {}
+    IRVariable const& rhs,
+    bool update_host_flags
+  ) : result(result), lhs(lhs), rhs(rhs), update_host_flags(update_host_flags) {}
 
   IRVariable const& result;
   IRVariable const& lhs;
   IRVariable const& rhs;
+  bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
     return &var == &lhs || &var == &rhs;
@@ -542,7 +560,8 @@ struct IRMultiply final : IROpcodeBase<IROpcodeClass::MUL> {
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("mul {}, {}, {}",
+    return fmt::format("mul{} {}, {}, {}",
+      update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
       std::to_string(rhs));

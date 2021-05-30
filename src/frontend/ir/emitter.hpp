@@ -170,7 +170,8 @@ struct IREmitter {
   void MUL(
     IRVariable const& result,
     IRVariable const& lhs,
-    IRVariable const& rhs
+    IRVariable const& rhs,
+    bool update_host_flags
   );
 
   void LDR(

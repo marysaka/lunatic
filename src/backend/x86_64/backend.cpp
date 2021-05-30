@@ -900,6 +900,11 @@ void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
 
   code.mov(result_reg, lhs_reg);
   code.imul(result_reg, rhs_reg);
+
+  if (op->update_host_flags) {
+    code.test(result_reg, result_reg);
+    code.lahf();
+  }
 }
 
 void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* op) {
