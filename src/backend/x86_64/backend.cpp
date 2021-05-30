@@ -488,6 +488,7 @@ void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
   auto amount = op->amount;
   auto result_reg = reg_alloc.GetVariableHostReg(op->result);
   auto operand_reg = reg_alloc.GetVariableHostReg(op->operand);
+  auto label_done = Xbyak::Label{};
 
   code.mov(result_reg, operand_reg);
 
@@ -506,12 +507,24 @@ void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
     }
   } else {
     auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
+    auto label_ok = Xbyak::Label{};
 
+    // Handle (amount % 32) == 0 and amount == 0 cases.
+    if (op->update_host_flags) {
+      code.test(amount_reg.cvt8(), 31);
+      code.jnz(label_ok);
+
+      code.cmp(amount_reg.cvt8(), 0);
+      code.jz(label_done);
+
+      code.bt(result_reg, 31);
+      code.lahf();
+      code.jmp(label_done);
+    }
+
+    code.L(label_ok);
     code.push(rcx);
     code.mov(cl, amount_reg.cvt8());
-    if (op->update_host_flags) {
-      code.sahf();
-    }
     code.ror(result_reg, cl);
     code.pop(rcx);
   }
@@ -519,6 +532,8 @@ void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
   if (op->update_host_flags) {
     code.lahf();
   }
+  
+  code.L(label_done);
 }
 
 void X64Backend::CompileAND(CompileContext const& context, IRBitwiseAND* op) {

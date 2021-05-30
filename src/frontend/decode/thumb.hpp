@@ -191,7 +191,6 @@ inline auto decode_alu(u16 opcode, T& client) -> U {
     case ThumbDataOp::ADC: return decode_dp_alu(ARMDataOp::ADC);
     case ThumbDataOp::SBC: return decode_dp_alu(ARMDataOp::SBC);
     case ThumbDataOp::ROR: return decode_dp_shift(Shift::ROR);
-  //case ThumbDataOp::ROR: return client.Undefined(opcode);
     case ThumbDataOp::TST: return decode_dp_alu(ARMDataOp::TST);
     case ThumbDataOp::NEG: return decode_dp_neg();
     case ThumbDataOp::CMP: return decode_dp_alu(ARMDataOp::CMP);
