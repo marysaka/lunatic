@@ -17,7 +17,8 @@ namespace lunatic {
 namespace frontend {
 
 enum class IRDataType {
-  UInt32
+  UInt32,
+  SInt32
 };
 
 /// Represents an immutable variable

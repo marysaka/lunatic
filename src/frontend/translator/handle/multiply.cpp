@@ -20,14 +20,14 @@ auto Translator::Handle(ARMMultiply const& opcode) -> Status {
 
   if (opcode.accumulate) {
     auto& op3 = emitter->CreateVar(IRDataType::UInt32, "op3");
-    auto& result2 = emitter->CreateVar(IRDataType::UInt32, "result2");
+    auto& result_acc = emitter->CreateVar(IRDataType::UInt32, "result_acc");
 
     emitter->LoadGPR(IRGuestReg{opcode.reg_op3, mode}, op3);
-    emitter->MUL(result, lhs, rhs, false);
-    emitter->ADD(result2, result, op3, opcode.set_flags);
-    emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result2);
+    emitter->MUL({}, result, lhs, rhs, false);
+    emitter->ADD(result_acc, result, op3, opcode.set_flags);
+    emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result_acc);
   } else {
-    emitter->MUL(result, lhs, rhs, opcode.set_flags);
+    emitter->MUL({}, result, lhs, rhs, opcode.set_flags);
     emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result);
   }
 

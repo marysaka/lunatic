@@ -14,8 +14,6 @@
 // TODO: optimize cases where an operand variable expires during the IR opcode we're currently compiling.
 // In that case the host register that is assigned to it might be reused for the result variable to do some optimization.
 
-// TODO: right now we only have UInt32 but how to deal with different variable or constant data types?
-
 #define DESTRUCTURE_CONTEXT auto& [code, reg_alloc, state, location] = context;
 
 namespace lunatic {
@@ -171,6 +169,9 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
           break;
         case IROpcodeClass::MUL:
           CompileMUL(context, lunatic_cast<IRMultiply>(op.get()));
+          break;
+        case IROpcodeClass::ADD64:
+          CompileADD64(context, lunatic_cast<IRAdd64>(op.get()));
           break;
         case IROpcodeClass::MemoryRead:
           CompileMemoryRead(context, lunatic_cast<IRMemoryRead>(op.get()));
@@ -894,16 +895,74 @@ void X64Backend::CompileMVN(CompileContext const& context, IRMvn* op) {
 void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo);
   auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
   auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs);
 
-  code.mov(result_reg, lhs_reg);
-  code.imul(result_reg, rhs_reg);
+  if (op->result_hi.HasValue()) {
+    auto result_hi_reg = reg_alloc.GetVariableHostReg(op->result_hi.Unwrap());
+    auto rhs_ext_reg = reg_alloc.GetTemporaryHostReg().cvt64();
+
+    if (op->lhs.data_type == IRDataType::SInt32) {
+      code.movsxd(result_hi_reg.cvt64(), lhs_reg);
+      code.movsxd(rhs_ext_reg, rhs_reg);
+    } else {
+      code.mov(result_hi_reg, lhs_reg);
+      code.mov(rhs_ext_reg.cvt32(), rhs_reg);
+    }
+
+    code.imul(result_hi_reg.cvt64(), rhs_ext_reg);
+
+    if (op->update_host_flags) {
+      code.test(result_hi_reg.cvt64(), result_hi_reg.cvt64());
+      code.lahf();
+    }
+
+    code.mov(result_lo_reg, result_hi_reg);
+    code.shr(result_hi_reg.cvt64(), 32);
+  } else {
+    code.mov(result_lo_reg, lhs_reg);
+    code.imul(result_lo_reg, rhs_reg);
+
+    if (op->update_host_flags) {
+      code.test(result_lo_reg, result_lo_reg);
+      code.lahf();
+    }
+  }
+}
+
+void X64Backend::CompileADD64(CompileContext const& context, IRAdd64* op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto result_hi_reg = reg_alloc.GetVariableHostReg(op->result_hi);
+  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo);
+  auto lhs_hi_reg = reg_alloc.GetVariableHostReg(op->lhs_hi);
+  auto lhs_lo_reg = reg_alloc.GetVariableHostReg(op->lhs_lo);
+  auto rhs_hi_reg = reg_alloc.GetVariableHostReg(op->rhs_hi);
+  auto rhs_lo_reg = reg_alloc.GetVariableHostReg(op->rhs_lo);
 
   if (op->update_host_flags) {
-    code.test(result_reg, result_reg);
+    // Pack (lhs_hi, lhs_lo) into result_hi
+    code.mov(result_hi_reg, lhs_hi_reg);
+    code.shl(result_hi_reg.cvt64(), 32);
+    code.or_(result_hi_reg.cvt64(), lhs_lo_reg);
+
+    // Pack (rhs_hi, rhs_lo) into result_lo
+    code.mov(result_lo_reg, rhs_hi_reg);
+    code.shl(result_lo_reg.cvt64(), 32);
+    code.or_(result_lo_reg.cvt64(), rhs_lo_reg);
+
+    code.add(result_hi_reg.cvt64(), result_lo_reg.cvt64());
     code.lahf();
+  
+    code.mov(result_lo_reg, result_hi_reg);
+    code.shr(result_hi_reg.cvt64(), 32);
+  } else {
+    code.mov(result_lo_reg, lhs_lo_reg);
+    code.mov(result_hi_reg, lhs_hi_reg);
+
+    code.add(result_lo_reg, rhs_lo_reg);
+    code.adc(result_hi_reg, rhs_hi_reg);
   }
 }
 

@@ -43,6 +43,7 @@ enum class IROpcodeClass {
   MOV,
   MVN,
   MUL,
+  ADD64,
   MemoryRead,
   MemoryWrite,
   Flush,
@@ -540,13 +541,20 @@ struct IRMvn final : IROpcodeBase<IROpcodeClass::MVN> {
 
 struct IRMultiply final : IROpcodeBase<IROpcodeClass::MUL> {
   IRMultiply(
-    IRVariable const& result,
+    Optional<IRVariable const&> result_hi,
+    IRVariable const& result_lo,
     IRVariable const& lhs,
     IRVariable const& rhs,
     bool update_host_flags
-  ) : result(result), lhs(lhs), rhs(rhs), update_host_flags(update_host_flags) {}
+  )   : result_hi(result_hi)
+      , result_lo(result_lo)
+      , lhs(lhs)
+      , rhs(rhs)
+      , update_host_flags(update_host_flags) {
+  }
 
-  IRVariable const& result;
+  Optional<IRVariable const&> result_hi;
+  IRVariable const& result_lo;
   IRVariable const& lhs;
   IRVariable const& rhs;
   bool update_host_flags;
@@ -556,16 +564,77 @@ struct IRMultiply final : IROpcodeBase<IROpcodeClass::MUL> {
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result;
+    return &var == &result_lo || 
+          (result_hi.HasValue() && (&result_hi.Unwrap() == &var));
   }
 
   auto ToString() -> std::string override {
+    std::string result_str;
+
+    if (result_hi.HasValue()) {
+      result_str = fmt::format("({}, {})",
+        std::to_string(result_hi.Unwrap()),
+        std::to_string(result_lo));
+    } else {
+      result_str = std::to_string(result_lo);
+    }
+
     return fmt::format("mul{} {}, {}, {}",
       update_host_flags ? "s" : "",
-      std::to_string(result),
+      result_str,
       std::to_string(lhs),
       std::to_string(rhs));
   }
+};
+
+struct IRAdd64 final : IROpcodeBase<IROpcodeClass::ADD64> {
+  IRAdd64(
+    IRVariable const& result_hi,
+    IRVariable const& result_lo,
+    IRVariable const& lhs_hi,
+    IRVariable const& lhs_lo,
+    IRVariable const& rhs_hi,
+    IRVariable const& rhs_lo,
+    bool update_host_flags
+  )   : result_hi(result_hi)
+      , result_lo(result_lo)
+      , lhs_hi(lhs_hi)
+      , lhs_lo(lhs_lo)
+      , rhs_hi(rhs_hi)
+      , rhs_lo(rhs_lo)
+      , update_host_flags(update_host_flags) {
+  }
+
+  IRVariable const& result_hi;
+  IRVariable const& result_lo;
+  IRVariable const& lhs_hi;
+  IRVariable const& lhs_lo;
+  IRVariable const& rhs_hi;
+  IRVariable const& rhs_lo;
+  bool update_host_flags;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &var == &lhs_hi ||
+           &var == &lhs_lo ||
+           &var == &rhs_hi ||
+           &var == &rhs_lo;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &var == &result_hi || &var == &result_lo;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("add{} ({}, {}), ({}, {}), ({}, {})",
+      update_host_flags ? "s": "",
+      std::to_string(result_hi),
+      std::to_string(result_lo),
+      std::to_string(lhs_hi),
+      std::to_string(lhs_lo),
+      std::to_string(rhs_hi),
+      std::to_string(rhs_lo));
+  }
+
 };
 
 // TODO: maybe the IR prefixes everywhere are a bit silly...

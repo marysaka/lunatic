@@ -168,9 +168,20 @@ struct IREmitter {
   );
 
   void MUL(
-    IRVariable const& result,
+    Optional<IRVariable const&> result_hi,
+    IRVariable const& result_lo,
     IRVariable const& lhs,
     IRVariable const& rhs,
+    bool update_host_flags
+  );
+
+  void ADD64(
+    IRVariable const& result_hi,
+    IRVariable const& result_lo,
+    IRVariable const& lhs_hi,
+    IRVariable const& lhs_lo,
+    IRVariable const& rhs_hi,
+    IRVariable const& rhs_lo,
     bool update_host_flags
   );
 

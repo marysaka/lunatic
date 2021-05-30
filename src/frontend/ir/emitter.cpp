@@ -428,12 +428,28 @@ void IREmitter::MVN(
 }
 
 void IREmitter::MUL(
-  IRVariable const& result,
+  Optional<IRVariable const&> result_hi,
+  IRVariable const& result_lo,
   IRVariable const& lhs,
   IRVariable const& rhs,
   bool update_host_flags
 ) {
-  Push<IRMultiply>(result, lhs, rhs, update_host_flags);
+  if (lhs.data_type != rhs.data_type) {
+    throw std::runtime_error("MUL: LHS and RHS operands must have same data type.");
+  }
+  Push<IRMultiply>(result_hi, result_lo, lhs, rhs, update_host_flags);
+}
+
+void IREmitter::ADD64(
+  IRVariable const& result_hi,
+  IRVariable const& result_lo,
+  IRVariable const& lhs_hi,
+  IRVariable const& lhs_lo,
+  IRVariable const& rhs_hi,
+  IRVariable const& rhs_lo,
+  bool update_host_flags
+) {
+  Push<IRAdd64>(result_hi, result_lo, lhs_hi, lhs_lo, rhs_hi, rhs_lo, update_host_flags);
 }
 
 void IREmitter::LDR(

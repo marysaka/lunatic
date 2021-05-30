@@ -80,6 +80,7 @@ private:
   void CompileMOV(CompileContext const& context, IRMov* op);
   void CompileMVN(CompileContext const& context, IRMvn* op);
   void CompileMUL(CompileContext const& context, IRMultiply* op);
+  void CompileADD64(CompileContext const& context, IRAdd64* op);
   void CompileMemoryRead(CompileContext const& context, IRMemoryRead* op);
   void CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op);
   void CompileFlush(CompileContext const& context, IRFlush* op);
