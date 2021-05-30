@@ -11,24 +11,32 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
-  if (opcode.reg_list == 0) {
-    return Status::Unimplemented;
-  }
-
-  auto transfer_pc = bit::get_bit(opcode.reg_list, 15);
+  auto list = opcode.reg_list;
+  auto transfer_pc = bit::get_bit(list, 15);
   auto reg_base = IRGuestReg{opcode.reg_base, mode};
-
-  // TODO: clean this up and document "base is not in rlist" caveat
-  bool base_is_first = (opcode.reg_list & ((1 << int(opcode.reg_base)) - 1)) == 0;
-  bool base_is_last  = (opcode.reg_list >> int(opcode.reg_base)) == 1;
-  bool early_writeback = opcode.writeback && !opcode.load && !armv5te && !base_is_first;
+  bool base_is_first = false;
+  bool base_is_last  = false;
 
   u32 bytes = 0;
 
-  // Calculate the number of bytes to transfer.
-  for (int i = 0; i <= 15; i++) {
-    if (bit::get_bit(opcode.reg_list, i))
-      bytes += sizeof(u32);
+  if (list == 0) {
+    bytes = 16 * sizeof(u32);
+    if (!armv5te) {
+      list = 1 << 15;
+      transfer_pc = true;
+      base_is_last = false;
+      base_is_first = false;
+    }
+  } else {
+    // TODO: clean this up and document "base is not in rlist" caveat
+    base_is_first = (list & ((1 << int(opcode.reg_base)) - 1)) == 0;
+    base_is_last  = (list >> int(opcode.reg_base)) == 1;
+
+    // Calculate the number of bytes to transfer.
+    for (int i = 0; i <= 15; i++) {
+      if (bit::get_bit(list, i))
+        bytes += sizeof(u32);
+    }
   }
 
   auto& base_lo = emitter->CreateVar(IRDataType::UInt32, "base_lo");
@@ -59,6 +67,8 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
   auto forced_mode = opcode.user_mode ? Mode::User : mode;
   auto address = &base_lo;
 
+  bool early_writeback = opcode.writeback && !opcode.load && !armv5te && !base_is_first;
+
   // STM ARMv4: store new base unless it is the first register
   // STM ARMv5: always store old base.
   if (early_writeback) {
@@ -67,7 +77,7 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
 
   // Load or store a set of registers from/to memory.
   for (int i = 0; i <= 15; i++)  {
-    if (!bit::get_bit(opcode.reg_list, i))
+    if (!bit::get_bit(list, i))
       continue;
 
     auto  reg  = static_cast<GPR>(i);
@@ -104,11 +114,11 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
     if (opcode.load) {
       if (armv5te) {
         // LDM ARMv5: writeback if base is the only register or not the last register.
-        if (!base_is_last || opcode.reg_list == (1 << int(opcode.reg_base)))
+        if (!base_is_last || list == (1 << int(opcode.reg_base)))
           writeback();
       } else {
         // LDM ARMv4: writeback if base in not in the register list.
-        if (!bit::get_bit(opcode.reg_list, int(opcode.reg_base)))
+        if (!bit::get_bit(list, int(opcode.reg_base)))
           writeback();
       }
     } else if (!early_writeback) {
