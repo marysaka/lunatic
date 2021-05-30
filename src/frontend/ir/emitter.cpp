@@ -51,37 +51,70 @@ void IREmitter::Optimize() {
     auto it = code.begin();
     auto end = code.end();
     IRValue current_gpr_value[512] {};
+    IRValue current_cpsr_value;
 
     while (it != end) {
       auto& op_ = *it;
       auto klass = op_->GetClass();
 
-      if (klass == IROpcodeClass::StoreGPR) {
-        auto op = lunatic_cast<IRStoreGPR>(op_.get());
-        auto gpr_id = get_gpr_id(op->reg);
+      switch (klass) {
+        case IROpcodeClass::StoreGPR: {
+          auto op = lunatic_cast<IRStoreGPR>(op_.get());
+          auto gpr_id = get_gpr_id(op->reg);
 
-        current_gpr_value[gpr_id] = op->value;
-      } else if (klass == IROpcodeClass::LoadGPR) {
-        auto  op = lunatic_cast<IRLoadGPR>(op_.get());
-        auto  gpr_id  = get_gpr_id(op->reg);
-        auto  var_src = current_gpr_value[gpr_id];
-        auto& var_dst = op->result;
+          current_gpr_value[gpr_id] = op->value;
+          break;
+        }
+        case IROpcodeClass::LoadGPR: {
+          auto  op = lunatic_cast<IRLoadGPR>(op_.get());
+          auto  gpr_id  = get_gpr_id(op->reg);
+          auto  var_src = current_gpr_value[gpr_id];
+          auto& var_dst = op->result;
 
-        if (!var_src.IsNull()) {
-          it = code.erase(it);
+          if (!var_src.IsNull()) {
+            it = code.erase(it);
 
-          // TODO: do not copy source, repoint destination to source instead.
-          // This would only work reliably if source is a variable.
-          code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
+            // TODO: do not copy source, repoint destination to source instead.
+            // This would only work reliably if source is a variable.
+            code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
 
-          if (var_src.IsVariable()) {
-            // Destination is a younger variable that now contains the current GPR value. 
-            // This helps to reduce the lifetime of the source variable.
+            if (var_src.IsVariable()) {
+              // Destination is a younger variable that now contains the current GPR value. 
+              // This helps to reduce the lifetime of the source variable.
+              current_gpr_value[gpr_id] = var_dst;
+            }
+            continue;
+          } else {
             current_gpr_value[gpr_id] = var_dst;
           }
-          continue;
-        } else {
-          current_gpr_value[gpr_id] = var_dst;
+          break;
+        }
+        case IROpcodeClass::StoreCPSR: {
+          current_cpsr_value = lunatic_cast<IRStoreCPSR>(op_.get())->value;
+          break;
+        }
+        case IROpcodeClass::LoadCPSR: {
+          auto  op = lunatic_cast<IRLoadCPSR>(op_.get());
+          auto  var_src = current_cpsr_value;
+          auto& var_dst = op->result;
+
+          if (!var_src.IsNull()) {
+            it = code.erase(it);
+
+            // TODO: do not copy source, repoint destination to source instead.
+            // This would only work reliably if source is a variable.
+            code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
+
+            if (var_src.IsVariable()) {
+              // Destination is a younger variable that now contains the current GPR value. 
+              // This helps to reduce the lifetime of the source variable.
+              current_cpsr_value = var_dst;
+            }
+            continue;
+          } else {
+            current_cpsr_value = var_dst;
+          }
+          break;
         }
       }
 
@@ -92,6 +125,7 @@ void IREmitter::Optimize() {
   // Backward pass: remove redundant register stores
   {
     bool gpr_already_stored[512] {false};
+    bool cpsr_already_stored = false;
     auto it = code.rbegin();
     auto end = code.rend();
 
@@ -99,19 +133,31 @@ void IREmitter::Optimize() {
       auto& op_ = *it;
       auto klass = op_->GetClass();
 
-      if (klass == IROpcodeClass::StoreGPR) {
-        auto op = lunatic_cast<IRStoreGPR>(op_.get());
-        auto gpr_id = get_gpr_id(op->reg);
+      switch (klass) {
+        case IROpcodeClass::StoreGPR: {
+          auto op = lunatic_cast<IRStoreGPR>(op_.get());
+          auto gpr_id = get_gpr_id(op->reg);
 
-        if (gpr_already_stored[gpr_id]) {
-          it = std::reverse_iterator{code.erase(std::next(it).base())};
-          end = code.rend();
-          continue;
-        } else {
-          gpr_already_stored[gpr_id] = true;
+          if (gpr_already_stored[gpr_id]) {
+            it = std::reverse_iterator{code.erase(std::next(it).base())};
+            end = code.rend();
+            continue;
+          } else {
+            gpr_already_stored[gpr_id] = true;
+          }
+          break;
+        }
+        case IROpcodeClass::StoreCPSR: {
+          if (cpsr_already_stored) {
+            it = std::reverse_iterator{code.erase(std::next(it).base())};
+            end = code.rend();
+            continue;
+          } else {
+            cpsr_already_stored = true;
+          }
+          break;
         }
       }
-
 
       ++it;
     }
