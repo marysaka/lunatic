@@ -7,11 +7,16 @@
 
 #pragma once
 
+#include <lunatic/memory.hpp>
+
 namespace lunatic {
 
 struct JIT {
-  JIT();
+  JIT(Memory& memory);
  ~JIT();
+
+  bool& IRQLine();
+  void Run(int cycles);
 
 private:
   struct JIT_impl* pimpl = nullptr;

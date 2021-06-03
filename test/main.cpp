@@ -5,93 +5,12 @@
  * found in the LICENSE file.
  */
 
-#include <lunatic/integer.hpp>
-#include <lunatic/memory.hpp>
-#include <arm/arm.hpp>
+#include <lunatic/jit.hpp>
 #include <fmt/format.h>
 #include <fstream>
 #include <cstring>
 #include <SDL.h>
 #include <unordered_map>
-
-#include "backend/x86_64/backend.hpp"
-#include "frontend/translator/translator.hpp"
-#include "frontend/state.hpp"
-
-using namespace lunatic::test;
-
-struct JIT {
-  using GPR = lunatic::frontend::State::GPR;
-  using Mode = lunatic::frontend::State::Mode;
-
-  JIT(lunatic::Memory& memory) : memory(memory) {
-  }
-
-  auto Run() -> int {
-    using namespace lunatic::backend;
-    using namespace lunatic::frontend;
-
-    auto block_key = BasicBlock::Key{state};
-    auto match = block_cache.find(block_key.value);
-
-    auto address = block_key.field.address;
-    auto mode = block_key.field.mode;
-    //fmt::print("address=0x{:08X} mode=0x{:02X}\n", address, mode);
-
-    if (match != block_cache.end()) {
-      auto basic_block = match->second;
-
-      basic_block->function();
-      return basic_block->length;
-    } else {
-      // TODO: because BasícBlock is not copyable right now
-      // we use dynamic allocation, but that's probably not optimal.
-      auto basic_block = new BasicBlock{block_key};
-
-      translator.Translate(*basic_block, memory);
-
-      if (basic_block->length > 0) {
-        for (auto& micro_block : basic_block->micro_blocks) {
-          micro_block.emitter.Optimize();
-        }
-        backend.Compile(memory, state, *basic_block);
-        block_cache[block_key.value] = basic_block;
-        basic_block->function();
-        return basic_block->length;
-      } else {
-        delete basic_block;
-      }
-
-      return -1;
-    }
-  }
-
-  void SaveState(lunatic::test::arm::State& other_state) {
-    // TODO: take care of other CPU modes!
-    other_state.cpsr.v = state.GetCPSR().v;
-
-    for (uint i = 0; i < 16; i++) {
-      other_state.reg[i] = state.GetGPR(state.GetCPSR().f.mode, static_cast<GPR>(i));
-    }
-  }
-
-  void LoadState(lunatic::test::arm::State const& other_state) {
-    // TODO: take care of other CPU modes!
-    state.GetCPSR().v = other_state.cpsr.v;
-
-    for (uint i = 0; i < 16; i++) {
-      state.GetGPR(state.GetCPSR().f.mode, static_cast<GPR>(i)) = other_state.reg[i];
-    }
-  }
-
-  lunatic::backend::X64Backend backend;
-  lunatic::frontend::State state;
-  lunatic::Memory& memory;
-  lunatic::frontend::Translator translator;
-
-  // TODO: use a better data structure for block lookup.
-  std::unordered_map<u64, BasicBlock*> block_cache;
-};
 
 struct Memory final : lunatic::Memory {
   Memory() {
@@ -198,8 +117,7 @@ struct Memory final : lunatic::Memory {
 };
 
 static Memory g_memory;
-static arm::ARM g_cpu_interp { arm::ARM::Architecture::ARMv5TE, &g_memory };
-static JIT g_cpu_jit { g_memory };
+static lunatic::JIT g_jit { g_memory };
 static u16 frame[240 * 160];
 
 void render_frame() {
@@ -245,35 +163,10 @@ int main(int argc, char** argv) {
   auto renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
   auto texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR1555, SDL_TEXTUREACCESS_STREAMING, 240, 160);
 
-  auto& state = g_cpu_interp.GetState();
-  g_cpu_interp.Reset();
-  g_cpu_interp.SwitchMode(arm::MODE_SYS);
-  state.bank[arm::BANK_SVC][arm::BANK_R13] = 0x03007FE0;
-  state.bank[arm::BANK_IRQ][arm::BANK_R13] = 0x03007FA0;
-  state.r13 = 0x03007F00;
-  g_cpu_interp.SetPC(0x08000000);
-
-  // Derp, just initialize the JIT state instead...
-  g_cpu_jit.LoadState(state);
-
   auto event = SDL_Event{};
 
   for (;;) {
-    for (uint i = 0; i < 279620; i++) {
-      auto jit_cycles = g_cpu_jit.Run();
-      if (jit_cycles == -1) {
-        g_cpu_jit.SaveState(state);
-
-        // TODO: just remove pipeline emulation from the interpreter instead.
-        g_cpu_interp.SetPC(state.r15 - (state.cpsr.f.thumb ? 4 : 8));
-        g_cpu_interp.Run(1);
-
-        g_cpu_jit.LoadState(state);
-      } else {
-        i += jit_cycles - 1;
-      }
-    }
-    // g_cpu_interp.Run(279620);
+    g_jit.Run(279620);
 
     render_frame();
 
