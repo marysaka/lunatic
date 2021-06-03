@@ -43,7 +43,7 @@ struct Translator final : ARMDecodeClient<Status> {
   auto Undefined(u32 opcode) -> Status override;
 
 private:
-  static constexpr int kMaxBlockSize = 64;
+  static constexpr int kMaxBlockSize = 8;
 
   void TranslateARM(BasicBlock& basic_block, Memory& memory);
   void TranslateThumb(BasicBlock& basic_block, Memory& memory);

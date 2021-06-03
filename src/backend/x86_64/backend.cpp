@@ -1072,18 +1072,28 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   Pop(code, {rsi, rdi});
 #endif
   Pop(code, {rdx, r8, r9, r10, r11});
-  code.mov(result_reg, eax);
-  code.pop(rax);
 
-  if (flags & Signed) {
-    if (flags & Half) {
-      code.movsx(result_reg, result_reg.cvt16());
-    }
+  if (flags & Word) {
+    code.mov(result_reg, eax);
+  }
 
-    if (flags & Byte) {
-      code.movsx(result_reg, result_reg.cvt8());
+  if (flags & Half) {
+    if (flags & Signed) {
+      code.movsx(result_reg, ax);
+    } else {
+      code.movzx(result_reg, ax);
     }
   }
+
+  if (flags & Byte) {
+    if (flags & Signed) {
+      code.movsx(result_reg, al);
+    } else {
+      code.movzx(result_reg, al);
+    }
+  }
+
+  code.pop(rax);
 
   code.L(label_final);
 
@@ -1179,9 +1189,28 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   if (kRegArg1.cvt32() == source_reg) {
     code.mov(kRegArg3.cvt32(), address_reg);
     code.xchg(kRegArg1.cvt32(), kRegArg3.cvt32());
+
+    if (flags & Half) {
+      code.movzx(kRegArg3.cvt32(), kRegArg3.cvt16());
+    }
+
+    if (flags & Byte) {
+      code.movzx(kRegArg3.cvt32(), kRegArg3.cvt8());
+    }
   } else {
     code.mov(kRegArg1.cvt32(), address_reg);
-    code.mov(kRegArg3.cvt32(), source_reg);
+
+    if (flags & Word) {
+      code.mov(kRegArg3.cvt32(), source_reg);
+    }
+
+    if (flags & Half) {
+      code.movzx(kRegArg3.cvt32(), source_reg.cvt16());
+    }
+
+    if (flags & Byte) {
+      code.movzx(kRegArg3.cvt32(), source_reg.cvt8());
+    }
   }
 
   if (flags & Word) {
