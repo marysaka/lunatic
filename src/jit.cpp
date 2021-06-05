@@ -28,16 +28,12 @@ struct JIT final : CPU {
       }
 
       auto block_key = BasicBlock::Key{state};
-      auto match = block_cache.find(block_key.value);
+      auto basic_block = block_cache.Get(block_key);
 
-      if (match != block_cache.end()) {
-        auto basic_block = match->second;
-        basic_block->function();
-        cycles_to_run -= basic_block->length;
-      } else {
+      if (basic_block == nullptr) {
         // TODO: because BasícBlock is not copyable right now
         // we use dynamic allocation, but that's probably not optimal.
-        auto basic_block = new BasicBlock{block_key};
+        basic_block = new BasicBlock{block_key};
 
         translator.Translate(*basic_block, memory);
 
@@ -46,9 +42,7 @@ struct JIT final : CPU {
             micro_block.emitter.Optimize();
           }
           backend.Compile(memory, state, *basic_block);
-          block_cache[block_key.value] = basic_block;
-          basic_block->function();
-          cycles_to_run -= basic_block->length;
+          block_cache.Set(block_key, basic_block);
         } else {
           auto address = block_key.field.address & ~1;
           auto thumb = state.GetCPSR().f.thumb;
@@ -57,6 +51,9 @@ struct JIT final : CPU {
           );
         }
       }
+
+      basic_block->function();
+      cycles_to_run -= basic_block->length;
     }
   }
 
@@ -118,7 +115,34 @@ private:
   State state;
   Translator translator;
   X64Backend backend;
-  std::unordered_map<u64, BasicBlock*> block_cache;
+
+  struct BlockCache {
+    auto Get(BasicBlock::Key key) -> BasicBlock* {
+      auto table = data[key.value >> 19];
+      if (table == nullptr) {
+        return nullptr;
+      }
+      return table->data[key.value & 0x7FFFF];
+    }
+
+    void Set(BasicBlock::Key key, BasicBlock* block) {
+      auto hash = key.value >> 19;
+      auto table = data[hash];
+      if (table == nullptr) {
+        table = new Table{};
+        data[hash] = table;
+      }
+      table->data[key.value & 0x7FFFF] = block;
+    }
+
+private:
+    struct Table {
+      //int use_count = 0;
+      BasicBlock* data[0x80000] {nullptr};
+    };
+
+    Table* data[0x40000] {nullptr};
+  } block_cache;
 };
 
 auto CreateCPU(CPU::Descriptor const& descriptor) -> std::unique_ptr<CPU> {
