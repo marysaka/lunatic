@@ -14,7 +14,9 @@ using namespace lunatic::backend;
 namespace lunatic {
 
 struct JIT final : CPU {
-  JIT(Memory& memory) : memory(memory) {
+  JIT(Memory& memory)
+      : memory(memory)
+      , backend(memory, state, block_cache, irq_line) {
   }
 
   bool& IRQLine() override { return irq_line; }
@@ -28,16 +30,12 @@ struct JIT final : CPU {
       }
 
       auto block_key = BasicBlock::Key{state};
-      auto match = block_cache.find(block_key.value);
+      auto basic_block = block_cache.Get(block_key);
 
-      if (match != block_cache.end()) {
-        auto basic_block = match->second;
-        basic_block->function();
-        cycles_to_run -= basic_block->length;
-      } else {
+      if (basic_block == nullptr) {
         // TODO: because BasícBlock is not copyable right now
         // we use dynamic allocation, but that's probably not optimal.
-        auto basic_block = new BasicBlock{block_key};
+        basic_block = new BasicBlock{block_key};
 
         translator.Translate(*basic_block, memory);
 
@@ -45,18 +43,18 @@ struct JIT final : CPU {
           for (auto &micro_block : basic_block->micro_blocks) {
             micro_block.emitter.Optimize();
           }
-          backend.Compile(memory, state, *basic_block);
-          block_cache[block_key.value] = basic_block;
-          basic_block->function();
-          cycles_to_run -= basic_block->length;
+          backend.Compile(*basic_block);
+          block_cache.Set(block_key, basic_block);
         } else {
-          auto address = block_key.field.address & ~1;
+          auto address = block_key.Address();
           auto thumb = state.GetCPSR().f.thumb;
           throw std::runtime_error(
-            fmt::format("lunatic: unknown opcode @ {:08X} (thumb = {})", address, thumb)
+            fmt::format("lunatic: unknown opcode @ R15={:08X} (thumb={})", address, thumb)
           );
         }
       }
+
+      cycles_to_run = backend.Call(*basic_block, cycles_to_run);
     }
   }
 
@@ -94,21 +92,21 @@ struct JIT final : CPU {
 
 private:
   void SignalIRQ() {
-    auto& cpsr = state.GetCPSR();
+    auto& cpsr = GetCPSR();
 
     if (!cpsr.f.mask_irq) {
-      *state.GetPointerToSPSR(Mode::IRQ) = cpsr;
+      GetSPSR(Mode::IRQ) = cpsr;
 
       cpsr.f.mode = Mode::IRQ;
       cpsr.f.mask_irq = 1;
       if (cpsr.f.thumb) {
-        state.GetGPR(Mode::IRQ, GPR::LR) = state.GetGPR(Mode::IRQ, GPR::PC);
+        GetGPR(GPR::LR) = GetGPR(GPR::PC);
       } else {
-        state.GetGPR(Mode::IRQ, GPR::LR) = state.GetGPR(Mode::IRQ, GPR::PC) - 4;
+        GetGPR(GPR::LR) = GetGPR(GPR::PC) - 4;
       }
       cpsr.f.thumb = 0;
 
-      state.GetGPR(Mode::IRQ, GPR::PC) = 0x18 + sizeof(u32) * 2;
+      GetGPR(GPR::PC) = 0x18 + sizeof(u32) * 2;
     }
   }
 
@@ -117,8 +115,8 @@ private:
   Memory& memory;
   State state;
   Translator translator;
+  BasicBlockCache block_cache;
   X64Backend backend;
-  std::unordered_map<u64, BasicBlock*> block_cache;
 };
 
 auto CreateCPU(CPU::Descriptor const& descriptor) -> std::unique_ptr<CPU> {

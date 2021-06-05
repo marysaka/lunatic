@@ -21,11 +21,11 @@ X64RegisterAllocator::X64RegisterAllocator(
 ) : emitter(emitter), code(code) {
   // Static allocation:
   //   - rax: host flags via lahf (overflow flag in al)
+  //   - rbx: number of cycles left
   //   - rcx: pointer to guest state (lunatic::frontend::State)
   //   - rbp: pointer to stack frame / spill area.
   free_host_regs = {
     edx,
-    ebx,
     esi,
     edi,
     r8d,

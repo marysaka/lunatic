@@ -24,7 +24,6 @@ set(SOURCES
   frontend/translator/handle/status_transfer.cpp
   frontend/translator/handle/thumb_bl_suffix.cpp
   frontend/translator/translator.cpp
-  frontend/basic_block.cpp
   frontend/state.cpp
   jit.cpp)
 
@@ -56,6 +55,7 @@ set(HEADERS
   frontend/ir/value.hpp
   frontend/translator/translator.hpp
   frontend/basic_block.hpp
+  frontend/basic_block_cache.hpp
   frontend/state.hpp)
 
 set(HEADERS_PUBLIC

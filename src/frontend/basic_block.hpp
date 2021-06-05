@@ -17,21 +17,28 @@
 namespace lunatic {
 namespace frontend {
 
-// TODO: how to handle conditional flow (predicated instructions) inside a basic block?
 struct BasicBlock {
+  // TODO: consider using uintptr_t
   typedef void (*CompiledFn)();
 
   union Key {
     Key() {}
-    Key(State& state);
-    struct Struct {
-      u32 address : 32;
-      Mode mode : 5;
-    } field;
+
+    Key(State& state) {
+      value  = state.GetGPR(Mode::User, GPR::PC) >> 1;
+      value |= u64(state.GetCPSR().v & 0x3F) << 31; // mode and thumb bit
+    }
+
+    auto Address() -> u32 { return (value & 0x7FFFFFFF) << 1; }
+    auto Mode() -> Mode { return static_cast<lunatic::Mode>((value >> 31) & 0x1F); }
+    bool Thumb() { return value & (1ULL << 36); }
+    
+    // bits  0 - 30: address[31:1]
+    // bits 31 - 35: CPU mode
+    // bit       36: thumb-flag
     u64 value = 0;
   } key;
 
-  // TODO: handle timing based on conditional flow.
   int length = 0;
 
   struct MicroBlock {
@@ -42,7 +49,7 @@ struct BasicBlock {
 
   std::vector<MicroBlock> micro_blocks;
 
-  // Function pointer to the compiled function.
+  // Pointer to the compiled code.
   CompiledFn function = nullptr;
 
   BasicBlock() {}
