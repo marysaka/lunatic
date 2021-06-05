@@ -11,10 +11,10 @@ namespace lunatic {
 namespace frontend {
 
 void Translator::Translate(BasicBlock& basic_block, Memory& memory) {
-  code_address = basic_block.key.field.address & ~1;
-  thumb_mode = basic_block.key.field.address & 1;
-  opcode_size = thumb_mode ? sizeof(u16) : sizeof(u32);
   mode = basic_block.key.field.mode;
+  thumb_mode = basic_block.key.field.thumb;
+  opcode_size = thumb_mode ? sizeof(u16) : sizeof(u32);
+  code_address = (basic_block.key.field.address << 1) - 2 * opcode_size;
 
   if (thumb_mode) {
     TranslateThumb(basic_block, memory);

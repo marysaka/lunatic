@@ -17,21 +17,29 @@
 namespace lunatic {
 namespace frontend {
 
-// TODO: how to handle conditional flow (predicated instructions) inside a basic block?
 struct BasicBlock {
+  // TODO: consider using uintptr_t
   typedef void (*CompiledFn)();
 
   union Key {
     Key() {}
-    Key(State& state);
+
+    Key(State& state) {
+      auto const& cpsr = state.GetCPSR();
+      field.mode = cpsr.f.mode;
+      field.thumb = cpsr.f.thumb;
+      field.address = state.GetGPR(field.mode, GPR::PC) >> 1;
+    }
+
     struct Struct {
-      u32 address : 32;
+      u32 address : 31;
       Mode mode : 5;
+      uint thumb : 1;
     } field;
+    
     u64 value = 0;
   } key;
 
-  // TODO: handle timing based on conditional flow.
   int length = 0;
 
   struct MicroBlock {
@@ -42,7 +50,7 @@ struct BasicBlock {
 
   std::vector<MicroBlock> micro_blocks;
 
-  // Function pointer to the compiled function.
+  // Pointer to the compiled code.
   CompiledFn function = nullptr;
 
   BasicBlock() {}

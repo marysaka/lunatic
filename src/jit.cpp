@@ -44,10 +44,10 @@ struct JIT final : CPU {
           backend.Compile(memory, state, *basic_block);
           block_cache.Set(block_key, basic_block);
         } else {
-          auto address = block_key.field.address & ~1;
+          auto address = block_key.field.address << 1;
           auto thumb = state.GetCPSR().f.thumb;
           throw std::runtime_error(
-            fmt::format("lunatic: unknown opcode @ {:08X} (thumb = {})", address, thumb)
+            fmt::format("lunatic: unknown opcode @ R15={:08X} (thumb={})", address, thumb)
           );
         }
       }

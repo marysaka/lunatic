@@ -107,7 +107,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     auto reg_alloc = X64RegisterAllocator{emitter, *code};
     auto location = 0;
     auto context = CompileContext{*code, reg_alloc, state, location};
-    auto opcode_size = (basic_block.key.field.address & 1) ? sizeof(u16) : sizeof(u32);
+    auto opcode_size = basic_block.key.field.thumb ? sizeof(u16) : sizeof(u32);
 
     auto label_skip = Xbyak::Label{};
     auto label_done = Xbyak::Label{};
