@@ -12,6 +12,8 @@
 #include <SDL.h>
 #include <unordered_map>
 
+#include <arm/arm.hpp>
+
 struct Memory final : lunatic::Memory {
   Memory() {
     std::memset(pram, 0, sizeof(pram));
@@ -161,7 +163,7 @@ int main(int argc, char** argv) {
     320,
     SDL_WINDOW_ALLOW_HIGHDPI);
 
-  auto renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+  auto renderer = SDL_CreateRenderer(window, -1, 0);
   auto texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR1555, SDL_TEXTUREACCESS_STREAMING, 240, 160);
 
   auto event = SDL_Event{};
@@ -174,10 +176,33 @@ int main(int argc, char** argv) {
   jit->GetGPR(GPR::SP) = 0x03007F00;
   jit->GetGPR(GPR::PC) = 0x08000008;
 
-  for (;;) {
-    jit->Run(279620);
+  using namespace lunatic::test;
+  arm::ARM interpreter { arm::ARM::Architecture::ARMv5TE, &g_memory };
+  auto& state = interpreter.GetState();
+  interpreter.Reset();
+  interpreter.SwitchMode(arm::MODE_SYS);
+  state.bank[arm::BANK_SVC][arm::BANK_R13] = 0x03007FE0;
+  state.bank[arm::BANK_IRQ][arm::BANK_R13] = 0x03007FA0;
+  state.r13 = 0x03007F00;
+  interpreter.SetPC(0x08000000);
 
+  auto tick0 = SDL_GetTicks();
+  auto frames = 0;
+
+  for (;;) {
+    jit->Run(279620/3);
+    //interpreter.Run(279620/3);
     render_frame();
+    frames++;
+
+    auto tick1 = SDL_GetTicks();
+    auto diff = tick1 - tick0;
+
+    if (diff >= 1000) {
+      fmt::print("{} fps\n", frames * 1000.0/diff);
+      tick0 = SDL_GetTicks();
+      frames = 0;
+    }
 
     SDL_UpdateTexture(texture, nullptr, frame, sizeof(u16) * 240);
     SDL_RenderClear(renderer);

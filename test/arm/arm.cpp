@@ -62,10 +62,10 @@ void ARM::Run(int instructions) {
 }
 
 void ARM::AttachCoprocessor(uint id, Coprocessor* coprocessor) {
-  if (id >= 16) { 
+  if (id >= 16) {
     throw std::runtime_error{"Coprocessor ID must be lower or equal to 15"};
   }
-  
+
   coprocessors[id] = coprocessor;
 }
 
@@ -90,7 +90,7 @@ void ARM::SignalIRQ() {
   } else {
     state.r14 = state.r15 - 4;
   }
-  
+
   // Jump to IRQ exception vector.
   state.r15 = ExceptionBase() + 0x18;
   ReloadPipeline32();
