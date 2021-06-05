@@ -52,7 +52,7 @@ struct JIT final : CPU {
         }
       }
 
-      basic_block->function();
+      backend.Call(*basic_block);
       cycles_to_run -= basic_block->length;
     }
   }
@@ -115,34 +115,7 @@ private:
   State state;
   Translator translator;
   X64Backend backend;
-
-  struct BlockCache {
-    auto Get(BasicBlock::Key key) -> BasicBlock* {
-      auto table = data[key.value >> 19];
-      if (table == nullptr) {
-        return nullptr;
-      }
-      return table->data[key.value & 0x7FFFF];
-    }
-
-    void Set(BasicBlock::Key key, BasicBlock* block) {
-      auto hash = key.value >> 19;
-      auto table = data[hash];
-      if (table == nullptr) {
-        table = new Table{};
-        data[hash] = table;
-      }
-      table->data[key.value & 0x7FFFF] = block;
-    }
-
-private:
-    struct Table {
-      //int use_count = 0;
-      BasicBlock* data[0x80000] {nullptr};
-    };
-
-    Table* data[0x40000] {nullptr};
-  } block_cache;
+  BasicBlockCache block_cache;
 };
 
 auto CreateCPU(CPU::Descriptor const& descriptor) -> std::unique_ptr<CPU> {

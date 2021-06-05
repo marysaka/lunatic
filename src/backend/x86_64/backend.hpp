@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "backend/backend.hpp"
-#include "frontend/basic_block.hpp"
+#include "frontend/basic_block_cache.hpp"
 #include "frontend/state.hpp"
 #include "register_allocator.hpp"
 
@@ -23,13 +23,17 @@ namespace lunatic {
 namespace backend {
 
 struct X64Backend : Backend {
-  X64Backend() { BuildConditionTable(); }
+  X64Backend();
 
   void Compile(
     Memory& memory,
     State& state,
     BasicBlock& basic_block
   );
+
+  void Call(BasicBlock const& basic_block) {
+    CallBlock(basic_block.function);
+  }
 
 private:
   struct CompileContext {
@@ -38,11 +42,6 @@ private:
     State& state;
     int& location;
   };
-
-  Memory* memory = nullptr;
-
-  // TODO: this *really* shouldn't live here.
-  bool condition_table[16][16];
 
   void BuildConditionTable();
 
@@ -85,6 +84,11 @@ private:
   void CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op);
   void CompileFlush(CompileContext const& context, IRFlush* op);
   void CompileFlushExchange(CompileContext const& context, IRFlushExchange* op);
+
+  Memory* memory = nullptr;
+  bool condition_table[16][16];
+  Xbyak::CodeGenerator code; // rename me
+  void (*CallBlock)(BasicBlock::CompiledFn fn);
 
   // TODO: get rid of the thunks eventually.
 

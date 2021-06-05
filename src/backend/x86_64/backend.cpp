@@ -42,6 +42,46 @@ static constexpr Xbyak::Reg64 kRegArg3 = rcx;
 
 #endif
 
+X64Backend::X64Backend() {
+  BuildConditionTable();
+
+  // Generate the code that we use to jump into a basic block.
+  {
+    auto stack_displacement = sizeof(u64) + X64RegisterAllocator::kSpillAreaSize * sizeof(u32);
+
+    code.push(rbx);
+    code.push(rbp);
+    code.push(r12);
+    code.push(r13);
+    code.push(r14);
+    code.push(r15);
+  #ifdef ABI_MSVC
+    code.push(rsi);
+    code.push(rdi);
+  #endif
+    code.sub(rsp, stack_displacement);
+    code.mov(rbp, rsp);
+
+    // TODO: consider jump with epilogue in each basic block?
+    code.call(kRegArg0);
+
+    code.add(rsp, stack_displacement);
+  #ifdef ABI_MSVC
+    code.pop(rdi);
+    code.pop(rsi);
+  #endif
+    code.pop(r15);
+    code.pop(r14);
+    code.pop(r13);
+    code.pop(r12);
+    code.pop(rbp);
+    code.pop(rbx);
+    code.ret();
+
+    CallBlock = code.getCode<void (*)(BasicBlock::CompiledFn fn)>();
+  }
+}
+
 void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) {
   // TODO: do not keep the code in memory forever.
   auto code = new Xbyak::CodeGenerator{};
@@ -49,23 +89,17 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
 
   this->memory = &memory;
 
-  Push(*code, {rbx, rbp, r12, r13, r14, r15});
-#ifdef ABI_MSVC
-  Push(*code, {rsi, rdi});
-#else
+  // TODO: move this into the block prolog.
+  {
+    // Load pointer to state into RCX
+    code->mov(rcx, u64(&state));
 
-#endif
-  code->sub(rsp, stack_displacement);
-  code->mov(rbp, rsp);
-
-  // Load pointer to state into RCX
-  code->mov(rcx, u64(&state));
-
-  // Load carry flag from state into AX register.
-  // Right now we assume we will only need the old carry, is this true?
-  code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
-  code->bt(edx, 29); // CF = value of bit 29
-  code->lahf();
+    // Load carry flag from state into AX register.
+    // Right now we assume we will only need the old carry, is this true?
+    code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+    code->bt(edx, 29); // CF = value of bit 29
+    code->lahf();
+  }
 
   for (auto const& micro_block : basic_block.micro_blocks) {
     auto& emitter = micro_block.emitter;
@@ -205,11 +239,6 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     code->L(label_done);
   }
 
-  code->add(rsp, stack_displacement);
-#ifdef ABI_MSVC
-  Pop(*code, {rsi, rdi});
-#endif
-  Pop(*code, {rbx, rbp, r12, r13, r14, r15});
   code->ret();
 
   basic_block.function = code->getCode<BasicBlock::CompiledFn>();
@@ -1064,9 +1093,9 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   code.mov(kRegArg0, u64(this));
   code.mov(kRegArg2.cvt32(), u32(Memory::Bus::Data));
-  code.sub(rsp, 0x28);
+  code.sub(rsp, 0x20);
   code.call(rax);
-  code.add(rsp, 0x28);
+  code.add(rsp, 0x20);
 
 #ifdef ABI_SYSV
   Pop(code, {rsi, rdi});
@@ -1229,9 +1258,9 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
   code.mov(kRegArg0, u64(this));
   code.mov(kRegArg2.cvt32(), u32(Memory::Bus::Data));
-  code.sub(rsp, 0x28);
+  code.sub(rsp, 0x20);
   code.call(rax);
-  code.add(rsp, 0x28);
+  code.add(rsp, 0x20);
 
 #ifdef ABI_SYSV
   Pop(code, {rsi, rdi});

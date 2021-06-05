@@ -56,6 +56,7 @@ set(HEADERS
   frontend/ir/value.hpp
   frontend/translator/translator.hpp
   frontend/basic_block.hpp
+  frontend/basic_block_cache.hpp
   frontend/state.hpp)
 
 set(HEADERS_PUBLIC
