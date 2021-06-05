@@ -5,7 +5,7 @@
  * found in the LICENSE file.
  */
 
-#include <lunatic/jit.hpp>
+#include <lunatic/cpu.hpp>
 #include <fmt/format.h>
 #include <fstream>
 #include <cstring>
@@ -117,7 +117,6 @@ struct Memory final : lunatic::Memory {
 };
 
 static Memory g_memory;
-static lunatic::JIT g_jit { g_memory };
 static u16 frame[240 * 160];
 
 void render_frame() {
@@ -127,6 +126,8 @@ void render_frame() {
 }
 
 int main(int argc, char** argv) {
+  using namespace lunatic;
+
   size_t size;
   std::ifstream file { "armwrestler.gba", std::ios::binary };
 
@@ -165,8 +166,16 @@ int main(int argc, char** argv) {
 
   auto event = SDL_Event{};
 
+  auto jit = CreateCPU(CPU::Descriptor{.memory = g_memory});
+
+  jit->GetGPR(GPR::SP, Mode::Supervisor) = 0x03007FE0;
+  jit->GetGPR(GPR::SP, Mode::IRQ) = 0x03007FA0;
+  jit->GetCPSR().f.mode = Mode::System;
+  jit->GetGPR(GPR::SP) = 0x03007F00;
+  jit->GetGPR(GPR::PC) = 0x08000008;
+
   for (;;) {
-    g_jit.Run(279620);
+    jit->Run(279620);
 
     render_frame();
 

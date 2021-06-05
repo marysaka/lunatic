@@ -117,10 +117,10 @@ struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
 };
 
 struct IRLoadSPSR final : IROpcodeBase<IROpcodeClass::LoadSPSR> {
-  IRLoadSPSR(IRVariable const& result, State::Mode mode) : result(result), mode(mode) {}
+  IRLoadSPSR(IRVariable const& result, Mode mode) : result(result), mode(mode) {}
 
   IRVariable const& result;
-  State::Mode mode;
+  Mode mode;
 
   auto Reads(IRVariable const& var) -> bool override {
     return false;
@@ -136,10 +136,10 @@ struct IRLoadSPSR final : IROpcodeBase<IROpcodeClass::LoadSPSR> {
 };
 
 struct IRStoreSPSR final : IROpcodeBase<IROpcodeClass::StoreSPSR> {
-  IRStoreSPSR(IRValue value, State::Mode mode) : value(value), mode(mode) {}
+  IRStoreSPSR(IRValue value, Mode mode) : value(value), mode(mode) {}
 
   IRValue value;
-  State::Mode mode;
+  Mode mode;
 
   auto Reads(IRVariable const& var) -> bool override {
     return value.IsVariable() && (&var == &value.GetVar());

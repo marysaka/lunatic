@@ -16,13 +16,13 @@ namespace frontend {
 
 /// References an ARM guest register with respect to the processor mode.
 struct IRGuestReg {
-  IRGuestReg(State::GPR reg, State::Mode mode) : reg(reg), mode(mode) {}
+  IRGuestReg(GPR reg, Mode mode) : reg(reg), mode(mode) {}
 
   /// The ARM general purpose register
-  const State::GPR reg;
+  const GPR reg;
 
   /// The ARM processor mode
-  const State::Mode mode;
+  const Mode mode;
 };
 
 } // namespace lunatic::frontend
@@ -31,7 +31,7 @@ struct IRGuestReg {
 namespace std {
 
 inline auto to_string(lunatic::frontend::IRGuestReg const& guest_reg) -> std::string {
-  using Mode = lunatic::frontend::State::Mode;
+  using Mode = lunatic::Mode;
 
   auto id = static_cast<uint>(guest_reg.reg);
   auto mode = guest_reg.mode;

@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <lunatic/integer.hpp>
+#include <lunatic/cpu.hpp>
 #include <string>
 
 namespace lunatic {
@@ -16,54 +16,6 @@ namespace frontend {
 /// Stores the state of the emulated ARM core.
 struct State {
   State();
-
-  /// Enumeration of ARM general-purpose registers (GPRs).
-  enum class GPR : u8 {
-    R0 = 0,
-    R1 = 1,
-    R2 = 2,
-    R3 = 3,
-    R4 = 4,
-    R5 = 5,
-    R6 = 6,
-    R7 = 7,
-    R8 = 8,
-    R9 = 9,
-    R10 = 10,
-    R11 = 11,
-    R12 = 12,
-    SP = 13,
-    LR = 14,
-    PC = 15,
-  };
-
-  /// Enumeration of ARM processor modes.
-  enum class Mode : uint {
-    User = 0x10,
-    FIQ = 0x11,
-    IRQ = 0x12,
-    Supervisor = 0x13,
-    Abort = 0x17,
-    Undefined = 0x18,
-    System = 0x1F
-  };
-
-  /// Program Status Register, keeps track of ARM processor mode, IRQ masking and flags.
-  union StatusRegister {
-    struct {
-      Mode mode : 5;
-      uint thumb : 1;
-      uint mask_fiq : 1;
-      uint mask_irq : 1;
-      uint reserved : 19;
-      uint q : 1;
-      uint v : 1;
-      uint c : 1;
-      uint z : 1;
-      uint n : 1;
-    } f;
-    u32 v = static_cast<u32>(Mode::System);
-  };
 
   /// Reset the ARM core.
   void Reset();
@@ -129,8 +81,9 @@ private:
 
 namespace std {
 
-inline auto to_string(lunatic::frontend::State::Mode value) -> std::string {
-  using Mode = lunatic::frontend::State::Mode;
+// TODO: move this somewhere more appropriate?
+inline auto to_string(lunatic::Mode value) -> std::string {
+  using Mode = lunatic::Mode;
 
   switch (value) {
     case Mode::User: return "usr";

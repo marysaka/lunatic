@@ -2,7 +2,7 @@
  * Copyright (C) 2021 fleroviux
  */
 
-#include <lunatic/jit.hpp>
+#include <lunatic/cpu.hpp>
 
 #include "frontend/state.hpp"
 #include "frontend/translator/translator.hpp"
@@ -13,14 +13,8 @@ using namespace lunatic::backend;
 
 namespace lunatic {
 
-struct JIT_impl {
-  JIT_impl(Memory& memory) : memory(memory) {
-    // FIXME: expose emulated CPU state to the user.
-    state.GetGPR(Mode::Supervisor, GPR::SP) = 0x03007FE0;
-    state.GetGPR(Mode::IRQ, GPR::SP) = 0x03007FA0;
-    state.GetGPR(Mode::System, GPR::SP) = 0x03007F00;
-    state.GetGPR(Mode::System, GPR::PC) = 0x08000008;
-    state.GetCPSR().f.mode = Mode::System;
+struct JIT : CPU {
+  JIT(Memory& memory) : memory(memory) {
   }
 
   bool& IRQLine() { return irq_line; }
@@ -66,6 +60,38 @@ struct JIT_impl {
     }
   }
 
+  auto GetGPR(GPR reg) -> u32& override {
+    return GetGPR(reg, GetCPSR().f.mode);
+  }
+
+  auto GetGPR(GPR reg) const -> u32 override {
+    return GetGPR(reg);
+  }
+
+  auto GetGPR(GPR reg, Mode mode) -> u32& override {
+    return state.GetGPR(mode, reg);
+  }
+
+  auto GetGPR(GPR reg, Mode mode) const -> u32 override {
+    return GetGPR(reg, mode);
+  }
+
+  auto GetCPSR() -> StatusRegister& {
+    return state.GetCPSR();
+  }
+
+  auto GetCPSR() const -> StatusRegister {
+    return GetCPSR();
+  }
+
+  auto GetSPSR(Mode mode) -> StatusRegister& {
+    return *state.GetPointerToSPSR(mode);
+  }
+
+  auto GetSPSR(Mode mode) const -> StatusRegister {
+    return GetSPSR(mode);
+  }
+
 private:
   void SignalIRQ() {
     auto& cpsr = state.GetCPSR();
@@ -95,18 +121,8 @@ private:
   std::unordered_map<u64, BasicBlock*> block_cache;
 };
 
-JIT::JIT(Memory& memory) : pimpl(new JIT_impl(memory)) {}
-
-JIT::~JIT() {
-  delete pimpl;
-}
-
-bool& JIT::IRQLine() {
-  return pimpl->IRQLine();
-}
-
-void JIT::Run(int cycles) {
-  pimpl->Run(cycles);
+auto CreateCPU(CPU::Descriptor const& descriptor) -> std::unique_ptr<CPU> {
+  return std::make_unique<JIT>(descriptor.memory);
 }
 
 } // namespace lunatic

@@ -61,8 +61,8 @@ set(HEADERS
 set(HEADERS_PUBLIC
   ../include/lunatic/detail/meta.hpp
   ../include/lunatic/detail/punning.hpp
+  ../include/lunatic/cpu.hpp
   ../include/lunatic/integer.hpp
-  ../include/lunatic/jit.hpp
   ../include/lunatic/memory.hpp)
 
 add_library(lunatic STATIC ${SOURCES} ${HEADERS} ${HEADERS_PUBLIC})

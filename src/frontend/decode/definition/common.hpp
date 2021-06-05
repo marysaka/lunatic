@@ -7,9 +7,7 @@
 
 #pragma once
 
-#include <lunatic/integer.hpp>
-
-#include "frontend/state.hpp"
+#include <lunatic/cpu.hpp>
 
 namespace lunatic {
 namespace frontend {
@@ -49,9 +47,6 @@ enum class Exception {
   IRQ = 0x18,
   FIQ = 0x1C
 };
-
-using GPR = State::GPR;
-using Mode = State::Mode;
 
 } // namespace lunatic::frontend
 } // namespace lunatic

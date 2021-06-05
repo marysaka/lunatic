@@ -26,7 +26,7 @@ struct BasicBlock {
     Key(State& state);
     struct Struct {
       u32 address : 32;
-      State::Mode mode : 5;
+      Mode mode : 5;
     } field;
     u64 value = 0;
   } key;

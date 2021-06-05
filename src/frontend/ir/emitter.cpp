@@ -35,12 +35,12 @@ void IREmitter::Optimize() {
     auto id = static_cast<int>(reg.reg);
     auto mode = reg.mode;
 
-    if (id <= 7 || (id <= 12 && mode != State::Mode::FIQ) || id == 15) {
+    if (id <= 7 || (id <= 12 && mode != Mode::FIQ) || id == 15) {
       return id;
     }
 
-    if (mode == State::Mode::User) {
-      mode = State::Mode::System;
+    if (mode == Mode::User) {
+      mode = Mode::System;
     }
 
     return (static_cast<int>(mode) << 4) | id;
@@ -186,18 +186,18 @@ void IREmitter::StoreGPR(IRGuestReg reg, IRValue value) {
   Push<IRStoreGPR>(reg, value);
 }
 
-void IREmitter::LoadSPSR (IRVariable const& result, State::Mode mode) {
+void IREmitter::LoadSPSR (IRVariable const& result, Mode mode) {
   // TODO: I'm not sure if here is the right place to handle this.
-  if (mode == State::Mode::User || mode == State::Mode::System) {
+  if (mode == Mode::User || mode == Mode::System) {
     Push<IRLoadCPSR>(result);
   } else {
     Push<IRLoadSPSR>(result, mode);
   }
 }
 
-void IREmitter::StoreSPSR(IRValue value, State::Mode mode) {
+void IREmitter::StoreSPSR(IRValue value, Mode mode) {
   // TODO: I'm not sure if here is the right place to handle this.
-  if (mode == State::Mode::User || mode == State::Mode::System) {
+  if (mode == Mode::User || mode == Mode::System) {
     return;
   }
   Push<IRStoreSPSR>(value, mode);
