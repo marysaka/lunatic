@@ -23,14 +23,14 @@ namespace lunatic {
 namespace backend {
 
 struct X64Backend : Backend {
-  X64Backend();
-
-  void Compile(
+  X64Backend(
     Memory& memory,
     State& state,
-    BasicBlock& basic_block,
-    BasicBlockCache const& block_cache
+    BasicBlockCache const& block_cache,
+    bool const& irq_line
   );
+
+  void Compile(BasicBlock& basic_block);
 
   auto Call(BasicBlock const& basic_block, int max_cycles) -> int {
     return CallBlock(basic_block.function, max_cycles);
@@ -43,6 +43,12 @@ private:
     State& state;
     int& location;
   };
+
+  void EmitCallBlock();
+  void CompileIROp(
+    CompileContext const& context,
+    std::unique_ptr<IROpcode> const& op
+  );
 
   void BuildConditionTable();
 
@@ -62,6 +68,8 @@ private:
   void CompileStoreSPSR(CompileContext const& context, IRStoreSPSR* op);
   void CompileLoadCPSR(CompileContext const& context, IRLoadCPSR* op);
   void CompileStoreCPSR(CompileContext const& context, IRStoreCPSR* op);
+  void CompileClearCarry(CompileContext const& context, IRClearCarry* op);
+  void CompileSetCarry(CompileContext const& context, IRSetCarry* op);
   void CompileUpdateFlags(CompileContext const& context, IRUpdateFlags* op);
   void CompileLSL(CompileContext const& context, IRLogicalShiftLeft* op);
   void CompileLSR(CompileContext const& context, IRLogicalShiftRight* op);
@@ -86,35 +94,38 @@ private:
   void CompileFlush(CompileContext const& context, IRFlush* op);
   void CompileFlushExchange(CompileContext const& context, IRFlushExchange* op);
 
-  Memory* memory = nullptr;
+  Memory& memory;
+  State& state;
+  BasicBlockCache const& block_cache;
+  bool const& irq_line;
   bool condition_table[16][16];
-  Xbyak::CodeGenerator code; // rename me
+  Xbyak::CodeGenerator code;
   int (*CallBlock)(BasicBlock::CompiledFn, int);
 
   // TODO: get rid of the thunks eventually.
 
   auto ReadByte(u32 address, Memory::Bus bus) -> u8 {
-    return memory->ReadByte(address, bus);
+    return memory.ReadByte(address, bus);
   }
 
   auto ReadHalf(u32 address, Memory::Bus bus) -> u16 {
-    return memory->ReadHalf(address, bus);
+    return memory.ReadHalf(address, bus);
   }
 
   auto ReadWord(u32 address, Memory::Bus bus) -> u32 {
-    return memory->ReadWord(address, bus);
+    return memory.ReadWord(address, bus);
   }
 
   void WriteByte(u32 address, Memory::Bus bus, u8 value) {
-    memory->WriteByte(address, value, bus);
+    memory.WriteByte(address, value, bus);
   }
 
   void WriteHalf(u32 address, Memory::Bus bus, u16 value) {
-    memory->WriteHalf(address, value, bus);
+    memory.WriteHalf(address, value, bus);
   }
 
   void WriteWord(u32 address, Memory::Bus bus, u32 value) {
-    memory->WriteWord(address, value, bus);
+    memory.WriteWord(address, value, bus);
   }
 };
 

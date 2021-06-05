@@ -14,7 +14,9 @@ using namespace lunatic::backend;
 namespace lunatic {
 
 struct JIT final : CPU {
-  JIT(Memory& memory) : memory(memory) {
+  JIT(Memory& memory)
+      : memory(memory)
+      , backend(memory, state, block_cache, irq_line) {
   }
 
   bool& IRQLine() override { return irq_line; }
@@ -41,7 +43,7 @@ struct JIT final : CPU {
           for (auto &micro_block : basic_block->micro_blocks) {
             micro_block.emitter.Optimize();
           }
-          backend.Compile(memory, state, *basic_block, block_cache);
+          backend.Compile(*basic_block);
           block_cache.Set(block_key, basic_block);
         } else {
           auto address = block_key.field.address << 1;
@@ -113,8 +115,8 @@ private:
   Memory& memory;
   State state;
   Translator translator;
-  X64Backend backend;
   BasicBlockCache block_cache;
+  X64Backend backend;
 };
 
 auto CreateCPU(CPU::Descriptor const& descriptor) -> std::unique_ptr<CPU> {

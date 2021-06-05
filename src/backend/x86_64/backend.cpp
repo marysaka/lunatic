@@ -42,84 +42,70 @@ static constexpr Xbyak::Reg64 kRegArg3 = rcx;
 
 #endif
 
-X64Backend::X64Backend() {
-  BuildConditionTable();
-
-  // Generate the code that we use to jump into a basic block.
-  {
-    auto stack_displacement = sizeof(u64) + X64RegisterAllocator::kSpillAreaSize * sizeof(u32);
-
-    code.push(rbx);
-    code.push(rbp);
-    code.push(r12);
-    code.push(r13);
-    code.push(r14);
-    code.push(r15);
-  #ifdef ABI_MSVC
-    code.push(rsi);
-    code.push(rdi);
-  #endif
-    code.sub(rsp, stack_displacement);
-    code.mov(rbp, rsp);
-
-    code.mov(rbx, kRegArg1);
-    code.call(kRegArg0);
-    code.mov(rax, rbx);
-
-    code.add(rsp, stack_displacement);
-  #ifdef ABI_MSVC
-    code.pop(rdi);
-    code.pop(rsi);
-  #endif
-    code.pop(r15);
-    code.pop(r14);
-    code.pop(r13);
-    code.pop(r12);
-    code.pop(rbp);
-    code.pop(rbx);
-    code.ret();
-
-    CallBlock = code.getCode<int (*)(BasicBlock::CompiledFn, int)>();
-  }
-}
-
-void X64Backend::Compile(
+X64Backend::X64Backend(
   Memory& memory,
   State& state,
-  BasicBlock& basic_block,
-  BasicBlockCache const& block_cache
-) {
-  // TODO: do not keep the code in memory forever.
+  BasicBlockCache const& block_cache,
+  bool const& irq_line
+)   : memory(memory)
+    , state(state)
+    , block_cache(block_cache)
+    , irq_line(irq_line) {
+  BuildConditionTable();
+  EmitCallBlock();
+}
+
+void X64Backend::EmitCallBlock() {
+  auto stack_displacement = sizeof(u64) + X64RegisterAllocator::kSpillAreaSize * sizeof(u32);
+
+  Push(code, {rbx, rbp, r12, r13, r14, r15});
+#ifdef ABI_MSVC
+  Push(code, {rsi, rdi});
+#endif
+  code.sub(rsp, stack_displacement);
+  code.mov(rbp, rsp);
+
+  code.mov(r12, kRegArg0); // r12 = function pointer
+  code.mov(rbx, kRegArg1); // rbx = cycle counter
+    
+  // Load carry flag into AH
+  code.mov(rcx, uintptr(&state));
+  code.mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+  code.bt(edx, 29); // CF = value of bit 29
+  code.lahf();
+  
+  code.call(r12);
+
+  // Return remaining number of cycles
+  code.mov(rax, rbx);
+
+  code.add(rsp, stack_displacement);
+#ifdef ABI_MSVC
+  Pop(code, {rsi, rdi});
+#endif
+  Pop(code, {rbx, rbp, r12, r13, r14, r15});
+  code.ret();
+
+  CallBlock = code.getCode<int (*)(BasicBlock::CompiledFn, int)>();
+}
+
+void X64Backend::Compile(BasicBlock& basic_block) {
   auto code = new Xbyak::CodeGenerator{};
-
-  this->memory = &memory;
-
-  // TODO: move this into the block prolog.
-  {
-    // Load pointer to state into RCX
-    code->mov(rcx, u64(&state));
-
-    // Load carry flag from state into AX register.
-    // Right now we assume we will only need the old carry, is this true?
-    code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
-    code->bt(edx, 29); // CF = value of bit 29
-    code->lahf();
-  }
+  auto label_return_to_dispatch = Xbyak::Label{};
 
   for (auto const& micro_block : basic_block.micro_blocks) {
-    auto& emitter = micro_block.emitter;
+    auto& emitter  = micro_block.emitter;
     auto condition = micro_block.condition;
     auto reg_alloc = X64RegisterAllocator{emitter, *code};
     auto location = 0;
-    auto context = CompileContext{*code, reg_alloc, state, location};
-    auto opcode_size = basic_block.key.field.thumb ? sizeof(u16) : sizeof(u32);
+    auto context  = CompileContext{*code, reg_alloc, state, location};
 
     auto label_skip = Xbyak::Label{};
     auto label_done = Xbyak::Label{};
 
+    // Skip micro block if íts condition is not met.
     if (condition != Condition::AL) {
-      // TODO: can this be optimized more?
-      // Maybe perform a conditional jump based on flags in eax?
+      // TODO: can we perform a conditional jump based on eflags?
       code->mov(r8, u64(&condition_table[static_cast<int>(condition)]));
       code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
       code->shr(edx, 28);
@@ -128,131 +114,37 @@ void X64Backend::Compile(
     }
 
     for (auto const& op : emitter.Code()) {
-      reg_alloc.SetCurrentLocation(location);
-
-      switch (op->GetClass()) {
-        case IROpcodeClass::LoadGPR:
-          CompileLoadGPR(context, lunatic_cast<IRLoadGPR>(op.get()));
-          break;
-        case IROpcodeClass::StoreGPR:
-          CompileStoreGPR(context, lunatic_cast<IRStoreGPR>(op.get()));
-          break;
-        case IROpcodeClass::LoadSPSR:
-          CompileLoadSPSR(context, lunatic_cast<IRLoadSPSR>(op.get()));
-          break;
-        case IROpcodeClass::StoreSPSR:
-          CompileStoreSPSR(context, lunatic_cast<IRStoreSPSR>(op.get()));
-          break;
-        case IROpcodeClass::LoadCPSR:
-          CompileLoadCPSR(context, lunatic_cast<IRLoadCPSR>(op.get()));
-          break;
-        case IROpcodeClass::StoreCPSR:
-          CompileStoreCPSR(context, lunatic_cast<IRStoreCPSR>(op.get()));
-          break;
-        case IROpcodeClass::ClearCarry:
-          code->and_(ah, ~1);
-          break;
-        case IROpcodeClass::SetCarry:
-          code->or_(ah, 1);
-          break;
-        case IROpcodeClass::UpdateFlags:
-          CompileUpdateFlags(context, lunatic_cast<IRUpdateFlags>(op.get()));
-          break;
-        case IROpcodeClass::LSL:
-          CompileLSL(context, lunatic_cast<IRLogicalShiftLeft>(op.get()));
-          break;
-        case IROpcodeClass::LSR:
-          CompileLSR(context, lunatic_cast<IRLogicalShiftRight>(op.get()));
-          break;
-        case IROpcodeClass::ASR:
-          CompileASR(context, lunatic_cast<IRArithmeticShiftRight>(op.get()));
-          break;
-        case IROpcodeClass::ROR:
-          CompileROR(context, lunatic_cast<IRRotateRight>(op.get()));
-          break;
-        case IROpcodeClass::AND:
-          CompileAND(context, lunatic_cast<IRBitwiseAND>(op.get()));
-          break;
-        case IROpcodeClass::BIC:
-          CompileBIC(context, lunatic_cast<IRBitwiseBIC>(op.get()));
-          break;
-        case IROpcodeClass::EOR:
-          CompileEOR(context, lunatic_cast<IRBitwiseEOR>(op.get()));
-          break;
-        case IROpcodeClass::SUB:
-          CompileSUB(context, lunatic_cast<IRSub>(op.get()));
-          break;
-        case IROpcodeClass::RSB:
-          CompileRSB(context, lunatic_cast<IRRsb>(op.get()));
-          break;
-        case IROpcodeClass::ADD:
-          CompileADD(context, lunatic_cast<IRAdd>(op.get()));
-          break;
-        case IROpcodeClass::ADC:
-          CompileADC(context, lunatic_cast<IRAdc>(op.get()));
-          break;
-        case IROpcodeClass::SBC:
-          CompileSBC(context, lunatic_cast<IRSbc>(op.get()));
-          break;
-        case IROpcodeClass::RSC:
-          CompileRSC(context, lunatic_cast<IRRsc>(op.get()));
-          break;
-        case IROpcodeClass::ORR:
-          CompileORR(context, lunatic_cast<IRBitwiseORR>(op.get()));
-          break;
-        case IROpcodeClass::MOV:
-          CompileMOV(context, lunatic_cast<IRMov>(op.get()));
-          break;
-        case IROpcodeClass::MVN:
-          CompileMVN(context, lunatic_cast<IRMvn>(op.get()));
-          break;
-        case IROpcodeClass::MUL:
-          CompileMUL(context, lunatic_cast<IRMultiply>(op.get()));
-          break;
-        case IROpcodeClass::ADD64:
-          CompileADD64(context, lunatic_cast<IRAdd64>(op.get()));
-          break;
-        case IROpcodeClass::MemoryRead:
-          CompileMemoryRead(context, lunatic_cast<IRMemoryRead>(op.get()));
-          break;
-        case IROpcodeClass::MemoryWrite:
-          CompileMemoryWrite(context, lunatic_cast<IRMemoryWrite>(op.get()));
-          break;
-        case IROpcodeClass::Flush:
-          CompileFlush(context, lunatic_cast<IRFlush>(op.get()));
-          break;
-        case IROpcodeClass::FlushExchange:
-          CompileFlushExchange(context, lunatic_cast<IRFlushExchange>(op.get()));
-          break;
-        default:
-          throw std::runtime_error(
-            fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
-          );
-      }
-
-      location++;
+      reg_alloc.SetCurrentLocation(location++);
+      CompileIROp(context, op);
     }
 
     code->jmp(label_done);
 
-    code->L(label_skip);
-    code->add(
-      dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
-      micro_block.length * opcode_size
-    );
+    // If the micro block was skipped advance PC by the number of instructions in it. 
+    code->L(label_skip);    
+    if (basic_block.key.field.thumb) {
+      code->add(
+        dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
+        micro_block.length * sizeof(u16)
+      );
+    } else {
+      code->add(
+        dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
+        micro_block.length * sizeof(u32)
+      );
+    }
 
     code->L(label_done);
   }
 
-  // Attempt to dispatch the next block immediately
-  // TODO: attempt to hardcode the jump target, if known at compile-time?
-  auto label_return_to_dispatch = Xbyak::Label{};
-
-  // Update cycle counter and return to dispatch if necessary.
+  // Return to the dispatcher if we ran out of cycles.
   code->sub(rbx, basic_block.length);
   code->jle(label_return_to_dispatch);
 
-  // TODO: check the IRQ signal line.
+  // Return to the dispatcher if there is an IRQ to handle
+  code->mov(rdx, uintptr(&irq_line));
+  code->cmp(byte[rdx], 0);
+  code->jnz(label_return_to_dispatch);
 
   // Build the block key from R15 and CPSR.
   // See frontend/basic_block.hpp
@@ -284,6 +176,111 @@ void X64Backend::Compile(
   code->ret();
 
   basic_block.function = code->getCode<BasicBlock::CompiledFn>();
+}
+
+void X64Backend::CompileIROp(
+  CompileContext const& context,
+  std::unique_ptr<IROpcode> const& op
+) {
+  switch (op->GetClass()) {
+    case IROpcodeClass::LoadGPR:
+      CompileLoadGPR(context, lunatic_cast<IRLoadGPR>(op.get()));
+      break;
+    case IROpcodeClass::StoreGPR:
+      CompileStoreGPR(context, lunatic_cast<IRStoreGPR>(op.get()));
+      break;
+    case IROpcodeClass::LoadSPSR:
+      CompileLoadSPSR(context, lunatic_cast<IRLoadSPSR>(op.get()));
+      break;
+    case IROpcodeClass::StoreSPSR:
+      CompileStoreSPSR(context, lunatic_cast<IRStoreSPSR>(op.get()));
+      break;
+    case IROpcodeClass::LoadCPSR:
+      CompileLoadCPSR(context, lunatic_cast<IRLoadCPSR>(op.get()));
+      break;
+    case IROpcodeClass::StoreCPSR:
+      CompileStoreCPSR(context, lunatic_cast<IRStoreCPSR>(op.get()));
+      break;
+    case IROpcodeClass::ClearCarry:
+      CompileClearCarry(context, lunatic_cast<IRClearCarry>(op.get()));
+      break;
+    case IROpcodeClass::SetCarry:
+      CompileSetCarry(context, lunatic_cast<IRSetCarry>(op.get()));
+      break;
+    case IROpcodeClass::UpdateFlags:
+      CompileUpdateFlags(context, lunatic_cast<IRUpdateFlags>(op.get()));
+      break;
+    case IROpcodeClass::LSL:
+      CompileLSL(context, lunatic_cast<IRLogicalShiftLeft>(op.get()));
+      break;
+    case IROpcodeClass::LSR:
+      CompileLSR(context, lunatic_cast<IRLogicalShiftRight>(op.get()));
+      break;
+    case IROpcodeClass::ASR:
+      CompileASR(context, lunatic_cast<IRArithmeticShiftRight>(op.get()));
+      break;
+    case IROpcodeClass::ROR:
+      CompileROR(context, lunatic_cast<IRRotateRight>(op.get()));
+      break;
+    case IROpcodeClass::AND:
+      CompileAND(context, lunatic_cast<IRBitwiseAND>(op.get()));
+      break;
+    case IROpcodeClass::BIC:
+      CompileBIC(context, lunatic_cast<IRBitwiseBIC>(op.get()));
+      break;
+    case IROpcodeClass::EOR:
+      CompileEOR(context, lunatic_cast<IRBitwiseEOR>(op.get()));
+      break;
+    case IROpcodeClass::SUB:
+      CompileSUB(context, lunatic_cast<IRSub>(op.get()));
+      break;
+    case IROpcodeClass::RSB:
+      CompileRSB(context, lunatic_cast<IRRsb>(op.get()));
+      break;
+    case IROpcodeClass::ADD:
+      CompileADD(context, lunatic_cast<IRAdd>(op.get()));
+      break;
+    case IROpcodeClass::ADC:
+      CompileADC(context, lunatic_cast<IRAdc>(op.get()));
+      break;
+    case IROpcodeClass::SBC:
+      CompileSBC(context, lunatic_cast<IRSbc>(op.get()));
+      break;
+    case IROpcodeClass::RSC:
+      CompileRSC(context, lunatic_cast<IRRsc>(op.get()));
+      break;
+    case IROpcodeClass::ORR:
+      CompileORR(context, lunatic_cast<IRBitwiseORR>(op.get()));
+      break;
+    case IROpcodeClass::MOV:
+      CompileMOV(context, lunatic_cast<IRMov>(op.get()));
+      break;
+    case IROpcodeClass::MVN:
+      CompileMVN(context, lunatic_cast<IRMvn>(op.get()));
+      break;
+    case IROpcodeClass::MUL:
+      CompileMUL(context, lunatic_cast<IRMultiply>(op.get()));
+      break;
+    case IROpcodeClass::ADD64:
+      CompileADD64(context, lunatic_cast<IRAdd64>(op.get()));
+      break;
+    case IROpcodeClass::MemoryRead:
+      CompileMemoryRead(context, lunatic_cast<IRMemoryRead>(op.get()));
+      break;
+    case IROpcodeClass::MemoryWrite:
+      CompileMemoryWrite(context, lunatic_cast<IRMemoryWrite>(op.get()));
+      break;
+    case IROpcodeClass::Flush:
+      CompileFlush(context, lunatic_cast<IRFlush>(op.get()));
+      break;
+    case IROpcodeClass::FlushExchange:
+      CompileFlushExchange(context, lunatic_cast<IRFlushExchange>(op.get()));
+      break;
+    default:
+      throw std::runtime_error(
+        fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
+      );
+  }
 }
 
 void X64Backend::BuildConditionTable() {
@@ -400,6 +397,14 @@ void X64Backend::CompileStoreCPSR(CompileContext const& context, IRStoreCPSR* op
 
     code.mov(dword[address], host_reg);
   }
+}
+
+void X64Backend::CompileClearCarry(CompileContext const& context, IRClearCarry* op) {
+  context.code.and_(ah, ~1);
+}
+
+void X64Backend::CompileSetCarry(CompileContext const& context, IRSetCarry* op) {
+  context.code.or_(ah, 1);
 }
 
 void X64Backend::CompileUpdateFlags(CompileContext const& context, IRUpdateFlags* op) {
@@ -1061,7 +1066,7 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   auto label_slowmem = Xbyak::Label{};
   auto label_final = Xbyak::Label{};
-  auto pagetable = memory->pagetable.get();
+  auto pagetable = memory.pagetable.get();
 
   // TODO: properly allocate a free register.
   // Or statically allocate a register for the page table pointer?
@@ -1211,7 +1216,7 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
   auto label_slowmem = Xbyak::Label{};
   auto label_final = Xbyak::Label{};
-  auto pagetable = memory->pagetable.get();
+  auto pagetable = memory.pagetable.get();
 
   code.push(rcx);
 
