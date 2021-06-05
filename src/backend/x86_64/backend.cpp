@@ -11,35 +11,36 @@
 
 #include "backend.hpp"
 
-// TODO: optimize cases where an operand variable expires during the IR opcode we're currently compiling.
-// In that case the host register that is assigned to it might be reused for the result variable to do some optimization.
+/**
+ * TODO:
+ * - reuse registers that expire in the same operation if possible
+ * - think of a way to merge memory operands into X64 opcodes across IR opcodes.
+ * - ...
+ */
 
 #define DESTRUCTURE_CONTEXT auto& [code, reg_alloc, state, location] = context;
 
 namespace lunatic {
 namespace backend {
 
-// using namespace lunatic::frontend;
 using namespace Xbyak::util;
 
 #ifdef _WIN64
-
-#define ABI_MSVC
-
-static constexpr Xbyak::Reg64 kRegArg0 = rcx;
-static constexpr Xbyak::Reg64 kRegArg1 = rdx;
-static constexpr Xbyak::Reg64 kRegArg2 = r8;
-static constexpr Xbyak::Reg64 kRegArg3 = r9;
-
+  #define ABI_MSVC
 #else
+  #define ABI_SYSV
+#endif
 
-#define ABI_SYSV
-
-static constexpr Xbyak::Reg64 kRegArg0 = rdi;
-static constexpr Xbyak::Reg64 kRegArg1 = rsi;
-static constexpr Xbyak::Reg64 kRegArg2 = rdx;
-static constexpr Xbyak::Reg64 kRegArg3 = rcx;
-
+#ifdef ABI_MSVC
+  static constexpr Xbyak::Reg64 kRegArg0 = rcx;
+  static constexpr Xbyak::Reg64 kRegArg1 = rdx;
+  static constexpr Xbyak::Reg64 kRegArg2 = r8;
+  static constexpr Xbyak::Reg64 kRegArg3 = r9;
+#else
+  static constexpr Xbyak::Reg64 kRegArg0 = rdi;
+  static constexpr Xbyak::Reg64 kRegArg1 = rsi;
+  static constexpr Xbyak::Reg64 kRegArg2 = rdx;
+  static constexpr Xbyak::Reg64 kRegArg3 = rcx;
 #endif
 
 X64Backend::X64Backend(

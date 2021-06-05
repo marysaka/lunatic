@@ -16,7 +16,6 @@
 #include "frontend/state.hpp"
 #include "register_allocator.hpp"
 
-// FIXME
 using namespace lunatic::frontend;
 
 namespace lunatic {
