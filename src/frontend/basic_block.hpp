@@ -32,6 +32,7 @@ struct BasicBlock {
     }
 
     struct Struct {
+      // TODO: fix broken bit field?
       u32 address : 31;
       Mode mode : 5;
       uint thumb : 1;

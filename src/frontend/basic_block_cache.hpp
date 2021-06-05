@@ -13,7 +13,7 @@ namespace lunatic {
 namespace frontend {
 
 struct BasicBlockCache {
-  auto Get(BasicBlock::Key key) -> BasicBlock* {
+  auto Get(BasicBlock::Key key) const -> BasicBlock* {
     auto table = data[key.value >> 19];
     if (table == nullptr) {
       return nullptr;

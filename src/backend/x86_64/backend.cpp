@@ -62,8 +62,9 @@ X64Backend::X64Backend() {
     code.sub(rsp, stack_displacement);
     code.mov(rbp, rsp);
 
-    // TODO: consider jump with epilogue in each basic block?
+    code.mov(rbx, kRegArg1);
     code.call(kRegArg0);
+    code.mov(rax, rbx);
 
     code.add(rsp, stack_displacement);
   #ifdef ABI_MSVC
@@ -78,14 +79,18 @@ X64Backend::X64Backend() {
     code.pop(rbx);
     code.ret();
 
-    CallBlock = code.getCode<void (*)(BasicBlock::CompiledFn fn)>();
+    CallBlock = code.getCode<int (*)(BasicBlock::CompiledFn, int)>();
   }
 }
 
-void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) {
+void X64Backend::Compile(
+  Memory& memory,
+  State& state,
+  BasicBlock& basic_block,
+  BasicBlockCache const& block_cache
+) {
   // TODO: do not keep the code in memory forever.
   auto code = new Xbyak::CodeGenerator{};
-  auto stack_displacement = sizeof(u64) + X64RegisterAllocator::kSpillAreaSize * sizeof(u32);
 
   this->memory = &memory;
 
@@ -122,7 +127,7 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
       code->je(label_skip, Xbyak::CodeGenerator::T_NEAR);
     }
 
-    for (auto const &op : emitter.Code()) {
+    for (auto const& op : emitter.Code()) {
       reg_alloc.SetCurrentLocation(location);
 
       switch (op->GetClass()) {
@@ -239,6 +244,43 @@ void X64Backend::Compile(Memory& memory, State& state, BasicBlock& basic_block) 
     code->L(label_done);
   }
 
+  // Attempt to dispatch the next block immediately
+  // TODO: attempt to hardcode the jump target, if known at compile-time?
+  auto label_return_to_dispatch = Xbyak::Label{};
+
+  // Update cycle counter and return to dispatch if necessary.
+  code->sub(rbx, basic_block.length);
+  code->jle(label_return_to_dispatch);
+
+  // TODO: check the IRQ signal line.
+
+  // Build the block key from R15 and CPSR.
+  // See frontend/basic_block.hpp
+  code->mov(edx, dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)]);
+  code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
+  code->shr(edx, 1);
+  code->and_(esi, 0x3F);
+  code->shl(rsi, 32);
+  code->or_(rdx, rsi);
+
+  // Split key into key0 and key1
+  // TODO: can we exploit how the block lookup works?
+  code->mov(rsi, rdx);
+  code->shr(rsi, 19);
+  code->and_(edx, 0x7FFFF);
+
+  // Look block key up in the block cache.
+  code->mov(rdi, uintptr(block_cache.data));
+  code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
+  code->cmp(rdi, 0);
+  code->jz(label_return_to_dispatch); // fixme?
+  code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
+  code->cmp(rdi, 0);
+  code->jz(label_return_to_dispatch); // fixme?
+  code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
+  code->jmp(rdi);
+
+  code->L(label_return_to_dispatch);
   code->ret();
 
   basic_block.function = code->getCode<BasicBlock::CompiledFn>();

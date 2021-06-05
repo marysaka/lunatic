@@ -28,11 +28,12 @@ struct X64Backend : Backend {
   void Compile(
     Memory& memory,
     State& state,
-    BasicBlock& basic_block
+    BasicBlock& basic_block,
+    BasicBlockCache const& block_cache
   );
 
-  void Call(BasicBlock const& basic_block) {
-    CallBlock(basic_block.function);
+  auto Call(BasicBlock const& basic_block, int max_cycles) -> int {
+    return CallBlock(basic_block.function, max_cycles);
   }
 
 private:
@@ -88,7 +89,7 @@ private:
   Memory* memory = nullptr;
   bool condition_table[16][16];
   Xbyak::CodeGenerator code; // rename me
-  void (*CallBlock)(BasicBlock::CompiledFn fn);
+  int (*CallBlock)(BasicBlock::CompiledFn, int);
 
   // TODO: get rid of the thunks eventually.
 
