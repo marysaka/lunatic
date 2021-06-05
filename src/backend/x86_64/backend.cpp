@@ -56,6 +56,32 @@ X64Backend::X64Backend(
   EmitCallBlock();
 }
 
+void X64Backend::BuildConditionTable() {
+  for (int flags = 0; flags < 16; flags++) {
+    bool n = flags & 8;
+    bool z = flags & 4;
+    bool c = flags & 2;
+    bool v = flags & 1;
+
+    condition_table[int(Condition::EQ)][flags] =  z;
+    condition_table[int(Condition::NE)][flags] = !z;
+    condition_table[int(Condition::CS)][flags] =  c;
+    condition_table[int(Condition::CC)][flags] = !c;
+    condition_table[int(Condition::MI)][flags] =  n;
+    condition_table[int(Condition::PL)][flags] = !n;
+    condition_table[int(Condition::VS)][flags] =  v;
+    condition_table[int(Condition::VC)][flags] = !v;
+    condition_table[int(Condition::HI)][flags] =  c && !z;
+    condition_table[int(Condition::LS)][flags] = !c ||  z;
+    condition_table[int(Condition::GE)][flags] = n == v;
+    condition_table[int(Condition::LT)][flags] = n != v;
+    condition_table[int(Condition::GT)][flags] = !(z || (n != v));
+    condition_table[int(Condition::LE)][flags] =  (z || (n != v));
+    condition_table[int(Condition::AL)][flags] = true;
+    condition_table[int(Condition::NV)][flags] = false;
+  }
+}
+
 void X64Backend::EmitCallBlock() {
   auto stack_displacement = sizeof(u64) + X64RegisterAllocator::kSpillAreaSize * sizeof(u32);
 
@@ -220,33 +246,6 @@ void X64Backend::CompileIROp(
         fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
       );
     }
-  }
-}
-
-void X64Backend::BuildConditionTable() {
-  // TODO: Ugh, clean this mess up...
-  for (int flags = 0; flags < 16; flags++) {
-    bool n = flags & 8;
-    bool z = flags & 4;
-    bool c = flags & 2;
-    bool v = flags & 1;
-
-    condition_table[static_cast<int>(Condition::EQ)][flags] = z;
-    condition_table[static_cast<int>(Condition::NE)][flags] = !z;
-    condition_table[static_cast<int>(Condition::CS)][flags] =  c;
-    condition_table[static_cast<int>(Condition::CC)][flags] = !c;
-    condition_table[static_cast<int>(Condition::MI)][flags] =  n;
-    condition_table[static_cast<int>(Condition::PL)][flags] = !n;
-    condition_table[static_cast<int>(Condition::VS)][flags] =  v;
-    condition_table[static_cast<int>(Condition::VC)][flags] = !v;
-    condition_table[static_cast<int>(Condition::HI)][flags] =  c && !z;
-    condition_table[static_cast<int>(Condition::LS)][flags] = !c ||  z;
-    condition_table[static_cast<int>(Condition::GE)][flags] = n == v;
-    condition_table[static_cast<int>(Condition::LT)][flags] = n != v;
-    condition_table[static_cast<int>(Condition::GT)][flags] = !(z || (n != v));
-    condition_table[static_cast<int>(Condition::LE)][flags] =  (z || (n != v));
-    condition_table[static_cast<int>(Condition::AL)][flags] = true;
-    condition_table[static_cast<int>(Condition::NV)][flags] = false;
   }
 }
 

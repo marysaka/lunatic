@@ -43,13 +43,13 @@ private:
     int& location;
   };
 
+  void BuildConditionTable();
   void EmitCallBlock();
+
   void CompileIROp(
     CompileContext const& context,
     std::unique_ptr<IROpcode> const& op
   );
-
-  void BuildConditionTable();
 
   void Push(
     Xbyak::CodeGenerator& code,
@@ -100,8 +100,6 @@ private:
   bool condition_table[16][16];
   Xbyak::CodeGenerator code;
   int (*CallBlock)(BasicBlock::CompiledFn, int);
-
-  // TODO: get rid of the thunks eventually.
 
   auto ReadByte(u32 address, Memory::Bus bus) -> u8 {
     return memory.ReadByte(address, bus);
