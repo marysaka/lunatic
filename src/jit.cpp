@@ -13,13 +13,13 @@ using namespace lunatic::backend;
 
 namespace lunatic {
 
-struct JIT : CPU {
+struct JIT final : CPU {
   JIT(Memory& memory) : memory(memory) {
   }
 
-  bool& IRQLine() { return irq_line; }
+  bool& IRQLine() override { return irq_line; }
 
-  void Run(int cycles) {
+  void Run(int cycles) override {
     cycles_to_run += cycles;
 
     while (cycles_to_run > 0) {
