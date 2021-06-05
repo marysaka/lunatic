@@ -25,19 +25,17 @@ struct BasicBlock {
     Key() {}
 
     Key(State& state) {
-      auto const& cpsr = state.GetCPSR();
-      field.mode = cpsr.f.mode;
-      field.thumb = cpsr.f.thumb;
-      field.address = state.GetGPR(field.mode, GPR::PC) >> 1;
+      value  = state.GetGPR(Mode::User, GPR::PC) >> 1;
+      value |= u64(state.GetCPSR().v & 0x3F) << 31; // mode and thumb bit
     }
 
-    struct Struct {
-      // TODO: fix broken bit field?
-      u32 address : 31;
-      Mode mode : 5;
-      uint thumb : 1;
-    } field;
+    auto Address() -> u32 { return (value & 0x7FFFFFFF) << 1; }
+    auto Mode() -> Mode { return static_cast<lunatic::Mode>((value >> 31) & 0x1F); }
+    bool Thumb() { return value & (1ULL << 36); }
     
+    // bits  0 - 30: address[31:1]
+    // bits 31 - 35: CPU mode
+    // bit       36: thumb-flag
     u64 value = 0;
   } key;
 

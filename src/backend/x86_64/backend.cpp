@@ -149,7 +149,7 @@ void X64Backend::Compile(BasicBlock& basic_block) {
 
     // If the micro block was skipped advance PC by the number of instructions in it. 
     code->L(label_skip);    
-    if (basic_block.key.field.thumb) {
+    if (basic_block.key.Thumb()) {
       code->add(
         dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
         micro_block.length * sizeof(u16)
@@ -179,7 +179,7 @@ void X64Backend::Compile(BasicBlock& basic_block) {
   code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
   code->shr(edx, 1);
   code->and_(esi, 0x3F);
-  code->shl(rsi, 32);
+  code->shl(rsi, 31);
   code->or_(rdx, rsi);
 
   // Split key into key0 and key1
