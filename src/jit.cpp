@@ -14,8 +14,9 @@ using namespace lunatic::backend;
 namespace lunatic {
 
 struct JIT final : CPU {
-  JIT(Memory& memory)
-      : memory(memory)
+  JIT(CPU::Descriptor const& descriptor)
+      : memory(descriptor.memory)
+      , translator(descriptor)
       , backend(memory, state, block_cache, irq_line) {
   }
 
@@ -37,7 +38,7 @@ struct JIT final : CPU {
         // we use dynamic allocation, but that's probably not optimal.
         basic_block = new BasicBlock{block_key};
 
-        translator.Translate(*basic_block, memory);
+        translator.Translate(*basic_block);
 
         if (basic_block->length > 0) {
           for (auto &micro_block : basic_block->micro_blocks) {
@@ -120,7 +121,7 @@ private:
 };
 
 auto CreateCPU(CPU::Descriptor const& descriptor) -> std::unique_ptr<CPU> {
-  return std::make_unique<JIT>(descriptor.memory);
+  return std::make_unique<JIT>(descriptor);
 }
 
 } // namespace lunatic

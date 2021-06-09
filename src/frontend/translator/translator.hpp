@@ -16,7 +16,7 @@
 namespace lunatic {
 namespace frontend {
 
-// TODO: rename me :)
+// TODO: can we move this into Translator despite the templated base class?
 enum class Status {
   Continue,
   BreakBasicBlock,
@@ -25,7 +25,9 @@ enum class Status {
 };
 
 struct Translator final : ARMDecodeClient<Status> {
-  void Translate(BasicBlock& basic_block, Memory& memory);
+  Translator(CPU::Descriptor const& descriptor);
+
+  void Translate(BasicBlock& basic_block);
 
   auto Handle(ARMDataProcessing const& opcode) -> Status override;
   auto Handle(ARMMoveStatusRegister const& opcode) -> Status override;
@@ -43,10 +45,8 @@ struct Translator final : ARMDecodeClient<Status> {
   auto Undefined(u32 opcode) -> Status override;
 
 private:
-  static constexpr int kMaxBlockSize = 32;
-
-  void TranslateARM(BasicBlock& basic_block, Memory& memory);
-  void TranslateThumb(BasicBlock& basic_block, Memory& memory);
+  void TranslateARM(BasicBlock& basic_block);
+  void TranslateThumb(BasicBlock& basic_block);
 
   void EmitUpdateNZ();
   void EmitUpdateNZC();
@@ -62,7 +62,9 @@ private:
   bool thumb_mode;
   u32 opcode_size;
   Mode mode;
-  bool armv5te = false;
+  bool armv5te;
+  int  max_block_size;
+  Memory& memory;
   IREmitter* emitter = nullptr;
 };
 
