@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include "backend.hpp"
+#include "common/bit.hpp"
 
 /**
  * TODO:
@@ -1065,16 +1066,16 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   if (flags & Word) {
     code.and_(kRegArg1.cvt32(), ~3);
-    code.mov(rax, u64((void*)&X64Backend::ReadWord));
+    code.mov(rax, bit::cast<u64>(&X64Backend::ReadWord));
   }
 
   if (flags & Half) {
     code.and_(kRegArg1.cvt32(), ~1);
-    code.mov(rax, u64((void*)&X64Backend::ReadHalf));
+    code.mov(rax, bit::cast<u64>(&X64Backend::ReadHalf));
   }
 
   if (flags & Byte) {
-    code.mov(rax, u64((void*)&X64Backend::ReadByte));
+    code.mov(rax, bit::cast<u64>(&X64Backend::ReadByte));
   }
 
   code.mov(kRegArg0, u64(this));
@@ -1230,16 +1231,16 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
   if (flags & Word) {
     code.and_(kRegArg1.cvt32(), ~3);
-    code.mov(rax, u64((void*)&X64Backend::WriteWord));
+    code.mov(rax, bit::cast<u64>(&X64Backend::WriteWord));
   }
 
   if (flags & Half) {
     code.and_(kRegArg1.cvt32(), ~1);
-    code.mov(rax, u64((void*)&X64Backend::WriteHalf));
+    code.mov(rax, bit::cast<u64>(&X64Backend::WriteHalf));
   }
 
   if (flags & Byte) {
-    code.mov(rax, u64((void*)&X64Backend::WriteByte));
+    code.mov(rax, bit::cast<u64>(&X64Backend::WriteByte));
   }
 
   code.mov(kRegArg0, u64(this));

@@ -8,6 +8,8 @@
 #pragma once
 
 #include <climits>
+#include <memory>
+#include <type_traits>
 #include <lunatic/integer.hpp>
 
 namespace bit {
@@ -68,6 +70,18 @@ constexpr auto build_pattern_value(const char* pattern) -> T {
 template<typename T>
 constexpr auto match_pattern(T value, const char* pattern) -> bool {
   return (value & detail::build_pattern_mask<T>(pattern)) == detail::build_pattern_value<T>(pattern);
+}
+
+// https://github.com/MerryMage/dynarmic/blob/5f96ca00b109d99c2ea1d4d141b3e3948edefbea/src/dynarmic/common/cast_util.h#L16-L25
+template <class Dest, class Source>
+constexpr inline auto cast(const Source& source) noexcept -> Dest {
+  static_assert(sizeof(Dest) == sizeof(Source), "size of destination and source objects must be equal");
+  static_assert(std::is_trivially_copyable_v<Dest>, "destination type must be trivially copyable.");
+  static_assert(std::is_trivially_copyable_v<Source>, "source type must be trivially copyable");
+
+  std::aligned_storage_t<sizeof(Dest), alignof(Dest)> dest;
+  std::memcpy(&dest, &source, sizeof(dest));
+  return reinterpret_cast<Dest&>(dest);
 }
 
 } // namespace bit

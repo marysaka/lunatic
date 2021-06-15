@@ -70,3 +70,7 @@ add_library(lunatic STATIC ${SOURCES} ${HEADERS} ${HEADERS_PUBLIC})
 target_include_directories(lunatic PRIVATE .)
 target_include_directories(lunatic PUBLIC ../include)
 target_link_libraries(lunatic PRIVATE fmt xbyak)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  target_compile_definitions(lunatic PRIVATE NOMINMAX)
+endif()
