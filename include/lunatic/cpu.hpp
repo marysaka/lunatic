@@ -67,6 +67,8 @@ struct CPU {
     Memory& memory;
   };
 
+  virtual ~CPU() = default;
+
   virtual auto IRQLine() -> bool& = 0;
   virtual void Run(int cycles) = 0;
 
