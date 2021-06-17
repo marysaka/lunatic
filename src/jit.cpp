@@ -64,7 +64,7 @@ struct JIT final : CPU {
   }
 
   auto GetGPR(GPR reg) const -> u32 override {
-    return GetGPR(reg);
+    return const_cast<JIT*>(this)->GetGPR(reg);
   }
 
   auto GetGPR(GPR reg, Mode mode) -> u32& override {
@@ -72,23 +72,23 @@ struct JIT final : CPU {
   }
 
   auto GetGPR(GPR reg, Mode mode) const -> u32 override {
-    return GetGPR(reg, mode);
+    return const_cast<JIT*>(this)->GetGPR(reg, mode);
   }
 
-  auto GetCPSR() -> StatusRegister& {
+  auto GetCPSR() -> StatusRegister& override {
     return state.GetCPSR();
   }
 
-  auto GetCPSR() const -> StatusRegister {
-    return GetCPSR();
+  auto GetCPSR() const -> StatusRegister override {
+    return const_cast<JIT*>(this)->GetCPSR();
   }
 
-  auto GetSPSR(Mode mode) -> StatusRegister& {
+  auto GetSPSR(Mode mode) -> StatusRegister& override {
     return *state.GetPointerToSPSR(mode);
   }
 
-  auto GetSPSR(Mode mode) const -> StatusRegister {
-    return GetSPSR(mode);
+  auto GetSPSR(Mode mode) const -> StatusRegister override {
+    return const_cast<JIT*>(this)->GetSPSR(mode);
   }
 
 private:

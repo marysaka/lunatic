@@ -116,6 +116,7 @@ void IREmitter::Optimize() {
           }
           break;
         }
+        default: break;
       }
 
       ++it;
@@ -157,6 +158,7 @@ void IREmitter::Optimize() {
           }
           break;
         }
+        default: break;
       }
 
       ++it;

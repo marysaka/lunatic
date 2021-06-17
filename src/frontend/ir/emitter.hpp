@@ -21,6 +21,20 @@ struct IREmitter {
   using InstructionList = std::list<std::unique_ptr<IROpcode>>;
   using VariableList = std::vector<std::unique_ptr<IRVariable>>;
 
+  IREmitter() = default;
+  IREmitter(const IREmitter&) = delete;
+  IREmitter& operator=(const IREmitter&) = delete;
+
+  IREmitter(IREmitter&& emitter) {
+    operator=(std::move(emitter));
+  }
+
+  IREmitter& operator=(IREmitter&& emitter) {
+    std::swap(code, emitter.code);
+    std::swap(variables, emitter.variables);
+    return *this;
+  }
+
   auto Code() const -> InstructionList const& { return code; }
   auto Vars() const -> VariableList const& { return variables; }
   auto ToString() const -> std::string;
