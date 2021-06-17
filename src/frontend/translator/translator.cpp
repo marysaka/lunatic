@@ -10,21 +10,27 @@
 namespace lunatic {
 namespace frontend {
 
-void Translator::Translate(BasicBlock& basic_block, Memory& memory) {
+Translator::Translator(CPU::Descriptor const& descriptor)
+    : armv5te(descriptor.model == CPU::Descriptor::Model::ARM9)
+    , max_block_size(descriptor.block_size)
+    , memory(descriptor.memory) {
+}
+
+void Translator::Translate(BasicBlock& basic_block) {
   mode = basic_block.key.Mode();
   thumb_mode = basic_block.key.Thumb();
   opcode_size = thumb_mode ? sizeof(u16) : sizeof(u32);
   code_address = basic_block.key.Address() - 2 * opcode_size;
 
   if (thumb_mode) {
-    TranslateThumb(basic_block, memory);
+    TranslateThumb(basic_block);
   } else {
-    TranslateARM(basic_block, memory);
+    TranslateARM(basic_block);
   }
 }
 
 
-void Translator::TranslateARM(BasicBlock& basic_block, Memory& memory) {
+void Translator::TranslateARM(BasicBlock& basic_block) {
   auto micro_block = BasicBlock::MicroBlock{};
 
   auto add_micro_block = [&]() {
@@ -41,7 +47,7 @@ void Translator::TranslateARM(BasicBlock& basic_block, Memory& memory) {
 
   emitter = &micro_block.emitter;
 
-  for (int i = 0; i < kMaxBlockSize; i++) {
+  for (int i = 0; i < max_block_size; i++) {
     auto instruction = memory.FastRead<u32, Memory::Bus::Code>(code_address);
     auto condition = bit::get_field<u32, Condition>(instruction, 28, 4);
 
@@ -80,7 +86,7 @@ void Translator::TranslateARM(BasicBlock& basic_block, Memory& memory) {
   add_micro_block();
 }
 
-void Translator::TranslateThumb(BasicBlock& basic_block, Memory& memory) {
+void Translator::TranslateThumb(BasicBlock& basic_block) {
   auto micro_block = BasicBlock::MicroBlock{
     .condition = Condition::AL
   };
@@ -91,7 +97,7 @@ void Translator::TranslateThumb(BasicBlock& basic_block, Memory& memory) {
     basic_block.micro_blocks.push_back(std::move(micro_block));
   };
 
-  for (int i = 0; i < kMaxBlockSize; i++) {
+  for (int i = 0; i < max_block_size; i++) {
     auto instruction = memory.FastRead<u16, Memory::Bus::Code>(code_address);
 
     // HACK: detect conditional branches and break the micro block early.

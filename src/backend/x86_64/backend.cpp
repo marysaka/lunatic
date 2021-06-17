@@ -44,6 +44,30 @@ using namespace Xbyak::util;
   static constexpr Xbyak::Reg64 kRegArg3 = rcx;
 #endif
 
+static auto ReadByte(Memory& memory, u32 address, Memory::Bus bus) -> u8 {
+  return memory.ReadByte(address, bus);
+}
+
+static auto ReadHalf(Memory& memory, u32 address, Memory::Bus bus) -> u16 {
+  return memory.ReadHalf(address, bus);
+}
+
+static auto ReadWord(Memory& memory, u32 address, Memory::Bus bus) -> u32 {
+  return memory.ReadWord(address, bus);
+}
+
+static void WriteByte(Memory& memory, u32 address, Memory::Bus bus, u8 value) {
+  memory.WriteByte(address, value, bus);
+}
+
+static void WriteHalf(Memory& memory, u32 address, Memory::Bus bus, u16 value) {
+  memory.WriteHalf(address, value, bus);
+}
+
+static void WriteWord(Memory& memory, u32 address, Memory::Bus bus, u32 value) {
+  memory.WriteWord(address, value, bus);
+}
+
 X64Backend::X64Backend(
   Memory& memory,
   State& state,
@@ -1066,19 +1090,19 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   if (flags & Word) {
     code.and_(kRegArg1.cvt32(), ~3);
-    code.mov(rax, bit::cast<u64>(&X64Backend::ReadWord));
+    code.mov(rax, uintptr(&ReadWord));
   }
 
   if (flags & Half) {
     code.and_(kRegArg1.cvt32(), ~1);
-    code.mov(rax, bit::cast<u64>(&X64Backend::ReadHalf));
+    code.mov(rax, uintptr(&ReadHalf));
   }
 
   if (flags & Byte) {
-    code.mov(rax, bit::cast<u64>(&X64Backend::ReadByte));
+    code.mov(rax, uintptr(&ReadByte));
   }
 
-  code.mov(kRegArg0, u64(this));
+  code.mov(kRegArg0, uintptr(&memory));
   code.mov(kRegArg2.cvt32(), u32(Memory::Bus::Data));
   code.sub(rsp, 0x20);
   code.call(rax);
@@ -1231,19 +1255,19 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
   if (flags & Word) {
     code.and_(kRegArg1.cvt32(), ~3);
-    code.mov(rax, bit::cast<u64>(&X64Backend::WriteWord));
+    code.mov(rax, uintptr(&WriteWord));
   }
 
   if (flags & Half) {
     code.and_(kRegArg1.cvt32(), ~1);
-    code.mov(rax, bit::cast<u64>(&X64Backend::WriteHalf));
+    code.mov(rax, uintptr(&WriteHalf));
   }
 
   if (flags & Byte) {
-    code.mov(rax, bit::cast<u64>(&X64Backend::WriteByte));
+    code.mov(rax, uintptr(&WriteByte));
   }
 
-  code.mov(kRegArg0, u64(this));
+  code.mov(kRegArg0, uintptr(&memory));
   code.mov(kRegArg2.cvt32(), u32(Memory::Bus::Data));
   code.sub(rsp, 0x20);
   code.call(rax);
