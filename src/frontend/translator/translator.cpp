@@ -29,7 +29,6 @@ void Translator::Translate(BasicBlock& basic_block) {
   }
 }
 
-
 void Translator::TranslateARM(BasicBlock& basic_block) {
   auto micro_block = BasicBlock::MicroBlock{};
 
