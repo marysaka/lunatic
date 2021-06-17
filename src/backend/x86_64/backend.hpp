@@ -100,30 +100,6 @@ private:
   bool condition_table[16][16];
   Xbyak::CodeGenerator code;
   int (*CallBlock)(BasicBlock::CompiledFn, int);
-
-  auto ReadByte(u32 address, Memory::Bus bus) -> u8 {
-    return memory.ReadByte(address, bus);
-  }
-
-  auto ReadHalf(u32 address, Memory::Bus bus) -> u16 {
-    return memory.ReadHalf(address, bus);
-  }
-
-  auto ReadWord(u32 address, Memory::Bus bus) -> u32 {
-    return memory.ReadWord(address, bus);
-  }
-
-  void WriteByte(u32 address, Memory::Bus bus, u8 value) {
-    memory.WriteByte(address, value, bus);
-  }
-
-  void WriteHalf(u32 address, Memory::Bus bus, u16 value) {
-    memory.WriteHalf(address, value, bus);
-  }
-
-  void WriteWord(u32 address, Memory::Bus bus, u32 value) {
-    memory.WriteWord(address, value, bus);
-  }
 };
 
 } // namespace lunatic::backend
