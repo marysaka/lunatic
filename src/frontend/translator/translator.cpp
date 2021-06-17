@@ -65,7 +65,10 @@ void Translator::TranslateARM(BasicBlock& basic_block) {
     auto status = decode_arm(instruction, *this);
 
     if (status == Status::Unimplemented) {
-      break;
+      throw std::runtime_error(
+        fmt::format("lunatic: unknown opcode 0x{:08X} @ 0x{:08X} (thumb={})",
+          instruction, code_address, 0)
+      );
     }
 
     basic_block.length++;
@@ -117,7 +120,10 @@ void Translator::TranslateThumb(BasicBlock& basic_block) {
     auto status = decode_thumb(instruction, *this);
 
     if (status == Status::Unimplemented) {
-      break;
+      throw std::runtime_error(
+        fmt::format("lunatic: unknown opcode 0x{:04X} @ 0x{:08X} (thumb={})",
+          instruction, code_address, 1)
+      );
     }
 
     basic_block.length++;
