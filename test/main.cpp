@@ -14,13 +14,38 @@
 
 #include <arm/arm.hpp>
 
+/// NDS file header
+struct Header {
+  // TODO: add remaining header fields.
+  // This should be enough for basic direct boot for now though.
+  // http://problemkaputt.de/gbatek.htm#dscartridgeheader
+  u8 game_title[12];
+  u8 game_code[4];
+  u8 maker_code[2];
+  u8 unit_code;
+  u8 encryption_seed_select;
+  u8 device_capacity;
+  u8 reserved0[8];
+  u8 nds_region;
+  u8 version;
+  u8 autostart;
+  struct Binary {
+    u32 file_address;
+    u32 entrypoint;
+    u32 load_address;
+    u32 size;
+  } arm9, arm7;
+} __attribute__((packed));
+
 struct Memory final : lunatic::Memory {
   Memory() {
-    std::memset(pram, 0, sizeof(pram));
+    static constexpr u32 kDTCMBase  = 0x00800000;
+    static constexpr u32 kDTCMLimit = 0x00803FFF;
+
+    std::memset(dtcm, 0, sizeof(dtcm));
+    std::memset(mainram, 0, sizeof(mainram));
     std::memset(vram, 0, sizeof(vram));
-    std::memset(rom, 0, sizeof(rom));
-    std::memset(ewram, 0, sizeof(ewram));
-    std::memset(iwram, 0, sizeof(iwram));
+    vblank_flag = 0;
 
     pagetable = std::make_unique<std::array<u8*, 1048576>>();
 
@@ -28,113 +53,112 @@ struct Memory final : lunatic::Memory {
       auto page = address >> 12;
       auto& entry = (*pagetable)[page];
 
+      entry = nullptr;
+
+      if (address >= kDTCMBase && address <= kDTCMLimit) {
+        entry = &dtcm[(address - kDTCMBase) & 0x3FFF];
+        continue;
+      }
+
       switch (address >> 24) {
         case 0x02:
-          entry = &ewram[address & 0x3FFFF];
-          break;
-        case 0x03:
-          entry = &iwram[address & 0x7FFF];
-          break;
-        case 0x05:
-          entry = &pram[address & 0x3FF];
+          entry = &mainram[address & 0x3FFFFF];
           break;
         case 0x06:
-          entry = &vram[address & 0x1FFFF];
-          break;
-        case 0x08:
-          entry = &rom[address & 0xFFFFFF];
+          entry = &vram[address & 0x1FFFFF];
           break;
       }
     }
-
-    vblank_flag = 0;
   }
 
   auto ReadByte(u32 address, Bus bus) -> u8 override {
-    fmt::print("Memory: invalid read8 @ 0x{:08X}\n", address);
+    if (address == 0x0400'0004) {
+      return vblank_flag ^= 1;
+    }
+
+    fmt::print("unknown byte read @ 0x{:08X}\n", address);
     return 0;
   }
 
   auto ReadHalf(u32 address, Bus bus) -> u16 override {
-    if (address == 0x04000004) {
-      vblank_flag ^= 1;
-      return vblank_flag;
+    if (address == 0x0400'0004) {
+      return vblank_flag ^= 1;
     }
 
-    if (address == 0x04000130) {
+    if (address == 0x0400'0130) {
       return keyinput;
     }
 
-    fmt::print("Memory: invalid read16 @ 0x{:08X}\n", address);
+    fmt::print("unknown half read @ 0x{:08X}\n", address);
     return 0;
   }
 
   auto ReadWord(u32 address, Bus bus) -> u32 override {
-    if (address == 0x04000004) {
-      vblank_flag ^= 1;
-      return vblank_flag;
+    if (address == 0x0400'0004) {
+      return vblank_flag ^= 1;
     }
 
-    fmt::print("Memory: invalid read32 @ 0x{:08X}\n", address);
+    fmt::print("unknown word read @ 0x{:08X}\n", address);
     return 0;
   }
 
-  void WriteByte(u32 address, u8  value, Bus bus) override {}
-  void WriteHalf(u32 address, u16 value, Bus bus) override {}
-
-  void WriteWord(u32 address, u32 value, Bus bus) override {
-    switch (address) {
-      case 0x0400'00D4: {
-        dma3_src = value;
-        break;
-      }
-      case 0x0400'00D8: {
-        dma3_dst = value;
-        break;
-      }
-      case 0x0400'00DC: {
-        if (value & 0x8000'0000) {
-          auto count = value & 0xFFFF;
-          for (int i = 0; i < count; i++) {
-            FastWrite<u32, Bus::System>(dma3_dst, FastRead<u32, Bus::System>(dma3_src));
-            dma3_dst += sizeof(u32);
-            dma3_src += sizeof(u32);
-          }
-        }
-        break;
-      }
-    }
+  void WriteByte(u32 address,  u8 value, Bus bus) override {
   }
 
-  u8 pram[0x400];
-  u8 vram[0x20000];
-  u8 rom[0x1000000];
-  u8 ewram[0x40000];
-  u8 iwram[0x8000];
+  void WriteHalf(u32 address, u16 value, Bus bus) override {
+  }
 
+  void WriteWord(u32 address, u32 value, Bus bus) override {
+  }
+
+  u8 dtcm[0x4000];
+  u8 mainram[0x400000];
+  u8 vram[0x200000];
   int vblank_flag;
-  u16 keyinput = 0xFFFF;
-  u32 dma3_src = 0;
-  u32 dma3_dst = 0;
+  u16 keyinput = 0x3FF;
+};
+
+struct StupidCP15 : lunatic::Coprocessor {
+  auto Read(
+    int opcode1,
+    int cn,
+    int cm,
+    int opcode2
+  ) -> u32 override {
+    return 0xDEADBEEF;
+  }
+
+  void Write(
+    int opcode1,
+    int cn,
+    int cm,
+    int opcode2,
+    u32 value
+  ) override {
+    // ...
+  }
 };
 
 static Memory g_memory;
-static u16 frame[240 * 160];
+static StupidCP15 g_cp15;
+static u16 frame[256 * 192];
 
 void render_frame() {
-  for (int i = 0; i < 240 * 160; i++) {
-    frame[i] = lunatic::read<u16>(&g_memory.pram, g_memory.vram[i] << 1);
+  for (int i = 0; i < 256 * 192; i++) {
+    frame[i] = lunatic::read<u16>(&g_memory.vram, i * 2);
   }
 }
 
 int main(int argc, char** argv) {
   using namespace lunatic;
 
+  static constexpr auto kROMPath = "rockwrestler.nds";
+
   size_t size;
-  std::ifstream file { "armwrestler.gba", std::ios::binary };
+  std::ifstream file { kROMPath, std::ios::binary };
 
   if (!file.good()) {
-    fmt::print("Failed to open armwrestler.gba.\n");
+    fmt::print("Failed to open {}.\n", kROMPath);
     return -1;
   }
 
@@ -142,16 +166,37 @@ int main(int argc, char** argv) {
   size = file.tellg();
   file.seekg(0);
 
-  if (size > 0x1000000) {
-    fmt::print("armwrestler.gba is too big. may not be larger than 16 MiB.\n");
-    return -2;
+  auto header = Header{};
+  file.read((char*)&header, sizeof(Header));
+  if (!file.good()) {
+    throw std::runtime_error("failed to read NDS ROM header");
   }
 
-  file.read((char*)&g_memory.rom, size);
-  if (!file.good()) {
-    fmt::print("Failed to read the ROM into memory.\n");
-    return -3;
+  // Load ARM9 binary into memory.
+  {
+    u8 data;
+    u32 dst = header.arm9.load_address;
+    file.seekg(header.arm9.file_address);
+    for (u32 i = 0; i < header.arm9.size; i++) {
+      file.read((char*)&data, 1);
+      if (!file.good()) {
+        throw std::runtime_error("failed to read ARM9 binary from ROM into ARM9 memory");
+      }
+      g_memory.FastWrite<u8, lunatic::Memory::Bus::Data>(dst++, data);
+    }
   }
+
+  // TODO: better initialization, set exception base for example.
+  auto jit = CreateCPU(CPU::Descriptor{
+    .memory = g_memory,
+    .coprocessors = {
+      nullptr, nullptr, nullptr, nullptr,
+      nullptr, nullptr, nullptr, nullptr,
+      nullptr, nullptr, nullptr, nullptr,
+      nullptr, nullptr, nullptr, &g_cp15
+    }
+  });
+  jit->GetGPR(GPR::PC) = header.arm9.entrypoint;
 
   SDL_Init(SDL_INIT_VIDEO);
 
@@ -159,39 +204,20 @@ int main(int argc, char** argv) {
     "Project: lunatic",
     SDL_WINDOWPOS_CENTERED,
     SDL_WINDOWPOS_CENTERED,
-    480,
-    320,
+    512,
+    384,
     SDL_WINDOW_ALLOW_HIGHDPI);
 
   auto renderer = SDL_CreateRenderer(window, -1, 0);
-  auto texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR1555, SDL_TEXTUREACCESS_STREAMING, 240, 160);
+  auto texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR1555, SDL_TEXTUREACCESS_STREAMING, 256, 192);
 
   auto event = SDL_Event{};
-
-  auto jit = CreateCPU(CPU::Descriptor{.memory = g_memory});
-
-  jit->GetGPR(GPR::SP, Mode::Supervisor) = 0x03007FE0;
-  jit->GetGPR(GPR::SP, Mode::IRQ) = 0x03007FA0;
-  jit->GetCPSR().f.mode = Mode::System;
-  jit->GetGPR(GPR::SP) = 0x03007F00;
-  jit->GetGPR(GPR::PC) = 0x08000008;
-
-  using namespace lunatic::test;
-  arm::ARM interpreter { arm::ARM::Architecture::ARMv5TE, &g_memory };
-  auto& state = interpreter.GetState();
-  interpreter.Reset();
-  interpreter.SwitchMode(arm::MODE_SYS);
-  state.bank[arm::BANK_SVC][arm::BANK_R13] = 0x03007FE0;
-  state.bank[arm::BANK_IRQ][arm::BANK_R13] = 0x03007FA0;
-  state.r13 = 0x03007F00;
-  interpreter.SetPC(0x08000000);
 
   auto tick0 = SDL_GetTicks();
   auto frames = 0;
 
   for (;;) {
     jit->Run(279620/3);
-    //interpreter.Run(279620/3);
     render_frame();
     frames++;
 
@@ -204,7 +230,7 @@ int main(int argc, char** argv) {
       frames = 0;
     }
 
-    SDL_UpdateTexture(texture, nullptr, frame, sizeof(u16) * 240);
+    SDL_UpdateTexture(texture, nullptr, frame, sizeof(u16) * 256);
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);

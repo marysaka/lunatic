@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <lunatic/coprocessor.hpp>
 #include <lunatic/memory.hpp>
 #include <memory>
 
@@ -59,12 +60,13 @@ union StatusRegister {
 
 struct CPU {
   struct Descriptor {
+    Memory& memory;
+    std::array<Coprocessor*, 16> coprocessors = {};
     enum class Model {
       ARM7,
       ARM9
     } model = Model::ARM9;
     int block_size = 32;
-    Memory& memory;
   };
 
   virtual ~CPU() = default;

@@ -39,20 +39,11 @@ struct JIT final : CPU {
         basic_block = new BasicBlock{block_key};
 
         translator.Translate(*basic_block);
-
-        if (basic_block->length > 0) {
-          for (auto &micro_block : basic_block->micro_blocks) {
-            micro_block.emitter.Optimize();
-          }
-          backend.Compile(*basic_block);
-          block_cache.Set(block_key, basic_block);
-        } else {
-          auto address = block_key.Address();
-          auto thumb = state.GetCPSR().f.thumb;
-          throw std::runtime_error(
-            fmt::format("lunatic: unknown opcode @ R15={:08X} (thumb={})", address, thumb)
-          );
+        for (auto &micro_block : basic_block->micro_blocks) {
+          micro_block.emitter.Optimize();
         }
+        backend.Compile(*basic_block);
+        block_cache.Set(block_key, basic_block);
       }
 
       cycles_to_run = backend.Call(*basic_block, cycles_to_run);

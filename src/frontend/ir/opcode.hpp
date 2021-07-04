@@ -47,7 +47,8 @@ enum class IROpcodeClass {
   MemoryRead,
   MemoryWrite,
   Flush,
-  FlushExchange
+  FlushExchange,
+  CLZ
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -772,6 +773,30 @@ struct IRFlushExchange final : IROpcodeBase<IROpcodeClass::FlushExchange> {
       std::to_string(cpsr_out),
       std::to_string(address_in),
       std::to_string(cpsr_in));
+  }
+};
+
+struct IRCountLeadingZeros final : IROpcodeBase<IROpcodeClass::CLZ> {
+  IRCountLeadingZeros(
+    IRVariable const& result,
+    IRVariable const& operand
+  ) : result(result), operand(operand) {}
+
+  IRVariable const& result;
+  IRVariable const& operand;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &var == &operand;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &var == &result;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("clz {}, {}",
+      std::to_string(result),
+      std::to_string(operand));
   }
 };
 

@@ -92,6 +92,7 @@ private:
   void CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op);
   void CompileFlush(CompileContext const& context, IRFlush* op);
   void CompileFlushExchange(CompileContext const& context, IRFlushExchange* op);
+  void CompileCLZ(CompileContext const& context, IRCountLeadingZeros* op);
 
   Memory& memory;
   State& state;

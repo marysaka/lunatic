@@ -224,6 +224,11 @@ struct IREmitter {
     IRVariable const& cpsr_in
   );
 
+  void CLZ(
+    IRVariable const& result,
+    IRVariable const& operand
+  );
+
 private:
   template<typename T, typename... Args>
   void Push(Args&&... args) {

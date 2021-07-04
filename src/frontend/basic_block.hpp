@@ -18,8 +18,7 @@ namespace lunatic {
 namespace frontend {
 
 struct BasicBlock {
-  // TODO: consider using uintptr_t
-  typedef void (*CompiledFn)();
+  using CompiledFn = uintptr;
 
   union Key {
     Key() {}
@@ -50,7 +49,7 @@ struct BasicBlock {
   std::vector<MicroBlock> micro_blocks;
 
   // Pointer to the compiled code.
-  CompiledFn function = nullptr;
+  CompiledFn function = CompiledFn(nullptr);
 
   BasicBlock() {}
   BasicBlock(Key key) : key(key) {}
