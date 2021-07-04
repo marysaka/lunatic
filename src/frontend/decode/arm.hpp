@@ -13,6 +13,7 @@
 #include "definition/block_data_transfer.hpp"
 #include "definition/branch_exchange.hpp"
 #include "definition/branch_relative.hpp"
+#include "definition/coprocessor_register_transfer.hpp"
 #include "definition/data_processing.hpp"
 #include "definition/exception.hpp"
 #include "definition/halfword_signed_transfer.hpp"
@@ -44,6 +45,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMSingleDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBlockDataTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMBranchRelative const& opcode) -> T = 0;
+  virtual auto Handle(ARMCoprocessorRegisterTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMException const& opcode) -> T = 0;
   virtual auto Handle(ThumbBranchLinkSuffix const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
@@ -211,6 +213,20 @@ inline auto decode_branch_relative(Condition condition, u32 opcode, T& client) -
     .condition = condition,
     .offset = s32(offset),
     .link = bit::get_bit<u32, bool>(opcode, 24)
+  });
+}
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_coprocessor_register_transfer(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMCoprocessorRegisterTransfer{
+    .condition = condition,
+    .load = bit::get_bit<u32, bool>(opcode, 20),
+    .reg_dst = bit::get_field<u32, GPR>(opcode, 12, 4),
+    .coprocessor_id = bit::get_field(opcode, 8, 4),
+    .opcode1 = bit::get_field(opcode, 21, 3),
+    .cn = bit::get_field(opcode, 16, 4),
+    .cm = bit::get_field(opcode, 0, 4),
+    .opcode2 = bit::get_field(opcode, 5, 3)
   });
 }
 
@@ -392,8 +408,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
       }
 
       if ((opcode & 0x1000010) == 0x10) {
-        // return ARMInstrType::CoprocessorRegisterXfer;
-        return client.Undefined(instruction);
+        return decode_coprocessor_register_transfer(condition, opcode, client);
       }
 
       return decode_svc(condition, opcode, client);

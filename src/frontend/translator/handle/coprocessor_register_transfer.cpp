@@ -5,24 +5,14 @@
  * found in the LICENSE file.
  */
 
-#pragma once
-
-#include "common.hpp"
+#include "frontend/translator/translator.hpp"
 
 namespace lunatic {
 namespace frontend {
 
-struct ARMCoprocessorRegisterTransfer {
-  Condition condition;
-
-  bool load;
-  GPR reg_dst;
-  uint coprocessor_id;
-  uint opcode1;
-  uint cn;
-  uint cm;
-  uint opcode2;
-};
+auto Translator::Handle(ARMCoprocessorRegisterTransfer const& opcode) -> Status {
+  return Status::Unimplemented;
+}
 
 } // namespace lunatic::frontend
 } // namespace lunatic
