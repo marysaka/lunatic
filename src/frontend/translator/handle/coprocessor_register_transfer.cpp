@@ -11,7 +11,9 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMCoprocessorRegisterTransfer const& opcode) -> Status {
-  return Status::Unimplemented;
+  // STUBBED
+  EmitAdvancePC();
+  return Status::Continue;
 }
 
 } // namespace lunatic::frontend
