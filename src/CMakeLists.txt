@@ -15,6 +15,7 @@ set(SOURCES
   frontend/translator/handle/branch_exchange.cpp
   frontend/translator/handle/branch_relative.cpp
   frontend/translator/handle/coprocessor_register_transfer.cpp
+  frontend/translator/handle/count_leading_zeros.cpp
   frontend/translator/handle/data_processing.cpp
   frontend/translator/handle/exception.cpp
   frontend/translator/handle/halfword_signed_transfer.cpp
@@ -38,6 +39,7 @@ set(HEADERS
   frontend/decode/definition/block_data_transfer.hpp
   frontend/decode/definition/branch_relative.hpp
   frontend/decode/definition/coprocessor_register_transfer.hpp
+  frontend/decode/definition/count_leading_zeros.hpp
   frontend/decode/definition/branch_exchange.hpp
   frontend/decode/definition/common.hpp
   frontend/decode/definition/data_processing.hpp

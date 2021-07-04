@@ -14,6 +14,7 @@
 #include "definition/branch_exchange.hpp"
 #include "definition/branch_relative.hpp"
 #include "definition/coprocessor_register_transfer.hpp"
+#include "definition/count_leading_zeros.hpp"
 #include "definition/data_processing.hpp"
 #include "definition/exception.hpp"
 #include "definition/halfword_signed_transfer.hpp"
@@ -47,6 +48,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMBranchRelative const& opcode) -> T = 0;
   virtual auto Handle(ARMCoprocessorRegisterTransfer const& opcode) -> T = 0;
   virtual auto Handle(ARMException const& opcode) -> T = 0;
+  virtual auto Handle(ARMCountLeadingZeros const& opcode) -> T = 0;
   virtual auto Handle(ThumbBranchLinkSuffix const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
 };
@@ -239,6 +241,15 @@ inline auto decode_svc(Condition condition, u32 opcode, T& client) -> U {
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_count_leading_zeros(Condition condition, u32 opcode, T& client) -> U {
+  return client.Handle(ARMCountLeadingZeros{
+    .condition = condition,
+    .reg_src = bit::get_field<u32, GPR>(opcode, 0, 4),
+    .reg_dst = bit::get_field<u32, GPR>(opcode, 12, 4)
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes an ARM opcode into one of multiple structures,
@@ -315,8 +326,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         }
 
         if ((opcode & 0x6000F0) == 0x600010) {
-          // return ARMInstrType::CountLeadingZeros;
-          return client.Undefined(instruction);
+          return decode_count_leading_zeros(condition, opcode, client);
         }
 
         if ((opcode & 0x6000F0) == 0x200030) {

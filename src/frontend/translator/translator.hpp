@@ -42,6 +42,7 @@ struct Translator final : ARMDecodeClient<Status> {
   auto Handle(ARMBranchRelative const& opcode) -> Status override;
   auto Handle(ARMCoprocessorRegisterTransfer const& opcode) -> Status override;
   auto Handle(ARMException const& opcode) -> Status override;
+  auto Handle(ARMCountLeadingZeros const& opcode) -> Status override;
   auto Handle(ThumbBranchLinkSuffix const& opcode) -> Status override;
   auto Undefined(u32 opcode) -> Status override;
 
