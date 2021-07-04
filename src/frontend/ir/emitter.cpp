@@ -487,5 +487,12 @@ void IREmitter::FlushExchange(
   Push<IRFlushExchange>(address_out, cpsr_out, address_in, cpsr_in);
 }
 
+void IREmitter::CLZ(
+  IRVariable const& result,
+  IRVariable const& operand
+) {
+  Push<IRCountLeadingZeros>(result, operand);
+}
+
 } // namespace lunatic::frontend
 } // namespace lunatic

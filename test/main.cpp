@@ -152,7 +152,7 @@ void render_frame() {
 int main(int argc, char** argv) {
   using namespace lunatic;
 
-  static constexpr auto kROMPath = "armwrestler.nds";
+  static constexpr auto kROMPath = "rockwrestler.nds";
 
   size_t size;
   std::ifstream file { kROMPath, std::ios::binary };

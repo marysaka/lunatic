@@ -266,6 +266,7 @@ void X64Backend::CompileIROp(
     case IROpcodeClass::MemoryWrite: CompileMemoryWrite(context, lunatic_cast<IRMemoryWrite>(op.get())); break;
     case IROpcodeClass::Flush: CompileFlush(context, lunatic_cast<IRFlush>(op.get())); break;
     case IROpcodeClass::FlushExchange: CompileFlushExchange(context, lunatic_cast<IRFlushExchange>(op.get())); break;
+    case IROpcodeClass::CLZ: CompileCLZ(context, lunatic_cast<IRCountLeadingZeros>(op.get())); break;
     default: {
       throw std::runtime_error(
         fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
@@ -1330,6 +1331,14 @@ void X64Backend::CompileFlushExchange(const CompileContext &context, IRFlushExch
   code.add(address_out_reg, sizeof(u32) * 2);
 
   code.L(label_done);
+}
+
+void X64Backend::CompileCLZ(CompileContext const& context, IRCountLeadingZeros* op) {
+  DESTRUCTURE_CONTEXT;
+  code.lzcnt(
+    reg_alloc.GetVariableHostReg(op->result),
+    reg_alloc.GetVariableHostReg(op->operand)
+  );
 }
 
 } // namespace lunatic::backend

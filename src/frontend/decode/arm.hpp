@@ -326,6 +326,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         }
 
         if ((opcode & 0x6000F0) == 0x600010) {
+          // TODO: do not decode this instruction on ARMv4T
           return decode_count_leading_zeros(condition, opcode, client);
         }
 
