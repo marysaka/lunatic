@@ -25,6 +25,8 @@ struct Memory {
     System
   };
 
+  virtual ~Memory() = default;
+
   virtual auto ReadByte(u32 address, Bus bus) ->  u8 = 0;
   virtual auto ReadHalf(u32 address, Bus bus) -> u16 = 0;
   virtual auto ReadWord(u32 address, Bus bus) -> u32 = 0;

@@ -61,6 +61,7 @@ set(HEADERS
 set(HEADERS_PUBLIC
   ../include/lunatic/detail/meta.hpp
   ../include/lunatic/detail/punning.hpp
+  ../include/lunatic/coprocessor.hpp
   ../include/lunatic/cpu.hpp
   ../include/lunatic/integer.hpp
   ../include/lunatic/memory.hpp)
