@@ -71,6 +71,11 @@ struct IREmitter {
     IRVariable const& input
   );
 
+  void UpdateQ(
+    IRVariable const& result,
+    IRVariable const& input
+  );
+
   void LSL(
     IRVariable const& result,
     IRVariable const& operand,
@@ -227,6 +232,18 @@ struct IREmitter {
   void CLZ(
     IRVariable const& result,
     IRVariable const& operand
+  );
+
+  void QADD(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRVariable const& rhs
+  );
+
+  void QSUB(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRVariable const& rhs
   );
 
 private:
