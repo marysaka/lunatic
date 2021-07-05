@@ -244,6 +244,7 @@ void X64Backend::CompileIROp(
     case IROpcodeClass::ClearCarry: CompileClearCarry(context, lunatic_cast<IRClearCarry>(op.get())); break;
     case IROpcodeClass::SetCarry:   CompileSetCarry(context, lunatic_cast<IRSetCarry>(op.get())); break;
     case IROpcodeClass::UpdateFlags: CompileUpdateFlags(context, lunatic_cast<IRUpdateFlags>(op.get())); break;
+    case IROpcodeClass::UpdateSticky: CompileUpdateSticky(context, lunatic_cast<IRUpdateSticky>(op.get())); break;
     case IROpcodeClass::LSL: CompileLSL(context, lunatic_cast<IRLogicalShiftLeft>(op.get())); break;
     case IROpcodeClass::LSR: CompileLSR(context, lunatic_cast<IRLogicalShiftRight>(op.get())); break;
     case IROpcodeClass::ASR: CompileASR(context, lunatic_cast<IRArithmeticShiftRight>(op.get())); break;
@@ -267,6 +268,8 @@ void X64Backend::CompileIROp(
     case IROpcodeClass::Flush: CompileFlush(context, lunatic_cast<IRFlush>(op.get())); break;
     case IROpcodeClass::FlushExchange: CompileFlushExchange(context, lunatic_cast<IRFlushExchange>(op.get())); break;
     case IROpcodeClass::CLZ: CompileCLZ(context, lunatic_cast<IRCountLeadingZeros>(op.get())); break;
+    case IROpcodeClass::QADD: CompileQADD(context, lunatic_cast<IRSaturatingAdd>(op.get())); break;
+    case IROpcodeClass::QSUB: CompileQSUB(context, lunatic_cast<IRSaturatingSub>(op.get())); break;
     default: {
       throw std::runtime_error(
         fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
@@ -398,6 +401,17 @@ void X64Backend::CompileUpdateFlags(CompileContext const& context, IRUpdateFlags
   code.mov(result_reg, input_reg);
   code.and_(result_reg, ~mask);
   code.or_(result_reg, flags_reg);
+}
+
+void X64Backend::CompileUpdateSticky(CompileContext const& context, IRUpdateSticky* op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto input_reg  = reg_alloc.GetVariableHostReg(op->input);
+
+  code.movzx(result_reg, al);
+  code.shl(result_reg, 27);
+  code.or_(result_reg, input_reg);
 }
 
 void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* op) {
@@ -1339,6 +1353,48 @@ void X64Backend::CompileCLZ(CompileContext const& context, IRCountLeadingZeros* 
     reg_alloc.GetVariableHostReg(op->result),
     reg_alloc.GetVariableHostReg(op->operand)
   );
+}
+
+void X64Backend::CompileQADD(CompileContext const& context, IRSaturatingAdd* op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs);
+  auto label_skip_saturate = Xbyak::Label{};
+
+  code.mov(result_reg, lhs_reg);
+  code.add(result_reg, rhs_reg);
+  code.jno(label_skip_saturate);
+
+  // TODO: is it safe to overwrite EAX like this?
+  code.mov(eax, 0x7FFF'FFFF);
+  code.mov(result_reg, 0x8000'0000);
+  code.cmovs(result_reg, eax);
+
+  code.L(label_skip_saturate);
+  code.seto(al);
+}
+
+void X64Backend::CompileQSUB(CompileContext const& context, IRSaturatingSub* op) {
+  DESTRUCTURE_CONTEXT;
+
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs);
+  auto label_skip_saturate = Xbyak::Label{};
+
+  code.mov(result_reg, lhs_reg);
+  code.sub(result_reg, rhs_reg);
+  code.jno(label_skip_saturate);
+
+  // TODO: is it safe to overwrite EAX like this?
+  code.mov(eax, 0x7FFF'FFFF);
+  code.mov(result_reg, 0x8000'0000);
+  code.cmovs(result_reg, eax);
+
+  code.L(label_skip_saturate);
+  code.seto(al);
 }
 
 } // namespace lunatic::backend

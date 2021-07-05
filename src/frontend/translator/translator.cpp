@@ -170,6 +170,15 @@ void Translator::EmitUpdateNZCV() {
   emitter->StoreCPSR(cpsr_out);
 }
 
+void Translator::EmitUpdateQ() {
+  auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
+  auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
+
+  emitter->LoadCPSR(cpsr_in);
+  emitter->UpdateQ(cpsr_out, cpsr_in);
+  emitter->StoreCPSR(cpsr_out);
+}
+
 void Translator::EmitAdvancePC() {
   emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, IRConstant{code_address + opcode_size * 3});
 }

@@ -26,6 +26,7 @@ enum class IROpcodeClass {
   ClearCarry,
   SetCarry,
   UpdateFlags,
+  UpdateSticky,
   LSL,
   LSR,
   ASR,
@@ -48,7 +49,9 @@ enum class IROpcodeClass {
   MemoryWrite,
   Flush,
   FlushExchange,
-  CLZ
+  CLZ,
+  QADD,
+  QSUB
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -222,7 +225,6 @@ struct IRSetCarry final : IROpcodeBase<IROpcodeClass::SetCarry> {
 };
 
 struct IRUpdateFlags final : IROpcodeBase<IROpcodeClass::UpdateFlags> {
-  // TODO: take care of the sticky overflow flag
   IRUpdateFlags(
     IRVariable const& result,
     IRVariable const& input,
@@ -253,6 +255,30 @@ struct IRUpdateFlags final : IROpcodeBase<IROpcodeClass::UpdateFlags> {
       flag_z ? 'z' : '-',
       flag_c ? 'c' : '-',
       flag_v ? 'v' : '-',
+      std::to_string(result),
+      std::to_string(input));
+  }
+};
+
+struct IRUpdateSticky final : IROpcodeBase<IROpcodeClass::UpdateSticky> {
+  IRUpdateSticky(
+    IRVariable const& result,
+    IRVariable const& input
+  ) : result(result), input(input) {}
+
+  IRVariable const& result;
+  IRVariable const& input;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &input == &var;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &result == &var;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("update.q {}, {}",
       std::to_string(result),
       std::to_string(input));
   }
@@ -797,6 +823,60 @@ struct IRCountLeadingZeros final : IROpcodeBase<IROpcodeClass::CLZ> {
     return fmt::format("clz {}, {}",
       std::to_string(result),
       std::to_string(operand));
+  }
+};
+
+struct IRSaturatingAdd final : IROpcodeBase<IROpcodeClass::QADD> {
+  IRSaturatingAdd(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRVariable const& rhs
+  ) : result(result), lhs(lhs), rhs(rhs) {}
+
+  IRVariable const& result;
+  IRVariable const& lhs;
+  IRVariable const& rhs;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &var == &lhs || &var == &rhs;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &var == &result;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("qadd {}, {}, {}",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
+  }
+};
+
+struct IRSaturatingSub final : IROpcodeBase<IROpcodeClass::QSUB> {
+  IRSaturatingSub(
+    IRVariable const& result,
+    IRVariable const& lhs,
+    IRVariable const& rhs
+  ) : result(result), lhs(lhs), rhs(rhs) {}
+
+  IRVariable const& result;
+  IRVariable const& lhs;
+  IRVariable const& rhs;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return &var == &lhs || &var == &rhs;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &var == &result;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("qsub {}, {}, {}",
+      std::to_string(result),
+      std::to_string(lhs),
+      std::to_string(rhs));
   }
 };
 

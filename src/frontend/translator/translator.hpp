@@ -54,6 +54,7 @@ private:
   void EmitUpdateNZ();
   void EmitUpdateNZC();
   void EmitUpdateNZCV();
+  void EmitUpdateQ();
   void EmitAdvancePC();
   void EmitFlush();
   void EmitFlushExchange(IRVariable const& address);

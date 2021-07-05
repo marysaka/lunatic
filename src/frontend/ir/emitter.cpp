@@ -245,6 +245,13 @@ void IREmitter::UpdateNZCV(
   Push<IRUpdateFlags>(result, input, true, true, true, true);
 }
 
+void IREmitter::UpdateQ(
+  IRVariable const& result,
+  IRVariable const& input
+) {
+  Push<IRUpdateSticky>(result, input);
+}
+
 void IREmitter::LSL(
   IRVariable const& result,
   IRVariable const& operand,
@@ -492,6 +499,22 @@ void IREmitter::CLZ(
   IRVariable const& operand
 ) {
   Push<IRCountLeadingZeros>(result, operand);
+}
+
+void IREmitter::QADD(
+  IRVariable const& result,
+  IRVariable const& lhs,
+  IRVariable const& rhs
+) {
+  Push<IRSaturatingAdd>(result, lhs, rhs);
+}
+
+void IREmitter::QSUB(
+  IRVariable const& result,
+  IRVariable const& lhs,
+  IRVariable const& rhs
+) {
+  Push<IRSaturatingSub>(result, lhs, rhs);
 }
 
 } // namespace lunatic::frontend

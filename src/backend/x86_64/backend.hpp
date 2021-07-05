@@ -70,6 +70,7 @@ private:
   void CompileClearCarry(CompileContext const& context, IRClearCarry* op);
   void CompileSetCarry(CompileContext const& context, IRSetCarry* op);
   void CompileUpdateFlags(CompileContext const& context, IRUpdateFlags* op);
+  void CompileUpdateSticky(CompileContext const& context, IRUpdateSticky* op);
   void CompileLSL(CompileContext const& context, IRLogicalShiftLeft* op);
   void CompileLSR(CompileContext const& context, IRLogicalShiftRight* op);
   void CompileASR(CompileContext const& context, IRArithmeticShiftRight* op);
@@ -93,6 +94,8 @@ private:
   void CompileFlush(CompileContext const& context, IRFlush* op);
   void CompileFlushExchange(CompileContext const& context, IRFlushExchange* op);
   void CompileCLZ(CompileContext const& context, IRCountLeadingZeros* op);
+  void CompileQADD(CompileContext const& context, IRSaturatingAdd* op);
+  void CompileQSUB(CompileContext const& context, IRSaturatingSub* op);
 
   Memory& memory;
   State& state;
