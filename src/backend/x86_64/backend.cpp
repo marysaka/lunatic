@@ -1357,16 +1357,16 @@ void X64Backend::CompileQADD(CompileContext const& context, IRSaturatingAdd* op)
   auto result_reg = reg_alloc.GetVariableHostReg(op->result);
   auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
   auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs);
+  auto temp_reg = reg_alloc.GetTemporaryHostReg();
   auto label_skip_saturate = Xbyak::Label{};
 
   code.mov(result_reg, lhs_reg);
   code.add(result_reg, rhs_reg);
   code.jno(label_skip_saturate);
 
-  // TODO: is it safe to overwrite EAX like this?
-  code.mov(eax, 0x7FFF'FFFF);
+  code.mov(temp_reg, 0x7FFF'FFFF);
   code.mov(result_reg, 0x8000'0000);
-  code.cmovs(result_reg, eax);
+  code.cmovs(result_reg, temp_reg);
 
   code.L(label_skip_saturate);
   code.seto(al);
@@ -1378,16 +1378,16 @@ void X64Backend::CompileQSUB(CompileContext const& context, IRSaturatingSub* op)
   auto result_reg = reg_alloc.GetVariableHostReg(op->result);
   auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
   auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs);
+  auto temp_reg = reg_alloc.GetTemporaryHostReg();
   auto label_skip_saturate = Xbyak::Label{};
 
   code.mov(result_reg, lhs_reg);
   code.sub(result_reg, rhs_reg);
   code.jno(label_skip_saturate);
 
-  // TODO: is it safe to overwrite EAX like this?
-  code.mov(eax, 0x7FFF'FFFF);
+  code.mov(temp_reg, 0x7FFF'FFFF);
   code.mov(result_reg, 0x8000'0000);
-  code.cmovs(result_reg, eax);
+  code.cmovs(result_reg, temp_reg);
 
   code.L(label_skip_saturate);
   code.seto(al);
