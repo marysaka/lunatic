@@ -144,6 +144,7 @@ void X64Backend::EmitCallBlock() {
 void X64Backend::Compile(BasicBlock& basic_block) {
   auto code = new Xbyak::CodeGenerator{};
   auto label_return_to_dispatch = Xbyak::Label{};
+  auto opcode_size = basic_block.key.Thumb() ? sizeof(u16) : sizeof(u32);
 
   for (auto const& micro_block : basic_block.micro_blocks) {
     auto& emitter  = micro_block.emitter;
@@ -170,23 +171,18 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       CompileIROp(context, op);
     }
 
-    code->jmp(label_done);
+    if (condition != Condition::AL) {
+      code->jmp(label_done);
 
-    // If the micro block was skipped advance PC by the number of instructions in it. 
-    code->L(label_skip);    
-    if (basic_block.key.Thumb()) {
+      // If the micro block was skipped advance PC by the number of instructions in it. 
+      code->L(label_skip);
       code->add(
         dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
-        micro_block.length * sizeof(u16)
+        micro_block.length * opcode_size
       );
-    } else {
-      code->add(
-        dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
-        micro_block.length * sizeof(u32)
-      );
+
+      code->L(label_done);
     }
-
-    code->L(label_done);
   }
 
   // Return to the dispatcher if we ran out of cycles.
