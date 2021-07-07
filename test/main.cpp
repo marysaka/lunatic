@@ -46,6 +46,7 @@ struct Memory final : lunatic::Memory {
     std::memset(mainram, 0, sizeof(mainram));
     std::memset(vram, 0, sizeof(vram));
     vblank_flag = 0;
+    vblank_counter = 0;
 
     pagetable = std::make_unique<std::array<u8*, 1048576>>();
 
@@ -73,7 +74,11 @@ struct Memory final : lunatic::Memory {
 
   auto ReadByte(u32 address, Bus bus) -> u8 override {
     if (address == 0x0400'0004) {
-      return vblank_flag ^= 1;
+      if (++vblank_counter == 1000000) {
+        vblank_counter = 0;
+        vblank_flag ^= 1;
+      }
+      return vblank_flag;
     }
 
     fmt::print("unknown byte read @ 0x{:08X}\n", address);
@@ -82,7 +87,11 @@ struct Memory final : lunatic::Memory {
 
   auto ReadHalf(u32 address, Bus bus) -> u16 override {
     if (address == 0x0400'0004) {
-      return vblank_flag ^= 1;
+      if (++vblank_counter == 1000000) {
+        vblank_counter = 0;
+        vblank_flag ^= 1;
+      }
+      return vblank_flag;
     }
 
     if (address == 0x0400'0130) {
@@ -95,7 +104,11 @@ struct Memory final : lunatic::Memory {
 
   auto ReadWord(u32 address, Bus bus) -> u32 override {
     if (address == 0x0400'0004) {
-      return vblank_flag ^= 1;
+      if (++vblank_counter == 1000000) {
+        vblank_counter = 0;
+        vblank_flag ^= 1;
+      }
+      return vblank_flag;
     }
 
     fmt::print("unknown word read @ 0x{:08X}\n", address);
@@ -111,6 +124,7 @@ struct Memory final : lunatic::Memory {
   void WriteWord(u32 address, u32 value, Bus bus) override {
   }
 
+  int vblank_counter;
   u8 dtcm[0x4000];
   u8 mainram[0x400000];
   u8 vram[0x200000];

@@ -39,7 +39,7 @@ auto Translator::Handle(ARMSaturatingAddSub const& opcode) -> Status {
 
   EmitUpdateQ();
   EmitAdvancePC();
-  return Status::Continue;
+  return Status::BreakMicroBlock;
 }
 
 } // namespace lunatic::frontend

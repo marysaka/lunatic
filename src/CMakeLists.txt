@@ -22,6 +22,7 @@ set(SOURCES
   frontend/translator/handle/multiply.cpp
   frontend/translator/handle/multiply_long.cpp
   frontend/translator/handle/saturating_add_sub.cpp
+  frontend/translator/handle/signed_halfword_multiply.cpp
   frontend/translator/handle/single_data_swap.cpp
   frontend/translator/handle/single_data_transfer.cpp
   frontend/translator/handle/status_transfer.cpp
@@ -49,6 +50,7 @@ set(HEADERS
   frontend/decode/definition/multiply.hpp
   frontend/decode/definition/multiply_long.hpp
   frontend/decode/definition/saturating_add_sub.hpp
+  frontend/decode/definition/signed_halfword_multiply.hpp
   frontend/decode/definition/single_data_swap.hpp
   frontend/decode/definition/single_data_transfer.hpp
   frontend/decode/definition/status_transfer.hpp
