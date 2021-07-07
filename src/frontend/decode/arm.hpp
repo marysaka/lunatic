@@ -21,6 +21,7 @@
 #include "definition/multiply.hpp"
 #include "definition/multiply_long.hpp"
 #include "definition/saturating_add_sub.hpp"
+#include "definition/signed_halfword_multiply.hpp"
 #include "definition/single_data_swap.hpp"
 #include "definition/single_data_transfer.hpp"
 #include "definition/status_transfer.hpp"
@@ -51,6 +52,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMException const& opcode) -> T = 0;
   virtual auto Handle(ARMCountLeadingZeros const& opcode) -> T = 0;
   virtual auto Handle(ARMSaturatingAddSub const& opcode) -> T = 0;
+  virtual auto Handle(ARMSignedHalfwordMultiply const& opcode) -> T = 0;
   virtual auto Handle(ThumbBranchLinkSuffix const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
 };
@@ -270,6 +272,27 @@ inline auto decode_saturating_add_sub(Condition condition, u32 opcode, T& client
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_signed_halfword_multiply(Condition condition, u32 opcode, T& client) -> U {
+  auto op = bit::get_field(opcode, 21, 4);
+
+  // SMULxy, SMLAxy only for now
+  if (op != 0b1000 && op != 0b1011) {
+    return client.Undefined(opcode);
+  }
+
+  return client.Handle(ARMSignedHalfwordMultiply{
+    .condition = condition,
+    .accumulate = op == 0b1000,
+    .x = bit::get_bit<u32, bool>(opcode, 5),
+    .y = bit::get_bit<u32, bool>(opcode, 6),
+    .reg_dst = bit::get_field<u32, GPR>(opcode, 16, 4),
+    .reg_lhs = bit::get_field<u32, GPR>(opcode, 0, 4),
+    .reg_rhs = bit::get_field<u32, GPR>(opcode, 8, 4),
+    .reg_op3 = bit::get_field<u32, GPR>(opcode, 12, 4),
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes an ARM opcode into one of multiple structures,
@@ -367,8 +390,7 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
         if ((opcode & 0x90) == 0x80) {
           // Signed halfword multiply (ARMv5 upwards):
           // SMLAxy, SMLAWy, SMULWy, SMLALxy, SMULxy
-          // return ARMInstrType::SignedHalfwordMultiply;
-          return client.Undefined(instruction);
+          return decode_signed_halfword_multiply(condition, opcode, client);
         }
       }
 
