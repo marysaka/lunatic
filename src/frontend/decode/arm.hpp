@@ -53,6 +53,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMCountLeadingZeros const& opcode) -> T = 0;
   virtual auto Handle(ARMSaturatingAddSub const& opcode) -> T = 0;
   virtual auto Handle(ARMSignedHalfwordMultiply const& opcode) -> T = 0;
+  virtual auto Handle(ARMSignedHalfwordMultiplyAccumulateLong const& opcode) -> T = 0;
   virtual auto Handle(ThumbBranchLinkSuffix const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
 };
@@ -276,21 +277,43 @@ template<typename T, typename U = typename T::return_type>
 inline auto decode_signed_halfword_multiply(Condition condition, u32 opcode, T& client) -> U {
   auto op = bit::get_field(opcode, 21, 4);
 
-  // SMULxy, SMLAxy only for now
-  if (op != 0b1000 && op != 0b1011) {
-    return client.Undefined(opcode);
+  auto x = bit::get_bit<u32, bool>(opcode, 5);
+  auto y = bit::get_bit<u32, bool>(opcode, 6);
+  auto dst = bit::get_field<u32, GPR>(opcode, 16, 4);
+  auto lhs = bit::get_field<u32, GPR>(opcode, 0, 4);
+  auto rhs = bit::get_field<u32, GPR>(opcode, 8, 4);
+  auto op3 = bit::get_field<u32, GPR>(opcode, 12, 4);
+
+  switch (op) {
+    // SMLAxy, SMULxy
+    case 0b1000:
+    case 0b1011: {
+      return client.Handle(ARMSignedHalfwordMultiply{
+        .condition = condition,
+        .accumulate = op == 0b1000,
+        .x = x,
+        .y = y,
+        .reg_dst = dst,
+        .reg_lhs = lhs,
+        .reg_rhs = rhs,
+        .reg_op3 = op3,
+      });
+    }
+    // SMLALxy
+    case 0b1010: {
+      return client.Handle(ARMSignedHalfwordMultiplyAccumulateLong{
+        .condition = condition,
+        .x = x,
+        .y = y,
+        .reg_dst_hi = dst,
+        .reg_dst_lo = op3,
+        .reg_lhs = lhs,
+        .reg_rhs = rhs,
+      });
+    }
   }
 
-  return client.Handle(ARMSignedHalfwordMultiply{
-    .condition = condition,
-    .accumulate = op == 0b1000,
-    .x = bit::get_bit<u32, bool>(opcode, 5),
-    .y = bit::get_bit<u32, bool>(opcode, 6),
-    .reg_dst = bit::get_field<u32, GPR>(opcode, 16, 4),
-    .reg_lhs = bit::get_field<u32, GPR>(opcode, 0, 4),
-    .reg_rhs = bit::get_field<u32, GPR>(opcode, 8, 4),
-    .reg_op3 = bit::get_field<u32, GPR>(opcode, 12, 4),
-  });
+  return client.Undefined(opcode);
 }
 
 } // namespace lunatic::frontend::detail
