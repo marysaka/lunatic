@@ -56,6 +56,45 @@ auto Translator::Handle(ARMSignedHalfwordMultiply const& opcode) -> Status {
   }
 }
 
+auto Translator::Handle(ARMSignedWordHalfwordMultiply const& opcode) -> Status {
+  auto& result_mul = emitter->CreateVar(IRDataType::SInt32, "result_mul");
+  auto& result_asr = emitter->CreateVar(IRDataType::SInt32, "result_asr");
+  auto& lhs = emitter->CreateVar(IRDataType::SInt32, "lhs");
+  auto& rhs = emitter->CreateVar(IRDataType::SInt32, "rhs");
+  auto& rhs_reg = emitter->CreateVar(IRDataType::SInt32, "rhs_reg");
+
+  emitter->LoadGPR(IRGuestReg{opcode.reg_lhs, mode}, lhs);
+  emitter->LoadGPR(IRGuestReg{opcode.reg_rhs, mode}, rhs_reg);
+
+  if (opcode.y) {
+    emitter->ASR(rhs, rhs_reg, IRConstant{16}, false);
+  } else {
+    auto& tmp = emitter->CreateVar(IRDataType::SInt32);
+    emitter->LSL(tmp, rhs_reg, IRConstant{16}, false);
+    emitter->ASR(rhs, tmp, IRConstant{16}, false);
+  }
+
+  emitter->MUL({}, result_mul, lhs, rhs, false);
+  emitter->ASR(result_asr, result_mul, IRConstant{16}, false);
+
+  if (opcode.accumulate) {
+    auto& op3 = emitter->CreateVar(IRDataType::SInt32, "op3");
+    auto& result_acc = emitter->CreateVar(IRDataType::SInt32, "result_acc");
+   
+    emitter->LoadGPR(IRGuestReg{opcode.reg_op3, mode}, op3);
+    emitter->ADD(result_acc, result_asr, op3, true);
+    EmitUpdateQ();
+    emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result_acc);
+    
+    EmitAdvancePC();
+    return Status::BreakBasicBlock;
+  } else {
+    emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, result_asr);
+    EmitAdvancePC();
+    return Status::Continue;
+  }
+}
+
 auto Translator::Handle(ARMSignedHalfwordMultiplyAccumulateLong const& opcode) -> Status {
   auto& result_hi = emitter->CreateVar(IRDataType::SInt32, "result_hi");
   auto& result_lo = emitter->CreateVar(IRDataType::SInt32, "result_lo");
@@ -67,7 +106,6 @@ auto Translator::Handle(ARMSignedHalfwordMultiplyAccumulateLong const& opcode) -
   auto& rhs_reg = emitter->CreateVar(IRDataType::SInt32, "rhs_reg");
   auto& dst_hi = emitter->CreateVar(IRDataType::SInt32, "dst_hi");
   auto& dst_lo = emitter->CreateVar(IRDataType::SInt32, "dst_lo");
-
 
   emitter->LoadGPR(IRGuestReg{opcode.reg_lhs, mode}, lhs_reg);
   emitter->LoadGPR(IRGuestReg{opcode.reg_rhs, mode}, rhs_reg);

@@ -53,6 +53,7 @@ struct ARMDecodeClient {
   virtual auto Handle(ARMCountLeadingZeros const& opcode) -> T = 0;
   virtual auto Handle(ARMSaturatingAddSub const& opcode) -> T = 0;
   virtual auto Handle(ARMSignedHalfwordMultiply const& opcode) -> T = 0;
+  virtual auto Handle(ARMSignedWordHalfwordMultiply const& opcode) -> T = 0;
   virtual auto Handle(ARMSignedHalfwordMultiplyAccumulateLong const& opcode) -> T = 0;
   virtual auto Handle(ThumbBranchLinkSuffix const& opcode) -> T = 0;
   virtual auto Undefined(u32 opcode) -> T = 0;
@@ -296,7 +297,18 @@ inline auto decode_signed_halfword_multiply(Condition condition, u32 opcode, T& 
         .reg_dst = dst,
         .reg_lhs = lhs,
         .reg_rhs = rhs,
-        .reg_op3 = op3,
+        .reg_op3 = op3
+      });
+    }
+    case 0b1001: {
+      return client.Handle(ARMSignedWordHalfwordMultiply{
+        .condition = condition,
+        .accumulate = !x,
+        .y = y,
+        .reg_dst = dst,
+        .reg_lhs = lhs,
+        .reg_rhs = rhs,
+        .reg_op3 = op3
       });
     }
     // SMLALxy
@@ -308,7 +320,7 @@ inline auto decode_signed_halfword_multiply(Condition condition, u32 opcode, T& 
         .reg_dst_hi = dst,
         .reg_dst_lo = op3,
         .reg_lhs = lhs,
-        .reg_rhs = rhs,
+        .reg_rhs = rhs
       });
     }
   }

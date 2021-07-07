@@ -23,6 +23,16 @@ struct ARMSignedHalfwordMultiply {
   GPR reg_op3;
 };
 
+struct ARMSignedWordHalfwordMultiply {
+  Condition condition;
+  bool accumulate;
+  bool y;
+  GPR reg_dst;
+  GPR reg_lhs;
+  GPR reg_rhs;
+  GPR reg_op3;
+};
+
 struct ARMSignedHalfwordMultiplyAccumulateLong {
   Condition condition;
   bool x;
