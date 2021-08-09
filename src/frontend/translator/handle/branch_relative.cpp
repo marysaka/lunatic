@@ -18,11 +18,9 @@ auto Translator::Handle(ARMBranchRelative const& opcode) -> Status {
   }
 
   if (opcode.exchange) {
-    // NOTE: the code assumes that we are in ARM mode right now.
     auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
     auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
-
-    // Switch into Thumb mode.
+  
     emitter->LoadCPSR(cpsr_in);
     emitter->ORR(cpsr_out, cpsr_in, IRConstant{32}, false);
     emitter->StoreCPSR(cpsr_out);

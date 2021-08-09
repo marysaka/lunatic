@@ -14,19 +14,27 @@ auto Translator::Handle(ThumbBranchLinkSuffix const& opcode) -> Status {
   auto& lr  = emitter->CreateVar(IRDataType::UInt32, "lr");
   auto& pc1 = emitter->CreateVar(IRDataType::UInt32, "pc");
   auto& pc2 = emitter->CreateVar(IRDataType::UInt32, "pc");
+  auto& pc3 = emitter->CreateVar(IRDataType::UInt32, "pc");
 
   emitter->LoadGPR(IRGuestReg{GPR::LR, mode}, lr);
   emitter->ADD(pc1, lr, IRConstant{opcode.offset}, false);
   emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{u32((code_address + sizeof(u16)) | 1)});
 
   if (armv5te && opcode.exchange) {
-    // TODO: since we always switch to ARM mode this generates bad code.
+    auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
+    auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
+  
+    emitter->LoadCPSR(cpsr_in);
+    emitter->AND(cpsr_out, cpsr_in, IRConstant{~32U}, false);
+    emitter->StoreCPSR(cpsr_out);
+
     emitter->AND(pc2, pc1, IRConstant{~3U}, false);
-    EmitFlushExchange(pc2);
+    emitter->ADD(pc3, pc2, IRConstant{sizeof(u32) * 2}, false);
+    emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, pc3);
   } else {
     emitter->AND(pc2, pc1, IRConstant{~1U}, false);
-    emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, pc2);
-    EmitFlushNoSwitch();
+    emitter->ADD(pc3, pc2, IRConstant{sizeof(u16) * 2}, false);
+    emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, pc3);
   }
 
   return Status::BreakBasicBlock;
