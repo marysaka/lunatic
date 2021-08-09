@@ -21,7 +21,7 @@ auto Translator::Handle(ThumbBranchLinkSuffix const& opcode) -> Status {
 
   if (armv5te && opcode.exchange) {
     // TODO: since we always switch to ARM mode this generates bad code.
-    emitter->ORR(pc2, pc1, IRConstant{1}, false);
+    emitter->AND(pc2, pc1, IRConstant{~3U}, false);
     EmitFlushExchange(pc2);
   } else {
     emitter->AND(pc2, pc1, IRConstant{~1U}, false);

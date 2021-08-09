@@ -220,7 +220,8 @@ inline auto decode_branch_relative(Condition condition, u32 opcode, T& client) -
   return client.Handle(ARMBranchRelative{
     .condition = condition,
     .offset = s32(offset),
-    .link = bit::get_bit<u32, bool>(opcode, 24)
+    .link = bit::get_bit<u32, bool>(opcode, 24),
+    .exchange = false
   });
 }
 
@@ -328,6 +329,27 @@ inline auto decode_signed_halfword_multiply(Condition condition, u32 opcode, T& 
   return client.Undefined(opcode);
 }
 
+// unconditional opcodes:
+
+template<typename T, typename U = typename T::return_type>
+inline auto decode_branch_link_exchange_relative(u32 opcode, T& client) -> U {
+  auto offset = opcode & 0xFFFFFF;
+
+  if (offset & 0x800000) {
+    offset |= 0xFF000000;
+  }
+
+  offset *= sizeof(u32);
+  offset += bit::get_field(opcode, 23, 2) & 2;
+
+  return client.Handle(ARMBranchRelative{
+    .condition = Condition::AL,
+    .offset = s32(offset),
+    .link = true,
+    .exchange = true
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes an ARM opcode into one of multiple structures,
@@ -338,6 +360,14 @@ inline auto decode_arm(u32 instruction, T& client) -> U {
   auto condition = bit::get_field<u32, Condition>(instruction, 28, 4);
 
   using namespace detail;
+
+  // TODO: do not decode unconditional opcodes on ARMv4T
+  if (condition == Condition::NV) {
+    if (((instruction >> 25) & 7) == 5) {
+      return decode_branch_link_exchange_relative(opcode, client);
+    }
+    return client.Undefined(instruction);
+  }
 
   // TODO: use string pattern based approach to decoding.
   switch (opcode >> 25) {
