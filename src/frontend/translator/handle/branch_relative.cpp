@@ -11,14 +11,26 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMBranchRelative const& opcode) -> Status {
-  auto target_addr = IRConstant{code_address + opcode.offset + opcode_size * 4};
+  auto target_addr = code_address + opcode_size * 2 + opcode.offset;
 
   if (opcode.link) {
     emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{code_address + opcode_size});
   }
 
-  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, target_addr);
+  if (opcode.exchange) {
+    auto& cpsr_in  = emitter->CreateVar(IRDataType::UInt32, "cpsr_in");
+    auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
+  
+    emitter->LoadCPSR(cpsr_in);
+    emitter->ORR(cpsr_out, cpsr_in, IRConstant{32}, false);
+    emitter->StoreCPSR(cpsr_out);
 
+    target_addr += sizeof(u16) * 2;
+  } else {
+    target_addr += opcode_size * 2;
+  }
+
+  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, IRConstant{target_addr});
   return Status::BreakBasicBlock;
 }
 

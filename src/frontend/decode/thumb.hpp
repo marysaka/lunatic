@@ -485,7 +485,8 @@ inline auto decode_conditional_branch(u16 opcode, T& client) -> U {
   return client.Handle(ARMBranchRelative{
     .condition = condition,
     .offset = offset,
-    .link = false
+    .link = false,
+    .exchange = false
   });
 }
 
@@ -505,7 +506,8 @@ inline auto decode_unconditional_branch(u16 opcode, T& client) -> U {
   return client.Handle(ARMBranchRelative{
     .condition = Condition::AL,
     .offset = offset,
-    .link = false
+    .link = false,
+    .exchange = false
   });
 }
 

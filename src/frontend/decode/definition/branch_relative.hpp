@@ -16,6 +16,7 @@ struct ARMBranchRelative {
   Condition condition;
   s32 offset;
   bool link;
+  bool exchange;
 };
 
 } // namespace lunatic::frontend
