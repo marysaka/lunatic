@@ -77,7 +77,6 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
 
         // LDRD with odd-numbered destination register is undefined.
         if ((static_cast<int>(reg_dst_a) & 1) == 1) {
-          // TODO: real hardware appears to throw an undefined opcode exception.
           return Status::Unimplemented;
         }
 
@@ -106,10 +105,26 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
         }
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
       } else {
-        // STRD (unimplemented)
         if (armv5te) {
-          return Status::Unimplemented;
+          auto reg_dst_a = opcode.reg_dst;
+          auto reg_dst_b = static_cast<GPR>(static_cast<int>(reg_dst_a) + 1);
+          auto& address_a = address;
+          auto& address_b = emitter->CreateVar(IRDataType::UInt32);
+          auto& data_a = data;
+          auto& data_b = emitter->CreateVar(IRDataType::UInt32, "data");
+
+          // STRD with odd-numbered destination register is undefined.
+          if ((static_cast<int>(reg_dst_a) & 1) == 1) {
+            return Status::Unimplemented;
+          }
+          
+          emitter->LoadGPR(IRGuestReg{reg_dst_a, mode}, data_a);
+          emitter->LoadGPR(IRGuestReg{reg_dst_b, mode}, data_b);
+          emitter->ADD(address_b, address_a, IRConstant{sizeof(u32)}, false);
+          emitter->STR(Word, data_a, address_a);
+          emitter->STR(Word, data_b, address_b);
         }
+
         writeback();
       }
       break;
