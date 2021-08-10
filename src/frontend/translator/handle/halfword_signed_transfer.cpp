@@ -12,6 +12,8 @@ namespace frontend {
 
 auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
   auto offset = IRValue{};
+  bool should_writeback = !opcode.pre_increment || opcode.writeback;
+  bool should_flush_pipeline = opcode.load && opcode.reg_dst == GPR::PC;
 
   if (opcode.immediate) {
     offset = IRConstant{opcode.offset_imm};
@@ -35,7 +37,6 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
   auto& address = opcode.pre_increment ? base_new : base_old;
   auto& data = emitter->CreateVar(IRDataType::UInt32, "data");
 
-  bool should_writeback = !opcode.pre_increment || opcode.writeback;
   auto writeback = [&]() {
     if (should_writeback) {
       emitter->StoreGPR(IRGuestReg{opcode.reg_base, mode}, base_new);
@@ -66,33 +67,32 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
         writeback();
         emitter->LDR(Byte | Signed, data, address);
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
+      } else if (armv5te) {
+        auto reg_dst_a = opcode.reg_dst;
+        auto reg_dst_b = static_cast<GPR>(static_cast<int>(reg_dst_a) + 1);
+        auto& address_a = address;
+        auto& address_b = emitter->CreateVar(IRDataType::UInt32);
+        auto& data_a = data;
+        auto& data_b = emitter->CreateVar(IRDataType::UInt32, "data");
+
+        // LDRD with odd-numbered destination register is undefined.
+        if ((static_cast<int>(reg_dst_a) & 1) == 1) {
+          // TODO: real hardware appears to throw an undefined opcode exception.
+          return Status::Unimplemented;
+        }
+
+        emitter->ADD(address_b, address_a, IRConstant{sizeof(u32)}, false);
+        emitter->LDR(Word, data_a, address_a);
+        emitter->LDR(Word, data_b, address_b);
+        emitter->StoreGPR(IRGuestReg{reg_dst_a, mode}, data_a);
+        writeback();
+        emitter->StoreGPR(IRGuestReg{reg_dst_b, mode}, data_b);
+
+        if (reg_dst_b == GPR::PC) {
+          should_flush_pipeline = true;
+        }
       } else {
         writeback();
-
-        if (armv5te) {
-          auto reg_dst_a = opcode.reg_dst;
-          auto reg_dst_b = static_cast<GPR>(static_cast<int>(reg_dst_a) + 1);
-          auto& address_a = address;
-          auto& address_b = emitter->CreateVar(IRDataType::UInt32);
-          auto& data_a = data;
-          auto& data_b = emitter->CreateVar(IRDataType::UInt32, "data");
-
-          // LDRD with odd-numbered destination register is undefined.
-          if ((static_cast<int>(reg_dst_a) & 1) == 1) {
-            return Status::Unimplemented;
-          }
-
-          // LDRD to LR and PC is unpredictable.
-          if (reg_dst_a == GPR::LR) {
-            return Status::Unimplemented;
-          }
-
-          emitter->ADD(address_b, address_a, IRConstant{sizeof(u32)}, false);
-          emitter->LDR(Word, data_a, address_a);
-          emitter->LDR(Word, data_b, address_b);
-          emitter->StoreGPR(IRGuestReg{reg_dst_a, mode}, data_a);
-          emitter->StoreGPR(IRGuestReg{reg_dst_b, mode}, data_b);
-        }
       }
       break;
     }
@@ -120,7 +120,7 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
     }
   }
 
-  if (opcode.load && opcode.reg_dst == GPR::PC) {
+  if (should_flush_pipeline) {
     if (armv5te) {
       // Branch with exchange
       auto& address = emitter->CreateVar(IRDataType::UInt32, "address");
