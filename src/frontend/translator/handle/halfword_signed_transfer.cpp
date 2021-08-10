@@ -34,8 +34,10 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
     emitter->SUB(base_new, base_old, offset, false);
   }
 
-  auto& address = opcode.pre_increment ? base_new : base_old;
-  auto& data = emitter->CreateVar(IRDataType::UInt32, "data");
+  auto& address_a = opcode.pre_increment ? base_new : base_old;
+  auto& address_b = emitter->CreateVar(IRDataType::UInt32);
+  auto& data_a = emitter->CreateVar(IRDataType::UInt32, "data_a");
+  auto& data_b = emitter->CreateVar(IRDataType::UInt32, "data_b");
 
   auto writeback = [&]() {
     if (should_writeback) {
@@ -50,14 +52,14 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
       if (opcode.load) {
         writeback();
         if (armv5te) {
-          emitter->LDR(Half, data, address);
+          emitter->LDR(Half, data_a, address_a);
         } else {
-          emitter->LDR(Half | Rotate, data, address);
+          emitter->LDR(Half | Rotate, data_a, address_a);
         }
-        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
+        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data_a);
       } else {
-        emitter->LoadGPR(IRGuestReg{opcode.reg_dst, mode}, data);
-        emitter->STR(Half, data, address);
+        emitter->LoadGPR(IRGuestReg{opcode.reg_dst, mode}, data_a);
+        emitter->STR(Half, data_a, address_a);
         writeback();
       }
       break;
@@ -65,15 +67,11 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
     case 2: {
       if (opcode.load) {
         writeback();
-        emitter->LDR(Byte | Signed, data, address);
-        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
+        emitter->LDR(Byte | Signed, data_a, address_a);
+        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data_a);
       } else if (armv5te) {
         auto reg_dst_a = opcode.reg_dst;
         auto reg_dst_b = static_cast<GPR>(static_cast<int>(reg_dst_a) + 1);
-        auto& address_a = address;
-        auto& address_b = emitter->CreateVar(IRDataType::UInt32);
-        auto& data_a = data;
-        auto& data_b = emitter->CreateVar(IRDataType::UInt32, "data");
 
         // LDRD with odd-numbered destination register is undefined.
         if ((static_cast<int>(reg_dst_a) & 1) == 1) {
@@ -99,19 +97,15 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
       if (opcode.load) {
         writeback();
         if (armv5te) {
-          emitter->LDR(Half | Signed, data, address);
+          emitter->LDR(Half | Signed, data_a, address_a);
         } else {
-          emitter->LDR(Half | Signed | ARMv4T, data, address);
+          emitter->LDR(Half | Signed | ARMv4T, data_a, address_a);
         }
-        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
+        emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data_a);
       } else {
         if (armv5te) {
           auto reg_dst_a = opcode.reg_dst;
           auto reg_dst_b = static_cast<GPR>(static_cast<int>(reg_dst_a) + 1);
-          auto& address_a = address;
-          auto& address_b = emitter->CreateVar(IRDataType::UInt32);
-          auto& data_a = data;
-          auto& data_b = emitter->CreateVar(IRDataType::UInt32, "data");
 
           // STRD with odd-numbered destination register is undefined.
           if ((static_cast<int>(reg_dst_a) & 1) == 1) {
@@ -137,7 +131,7 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
 
   if (should_flush_pipeline) {
     if (armv5te) {
-      // Branch with exchange
+      // TODO: this probably can be optimized.
       auto& address = emitter->CreateVar(IRDataType::UInt32, "address");
       emitter->LoadGPR(IRGuestReg{GPR::PC, mode}, address);
       EmitFlushExchange(address);
