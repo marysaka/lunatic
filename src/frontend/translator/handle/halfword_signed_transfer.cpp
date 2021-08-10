@@ -12,6 +12,8 @@ namespace frontend {
 
 auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
   auto offset = IRValue{};
+  bool should_writeback = !opcode.pre_increment || opcode.writeback;
+  bool should_flush_pipeline = opcode.load && opcode.reg_dst == GPR::PC;
 
   if (opcode.immediate) {
     offset = IRConstant{opcode.offset_imm};
@@ -33,16 +35,15 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
   }
 
   auto& address = opcode.pre_increment ? base_new : base_old;
-
-  EmitAdvancePC();
-
   auto& data = emitter->CreateVar(IRDataType::UInt32, "data");
 
   auto writeback = [&]() {
-    if (!opcode.pre_increment || opcode.writeback) {
+    if (should_writeback) {
       emitter->StoreGPR(IRGuestReg{opcode.reg_base, mode}, base_new);
     }
   };
+
+  EmitAdvancePC();
 
   switch (opcode.opcode) {
     case 1: {
@@ -66,11 +67,30 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
         writeback();
         emitter->LDR(Byte | Signed, data, address);
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
-      } else {
-        // LDRD (unimplemented)
-        if (armv5te) {
+      } else if (armv5te) {
+        auto reg_dst_a = opcode.reg_dst;
+        auto reg_dst_b = static_cast<GPR>(static_cast<int>(reg_dst_a) + 1);
+        auto& address_a = address;
+        auto& address_b = emitter->CreateVar(IRDataType::UInt32);
+        auto& data_a = data;
+        auto& data_b = emitter->CreateVar(IRDataType::UInt32, "data");
+
+        // LDRD with odd-numbered destination register is undefined.
+        if ((static_cast<int>(reg_dst_a) & 1) == 1) {
           return Status::Unimplemented;
         }
+
+        emitter->ADD(address_b, address_a, IRConstant{sizeof(u32)}, false);
+        emitter->LDR(Word, data_a, address_a);
+        emitter->LDR(Word, data_b, address_b);
+        emitter->StoreGPR(IRGuestReg{reg_dst_a, mode}, data_a);
+        writeback();
+        emitter->StoreGPR(IRGuestReg{reg_dst_b, mode}, data_b);
+
+        if (reg_dst_b == GPR::PC) {
+          should_flush_pipeline = true;
+        }
+      } else {
         writeback();
       }
       break;
@@ -85,10 +105,26 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
         }
         emitter->StoreGPR(IRGuestReg{opcode.reg_dst, mode}, data);
       } else {
-        // STRD (unimplemented)
         if (armv5te) {
-          return Status::Unimplemented;
+          auto reg_dst_a = opcode.reg_dst;
+          auto reg_dst_b = static_cast<GPR>(static_cast<int>(reg_dst_a) + 1);
+          auto& address_a = address;
+          auto& address_b = emitter->CreateVar(IRDataType::UInt32);
+          auto& data_a = data;
+          auto& data_b = emitter->CreateVar(IRDataType::UInt32, "data");
+
+          // STRD with odd-numbered destination register is undefined.
+          if ((static_cast<int>(reg_dst_a) & 1) == 1) {
+            return Status::Unimplemented;
+          }
+          
+          emitter->LoadGPR(IRGuestReg{reg_dst_a, mode}, data_a);
+          emitter->LoadGPR(IRGuestReg{reg_dst_b, mode}, data_b);
+          emitter->ADD(address_b, address_a, IRConstant{sizeof(u32)}, false);
+          emitter->STR(Word, data_a, address_a);
+          emitter->STR(Word, data_b, address_b);
         }
+
         writeback();
       }
       break;
@@ -99,7 +135,7 @@ auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
     }
   }
 
-  if (opcode.load && opcode.reg_dst == GPR::PC) {
+  if (should_flush_pipeline) {
     if (armv5te) {
       // Branch with exchange
       auto& address = emitter->CreateVar(IRDataType::UInt32, "address");
