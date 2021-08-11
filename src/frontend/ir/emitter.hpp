@@ -246,6 +246,24 @@ struct IREmitter {
     IRVariable const& rhs
   );
 
+  void MRC(
+    IRVariable const& result,
+    int coprocessor_id,
+    int opcode1,
+    int cn,
+    int cm,
+    int opcode2
+  );
+
+  void MCR(
+    IRValue value,
+    int coprocessor_id,
+    int opcode1,
+    int cn,
+    int cm,
+    int opcode2
+  );
+
 private:
   template<typename T, typename... Args>
   void Push(Args&&... args) {

@@ -13,7 +13,7 @@ namespace frontend {
 auto Translator::Handle(ARMException const& opcode) -> Status {
   Mode new_mode;
   auto exception = opcode.exception;
-  u32 branch_address = static_cast<u32>(exception) + 2 * sizeof(u32);
+  u32 branch_address = exception_base + static_cast<u32>(exception) + sizeof(u32) * 2;
 
   switch (exception) {
     case Exception::Supervisor:

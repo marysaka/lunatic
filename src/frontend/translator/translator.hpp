@@ -71,7 +71,9 @@ private:
   Mode mode;
   bool armv5te;
   int  max_block_size;
+  u32  exception_base;
   Memory& memory;
+  std::array<Coprocessor*, 16> coprocessors;
   IREmitter* emitter = nullptr;
 };
 

@@ -42,6 +42,8 @@ using namespace Xbyak::util;
   static constexpr Xbyak::Reg64 kRegArg1 = rsi;
   static constexpr Xbyak::Reg64 kRegArg2 = rdx;
   static constexpr Xbyak::Reg64 kRegArg3 = rcx;
+  static constexpr Xbyak::Reg64 kRegArg4 = r8;
+  static constexpr Xbyak::Reg64 kRegArg5 = r9;
 #endif
 
 static auto ReadByte(Memory& memory, u32 address, Memory::Bus bus) -> u8 {
@@ -68,12 +70,34 @@ static void WriteWord(Memory& memory, u32 address, Memory::Bus bus, u32 value) {
   memory.WriteWord(address, value, bus);
 }
 
+static auto ReadCoprocessor(
+  Coprocessor* coprocessor,
+  uint opcode1,
+  uint cn,
+  uint cm,
+  uint opcode2
+) -> u32 {
+  return coprocessor->Read(opcode1, cn, cm, opcode2);
+}
+
+static void WriteCoprocessor(
+  Coprocessor* coprocessor,
+  uint opcode1,
+  uint cn,
+  uint cm,
+  uint opcode2,
+  u32 value
+) {
+  coprocessor->Write(opcode1, cn, cm, opcode2, value);
+}
+
 X64Backend::X64Backend(
-  Memory& memory,
+  CPU::Descriptor const& descriptor,
   State& state,
   BasicBlockCache const& block_cache,
   bool const& irq_line
-)   : memory(memory)
+)   : memory(descriptor.memory)
+    , coprocessors(descriptor.coprocessors)
     , state(state)
     , block_cache(block_cache)
     , irq_line(irq_line) {
@@ -119,7 +143,7 @@ void X64Backend::EmitCallBlock() {
 
   code.mov(r12, kRegArg0); // r12 = function pointer
   code.mov(rbx, kRegArg1); // rbx = cycle counter
-    
+
   // Load carry flag into AH
   code.mov(rcx, uintptr(&state));
   code.mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
@@ -266,6 +290,8 @@ void X64Backend::CompileIROp(
     case IROpcodeClass::CLZ: CompileCLZ(context, lunatic_cast<IRCountLeadingZeros>(op.get())); break;
     case IROpcodeClass::QADD: CompileQADD(context, lunatic_cast<IRSaturatingAdd>(op.get())); break;
     case IROpcodeClass::QSUB: CompileQSUB(context, lunatic_cast<IRSaturatingSub>(op.get())); break;
+    case IROpcodeClass::MRC: CompileMRC(context, lunatic_cast<IRReadCoprocessorRegister>(op.get())); break;
+    case IROpcodeClass::MCR: CompileMCR(context, lunatic_cast<IRWriteCoprocessorRegister>(op.get())); break;
     default: {
       throw std::runtime_error(
         fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
@@ -1066,18 +1092,14 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
     if (flags & Word) {
       code.and_(result_reg, Memory::kPageMask & ~3);
       code.mov(result_reg, dword[rcx + result_reg.cvt64()]);
-    }
-
-    if (flags & Half) {
+    } else if (flags & Half) {
       code.and_(result_reg, Memory::kPageMask & ~1);
       if (flags & Signed) {
         code.movsx(result_reg, word[rcx + result_reg.cvt64()]);
       } else {
         code.movzx(result_reg, word[rcx + result_reg.cvt64()]);
       }
-    }
-
-    if (flags & Byte) {
+    } else if (flags & Byte) {
       code.and_(result_reg, Memory::kPageMask);
       if (flags & Signed) {
         code.movsx(result_reg, byte[rcx + result_reg.cvt64()]);
@@ -1102,14 +1124,10 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   if (flags & Word) {
     code.and_(kRegArg1.cvt32(), ~3);
     code.mov(rax, uintptr(&ReadWord));
-  }
-
-  if (flags & Half) {
+  } else if (flags & Half) {
     code.and_(kRegArg1.cvt32(), ~1);
     code.mov(rax, uintptr(&ReadHalf));
-  }
-
-  if (flags & Byte) {
+  } else if (flags & Byte) {
     code.mov(rax, uintptr(&ReadByte));
   }
 
@@ -1126,17 +1144,13 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   if (flags & Word) {
     code.mov(result_reg, eax);
-  }
-
-  if (flags & Half) {
+  } else if (flags & Half) {
     if (flags & Signed) {
       code.movsx(result_reg, ax);
     } else {
       code.movzx(result_reg, ax);
     }
-  }
-
-  if (flags & Byte) {
+  } else if (flags & Byte) {
     if (flags & Signed) {
       code.movsx(result_reg, al);
     } else {
@@ -1154,9 +1168,7 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
       code.and_(cl, 3);
       code.shl(cl, 3);
       code.ror(result_reg, cl);
-    }
-
-    if (flags & Half) {
+    } else if (flags & Half) {
       code.mov(ecx, address_reg);
       code.and_(cl, 1);
       code.shl(cl, 3);
@@ -1166,8 +1178,9 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   static constexpr auto kHalfSignedARMv4T = Half | Signed | ARMv4T;
 
-  // ARM7TDMI/ARMv4T special case: unaligned LDRSH is effectively LDRSB.
-  // TODO: this can probably be optimized by checking for misalignment early.
+  /* ARM7TDMI/ARMv4T special case: unaligned LDRSH is effectively LDRSB.
+   * TODO: this can probably be optimized by checking for misalignment early.
+   */
   if ((flags & kHalfSignedARMv4T) == kHalfSignedARMv4T) {
     auto label_aligned = Xbyak::Label{};
 
@@ -1214,14 +1227,10 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
     if (flags & Word) {
       code.and_(scratch_reg, Memory::kPageMask & ~3);
       code.mov(dword[rcx + scratch_reg.cvt64()], source_reg);
-    }
-
-    if (flags & Half) {
+    } else if (flags & Half) {
       code.and_(scratch_reg, Memory::kPageMask & ~1);
       code.mov(word[rcx + scratch_reg.cvt64()], source_reg.cvt16());
-    }
-
-    if (flags & Byte) {
+    } else if (flags & Byte) {
       code.and_(scratch_reg, Memory::kPageMask);
       code.mov(byte[rcx + scratch_reg.cvt64()], source_reg.cvt8());
     }
@@ -1243,9 +1252,7 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
     if (flags & Half) {
       code.movzx(kRegArg3.cvt32(), kRegArg3.cvt16());
-    }
-
-    if (flags & Byte) {
+    } else if (flags & Byte) {
       code.movzx(kRegArg3.cvt32(), kRegArg3.cvt8());
     }
   } else {
@@ -1253,13 +1260,9 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
     if (flags & Word) {
       code.mov(kRegArg3.cvt32(), source_reg);
-    }
-
-    if (flags & Half) {
+    } else if (flags & Half) {
       code.movzx(kRegArg3.cvt32(), source_reg.cvt16());
-    }
-
-    if (flags & Byte) {
+    } else if (flags & Byte) {
       code.movzx(kRegArg3.cvt32(), source_reg.cvt8());
     }
   }
@@ -1267,14 +1270,10 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   if (flags & Word) {
     code.and_(kRegArg1.cvt32(), ~3);
     code.mov(rax, uintptr(&WriteWord));
-  }
-
-  if (flags & Half) {
+  } else if (flags & Half) {
     code.and_(kRegArg1.cvt32(), ~1);
     code.mov(rax, uintptr(&WriteHalf));
-  }
-
-  if (flags & Byte) {
+  } else if (flags & Byte) {
     code.mov(rax, uintptr(&WriteByte));
   }
 
@@ -1391,6 +1390,85 @@ void X64Backend::CompileQSUB(CompileContext const& context, IRSaturatingSub* op)
 
   code.L(label_skip_saturate);
   code.seto(al);
+}
+
+void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegister* op) {
+  DESTRUCTURE_CONTEXT;
+
+  // TODO: determine which registers need to be saved.
+  Push(code, {rax, rcx, rdx, r8, r9, r10, r11});
+#ifdef ABI_SYSV
+  Push(code, {rsi, rdi});
+#endif
+
+#ifdef ABI_MSVC
+  code.push(op->opcode2);
+  code.sub(rsp, 0x28);
+#else
+  code.mov(kRegArg4, op->opcode2);
+#endif
+
+  code.mov(kRegArg0, u64(coprocessors[op->coprocessor_id]));
+  code.mov(kRegArg1.cvt32(), op->opcode1);
+  code.mov(kRegArg2.cvt32(), op->cn);
+  code.mov(kRegArg3.cvt32(), op->cm);
+
+  code.mov(rax, u64(ReadCoprocessor));
+  code.call(rax);
+  code.mov(reg_alloc.GetVariableHostReg(op->result), eax);
+
+#ifdef ABI_MSVC
+  code.add(rsp, 0x30);
+#endif
+
+#ifdef ABI_SYSV
+  Pop(code, {rsi, rdi});
+#endif
+  Pop(code, {rax, rcx, rdx, r8, r9, r10, r11});
+}
+
+void X64Backend::CompileMCR(CompileContext const& context, IRWriteCoprocessorRegister* op) {
+  DESTRUCTURE_CONTEXT;
+
+  // TODO: determine which registers need to be saved.
+  Push(code, {rax, rcx, rdx, r8, r9, r10, r11});
+#ifdef ABI_SYSV
+  Push(code, {rsi, rdi});
+#endif
+
+#ifdef ABI_MSVC
+  if (op->value.IsConstant()) {
+    code.push(op->value.GetConst().value);
+  } else {
+    code.push(reg_alloc.GetVariableHostReg(op->value.GetVar()).cvt64());
+  }
+  code.push(op->opcode2);
+  code.sub(rsp, 0x20);
+#else
+  code.mov(kRegArg4, op->opcode2);
+  if (op->value.IsConstant()) {
+    code.mov(kRegArg5, op->value.GetConst().value);
+  } else {
+    code.push(kRegArg5, reg_alloc.GetVariableHostReg(op->value.GetVar()));
+  }
+#endif
+
+  code.mov(kRegArg0, u64(coprocessors[op->coprocessor_id]));
+  code.mov(kRegArg1.cvt32(), op->opcode1);
+  code.mov(kRegArg2.cvt32(), op->cn);
+  code.mov(kRegArg3.cvt32(), op->cm);
+
+  code.mov(rax, u64(WriteCoprocessor));
+  code.call(rax);
+
+#ifdef ABI_MSVC
+  code.add(rsp, 0x30);
+#endif
+
+#ifdef ABI_SYSV
+  Pop(code, {rsi, rdi});
+#endif
+  Pop(code, {rax, rcx, rdx, r8, r9, r10, r11});
 }
 
 } // namespace lunatic::backend

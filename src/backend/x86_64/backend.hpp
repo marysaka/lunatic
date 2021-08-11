@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <lunatic/memory.hpp>
+#include <lunatic/cpu.hpp>
 #include <fmt/format.h>
 #include <vector>
 
@@ -23,7 +23,7 @@ namespace backend {
 
 struct X64Backend : Backend {
   X64Backend(
-    Memory& memory,
+    CPU::Descriptor const& descriptor,
     State& state,
     BasicBlockCache const& block_cache,
     bool const& irq_line
@@ -96,9 +96,12 @@ private:
   void CompileCLZ(CompileContext const& context, IRCountLeadingZeros* op);
   void CompileQADD(CompileContext const& context, IRSaturatingAdd* op);
   void CompileQSUB(CompileContext const& context, IRSaturatingSub* op);
+  void CompileMRC(CompileContext const& context, IRReadCoprocessorRegister* op);
+  void CompileMCR(CompileContext const& context, IRWriteCoprocessorRegister* op);
 
   Memory& memory;
   State& state;
+  std::array<Coprocessor*, 16> coprocessors;
   BasicBlockCache const& block_cache;
   bool const& irq_line;
   bool condition_table[16][16];

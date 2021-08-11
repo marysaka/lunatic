@@ -51,7 +51,9 @@ enum class IROpcodeClass {
   FlushExchange,
   CLZ,
   QADD,
-  QSUB
+  QSUB,
+  MRC,
+  MCR
 };
 
 // TODO: Reads(), Writes() and ToString() should be const,
@@ -877,6 +879,92 @@ struct IRSaturatingSub final : IROpcodeBase<IROpcodeClass::QSUB> {
       std::to_string(result),
       std::to_string(lhs),
       std::to_string(rhs));
+  }
+};
+
+struct IRReadCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MRC> {
+  IRReadCoprocessorRegister(
+    IRVariable const& result,
+    uint coprocessor_id,
+    uint opcode1,
+    uint cn,
+    uint cm,
+    uint opcode2
+  )   :
+    result(result),
+    coprocessor_id(coprocessor_id),
+    opcode1(opcode1),
+    cn(cn),
+    cm(cm),
+    opcode2(opcode2) {
+  }
+
+  IRVariable const& result;
+  uint coprocessor_id;
+  uint opcode1;
+  uint cn;
+  uint cm;
+  uint opcode2;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return &var == &result;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("mrc {}, cp{}, #{}, {}, {}, #{}",
+      std::to_string(result),
+      coprocessor_id,
+      opcode1,
+      cn,
+      cm,
+      opcode2);
+  }
+};
+
+struct IRWriteCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MCR> {
+  IRWriteCoprocessorRegister(
+    IRValue value,
+    uint coprocessor_id,
+    uint opcode1,
+    uint cn,
+    uint cm,
+    uint opcode2
+  )   :
+    value(value),
+    coprocessor_id(coprocessor_id),
+    opcode1(opcode1),
+    cn(cn),
+    cm(cm),
+    opcode2(opcode2) {
+  }
+
+  IRValue value;
+  uint coprocessor_id;
+  uint opcode1;
+  uint cn;
+  uint cm;
+  uint opcode2;
+
+  auto Reads(IRVariable const& var) -> bool override {
+    return value.IsVariable() && (&value.GetVar() == &var);
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto ToString() -> std::string override {
+    return fmt::format("mcr {}, cp{}, #{}, {}, {}, #{}",
+      std::to_string(value),
+      coprocessor_id,
+      opcode1,
+      cn,
+      cm,
+      opcode2);
   }
 };
 

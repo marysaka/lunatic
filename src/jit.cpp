@@ -15,9 +15,10 @@ namespace lunatic {
 
 struct JIT final : CPU {
   JIT(CPU::Descriptor const& descriptor)
-      : memory(descriptor.memory)
+      : exception_base(descriptor.exception_base)
+      , memory(descriptor.memory)
       , translator(descriptor)
-      , backend(memory, state, block_cache, irq_line) {
+      , backend(descriptor, state, block_cache, irq_line) {
   }
 
   bool& IRQLine() override { return irq_line; }
@@ -98,12 +99,13 @@ private:
       }
       cpsr.f.thumb = 0;
 
-      GetGPR(GPR::PC) = 0x18 + sizeof(u32) * 2;
+      GetGPR(GPR::PC) = exception_base + 0x18 + sizeof(u32) * 2;
     }
   }
 
   bool irq_line = false;
   int cycles_to_run = 0;
+  u32 exception_base;
   Memory& memory;
   State state;
   Translator translator;
