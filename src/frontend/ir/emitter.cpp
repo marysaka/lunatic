@@ -517,5 +517,28 @@ void IREmitter::QSUB(
   Push<IRSaturatingSub>(result, lhs, rhs);
 }
 
+
+void IREmitter::MRC(
+  IRVariable const& result,
+  int coprocessor_id,
+  int opcode1,
+  int cn,
+  int cm,
+  int opcode2
+) {
+  Push<IRReadCoprocessorRegister>(result, coprocessor_id, opcode1, cn, cm, opcode2);
+}
+
+void IREmitter::MCR(
+  IRValue value,
+  int coprocessor_id,
+  int opcode1,
+  int cn,
+  int cm,
+  int opcode2
+) {
+  Push<IRWriteCoprocessorRegister>(value, coprocessor_id, opcode1, cn, cm, opcode2);
+}
+
 } // namespace lunatic::frontend
 } // namespace lunatic
