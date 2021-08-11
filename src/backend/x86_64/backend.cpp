@@ -1401,17 +1401,17 @@ void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegi
   Push(code, {rsi, rdi});
 #endif
 
-  code.mov(kRegArg0, u64(coprocessors[op->coprocessor_id]));
-  code.mov(kRegArg1.cvt32(), op->opcode1);
-  code.mov(kRegArg2.cvt32(), op->cn);
-  code.mov(kRegArg3.cvt32(), op->cm);
-
 #ifdef ABI_MSVC
   code.push(op->opcode2);
   code.sub(rsp, 0x28);
 #else
   code.mov(kRegArg4, op->opcode2);
 #endif
+
+  code.mov(kRegArg0, u64(coprocessors[op->coprocessor_id]));
+  code.mov(kRegArg1.cvt32(), op->opcode1);
+  code.mov(kRegArg2.cvt32(), op->cn);
+  code.mov(kRegArg3.cvt32(), op->cm);
 
   code.mov(rax, u64(ReadCoprocessor));
   code.call(rax);
@@ -1430,6 +1430,45 @@ void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegi
 void X64Backend::CompileMCR(CompileContext const& context, IRWriteCoprocessorRegister* op) {
   DESTRUCTURE_CONTEXT;
 
+  // TODO: determine which registers need to be saved.
+  Push(code, {rax, rcx, rdx, r8, r9, r10, r11});
+#ifdef ABI_SYSV
+  Push(code, {rsi, rdi});
+#endif
+
+#ifdef ABI_MSVC
+  if (op->value.IsConstant()) {
+    code.push(op->value.GetConst().value);
+  } else {
+    code.push(reg_alloc.GetVariableHostReg(op->value.GetVar()).cvt64());
+  }
+  code.push(op->opcode2);
+  code.sub(rsp, 0x20);
+#else
+  code.mov(kRegArg4, op->opcode2);
+  if (op->value.IsConstant()) {
+    code.mov(kRegArg5, op->value.GetConst().value);
+  } else {
+    code.push(kRegArg5, reg_alloc.GetVariableHostReg(op->value.GetVar()));
+  }
+#endif
+
+  code.mov(kRegArg0, u64(coprocessors[op->coprocessor_id]));
+  code.mov(kRegArg1.cvt32(), op->opcode1);
+  code.mov(kRegArg2.cvt32(), op->cn);
+  code.mov(kRegArg3.cvt32(), op->cm);
+
+  code.mov(rax, u64(WriteCoprocessor));
+  code.call(rax);
+
+#ifdef ABI_MSVC
+  code.add(rsp, 0x30);
+#endif
+
+#ifdef ABI_SYSV
+  Pop(code, {rsi, rdi});
+#endif
+  Pop(code, {rax, rcx, rdx, r8, r9, r10, r11});
 }
 
 } // namespace lunatic::backend
