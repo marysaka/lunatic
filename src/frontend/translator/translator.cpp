@@ -13,6 +13,7 @@ namespace frontend {
 Translator::Translator(CPU::Descriptor const& descriptor)
     : armv5te(descriptor.model == CPU::Descriptor::Model::ARM9)
     , max_block_size(descriptor.block_size)
+    , exception_base(descriptor.exception_base)
     , memory(descriptor.memory)
     , coprocessors(descriptor.coprocessors) {
 }

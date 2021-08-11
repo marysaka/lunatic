@@ -62,6 +62,7 @@ struct CPU {
   struct Descriptor {
     Memory& memory;
     std::array<Coprocessor*, 16> coprocessors = {};
+    u32 exception_base = 0;
     enum class Model {
       ARM7,
       ARM9
