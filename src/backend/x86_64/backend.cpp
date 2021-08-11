@@ -166,7 +166,7 @@ void X64Backend::EmitCallBlock() {
 }
 
 void X64Backend::Compile(BasicBlock& basic_block) {
-  auto code = new Xbyak::CodeGenerator{};
+  auto code = new Xbyak::CodeGenerator{4096, Xbyak::AutoGrow};
   auto label_return_to_dispatch = Xbyak::Label{};
   auto opcode_size = basic_block.key.Thumb() ? sizeof(u16) : sizeof(u32);
 
@@ -246,6 +246,7 @@ void X64Backend::Compile(BasicBlock& basic_block) {
 
   code->L(label_return_to_dispatch);
   code->ret();
+  code->ready();
 
   basic_block.function = code->getCode<BasicBlock::CompiledFn>();
 }
@@ -1402,8 +1403,10 @@ void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegi
 #endif
 
 #ifdef ABI_MSVC
+  // TODO: optimize this?
+  code.sub(rsp, 8);
   code.push(op->opcode2);
-  code.sub(rsp, 0x28);
+  code.sub(rsp, 0x20);
 #else
   code.mov(kRegArg4, op->opcode2);
 #endif
@@ -1415,7 +1418,6 @@ void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegi
 
   code.mov(rax, u64(ReadCoprocessor));
   code.call(rax);
-  code.mov(reg_alloc.GetVariableHostReg(op->result), eax);
 
 #ifdef ABI_MSVC
   code.add(rsp, 0x30);
@@ -1424,7 +1426,9 @@ void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegi
 #ifdef ABI_SYSV
   Pop(code, {rsi, rdi});
 #endif
-  Pop(code, {rax, rcx, rdx, r8, r9, r10, r11});
+  Pop(code, {rcx, rdx, r8, r9, r10, r11});
+  code.mov(reg_alloc.GetVariableHostReg(op->result), eax);
+  code.pop(rax);
 }
 
 void X64Backend::CompileMCR(CompileContext const& context, IRWriteCoprocessorRegister* op) {
@@ -1449,7 +1453,7 @@ void X64Backend::CompileMCR(CompileContext const& context, IRWriteCoprocessorReg
   if (op->value.IsConstant()) {
     code.mov(kRegArg5, op->value.GetConst().value);
   } else {
-    code.push(kRegArg5, reg_alloc.GetVariableHostReg(op->value.GetVar()));
+    code.mov(kRegArg5, reg_alloc.GetVariableHostReg(op->value.GetVar()));
   }
 #endif
 
