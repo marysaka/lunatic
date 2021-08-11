@@ -72,6 +72,7 @@ private:
   bool armv5te;
   int  max_block_size;
   Memory& memory;
+  std::array<Coprocessor*, 16> coprocessors;
   IREmitter* emitter = nullptr;
 };
 

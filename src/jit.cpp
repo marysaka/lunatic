@@ -17,7 +17,7 @@ struct JIT final : CPU {
   JIT(CPU::Descriptor const& descriptor)
       : memory(descriptor.memory)
       , translator(descriptor)
-      , backend(memory, state, block_cache, irq_line) {
+      , backend(descriptor, state, block_cache, irq_line) {
   }
 
   bool& IRQLine() override { return irq_line; }

@@ -69,11 +69,12 @@ static void WriteWord(Memory& memory, u32 address, Memory::Bus bus, u32 value) {
 }
 
 X64Backend::X64Backend(
-  Memory& memory,
+  CPU::Descriptor const& descriptor,
   State& state,
   BasicBlockCache const& block_cache,
   bool const& irq_line
-)   : memory(memory)
+)   : memory(descriptor.memory)
+    , coprocessors(descriptor.coprocessors)
     , state(state)
     , block_cache(block_cache)
     , irq_line(irq_line) {
