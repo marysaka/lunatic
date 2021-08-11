@@ -1066,18 +1066,14 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
     if (flags & Word) {
       code.and_(result_reg, Memory::kPageMask & ~3);
       code.mov(result_reg, dword[rcx + result_reg.cvt64()]);
-    }
-
-    if (flags & Half) {
+    } else if (flags & Half) {
       code.and_(result_reg, Memory::kPageMask & ~1);
       if (flags & Signed) {
         code.movsx(result_reg, word[rcx + result_reg.cvt64()]);
       } else {
         code.movzx(result_reg, word[rcx + result_reg.cvt64()]);
       }
-    }
-
-    if (flags & Byte) {
+    } else if (flags & Byte) {
       code.and_(result_reg, Memory::kPageMask);
       if (flags & Signed) {
         code.movsx(result_reg, byte[rcx + result_reg.cvt64()]);
@@ -1102,14 +1098,10 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   if (flags & Word) {
     code.and_(kRegArg1.cvt32(), ~3);
     code.mov(rax, uintptr(&ReadWord));
-  }
-
-  if (flags & Half) {
+  } else if (flags & Half) {
     code.and_(kRegArg1.cvt32(), ~1);
     code.mov(rax, uintptr(&ReadHalf));
-  }
-
-  if (flags & Byte) {
+  } else if (flags & Byte) {
     code.mov(rax, uintptr(&ReadByte));
   }
 
@@ -1126,17 +1118,13 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   if (flags & Word) {
     code.mov(result_reg, eax);
-  }
-
-  if (flags & Half) {
+  } else if (flags & Half) {
     if (flags & Signed) {
       code.movsx(result_reg, ax);
     } else {
       code.movzx(result_reg, ax);
     }
-  }
-
-  if (flags & Byte) {
+  } else if (flags & Byte) {
     if (flags & Signed) {
       code.movsx(result_reg, al);
     } else {
@@ -1154,9 +1142,7 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
       code.and_(cl, 3);
       code.shl(cl, 3);
       code.ror(result_reg, cl);
-    }
-
-    if (flags & Half) {
+    } else if (flags & Half) {
       code.mov(ecx, address_reg);
       code.and_(cl, 1);
       code.shl(cl, 3);
@@ -1166,8 +1152,9 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   static constexpr auto kHalfSignedARMv4T = Half | Signed | ARMv4T;
 
-  // ARM7TDMI/ARMv4T special case: unaligned LDRSH is effectively LDRSB.
-  // TODO: this can probably be optimized by checking for misalignment early.
+  /* ARM7TDMI/ARMv4T special case: unaligned LDRSH is effectively LDRSB.
+   * TODO: this can probably be optimized by checking for misalignment early.
+   */
   if ((flags & kHalfSignedARMv4T) == kHalfSignedARMv4T) {
     auto label_aligned = Xbyak::Label{};
 
@@ -1214,14 +1201,10 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
     if (flags & Word) {
       code.and_(scratch_reg, Memory::kPageMask & ~3);
       code.mov(dword[rcx + scratch_reg.cvt64()], source_reg);
-    }
-
-    if (flags & Half) {
+    } else if (flags & Half) {
       code.and_(scratch_reg, Memory::kPageMask & ~1);
       code.mov(word[rcx + scratch_reg.cvt64()], source_reg.cvt16());
-    }
-
-    if (flags & Byte) {
+    } else if (flags & Byte) {
       code.and_(scratch_reg, Memory::kPageMask);
       code.mov(byte[rcx + scratch_reg.cvt64()], source_reg.cvt8());
     }
@@ -1243,9 +1226,7 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
     if (flags & Half) {
       code.movzx(kRegArg3.cvt32(), kRegArg3.cvt16());
-    }
-
-    if (flags & Byte) {
+    } else if (flags & Byte) {
       code.movzx(kRegArg3.cvt32(), kRegArg3.cvt8());
     }
   } else {
@@ -1253,13 +1234,9 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 
     if (flags & Word) {
       code.mov(kRegArg3.cvt32(), source_reg);
-    }
-
-    if (flags & Half) {
+    } else if (flags & Half) {
       code.movzx(kRegArg3.cvt32(), source_reg.cvt16());
-    }
-
-    if (flags & Byte) {
+    } else if (flags & Byte) {
       code.movzx(kRegArg3.cvt32(), source_reg.cvt8());
     }
   }
@@ -1267,14 +1244,10 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   if (flags & Word) {
     code.and_(kRegArg1.cvt32(), ~3);
     code.mov(rax, uintptr(&WriteWord));
-  }
-
-  if (flags & Half) {
+  } else if (flags & Half) {
     code.and_(kRegArg1.cvt32(), ~1);
     code.mov(rax, uintptr(&WriteHalf));
-  }
-
-  if (flags & Byte) {
+  } else if (flags & Byte) {
     code.mov(rax, uintptr(&WriteByte));
   }
 
