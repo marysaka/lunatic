@@ -42,6 +42,8 @@ using namespace Xbyak::util;
   static constexpr Xbyak::Reg64 kRegArg1 = rsi;
   static constexpr Xbyak::Reg64 kRegArg2 = rdx;
   static constexpr Xbyak::Reg64 kRegArg3 = rcx;
+  static constexpr Xbyak::Reg64 kRegArg4 = r8;
+  static constexpr Xbyak::Reg64 kRegArg5 = r9;
 #endif
 
 static auto ReadByte(Memory& memory, u32 address, Memory::Bus bus) -> u8 {
@@ -66,6 +68,27 @@ static void WriteHalf(Memory& memory, u32 address, Memory::Bus bus, u16 value) {
 
 static void WriteWord(Memory& memory, u32 address, Memory::Bus bus, u32 value) {
   memory.WriteWord(address, value, bus);
+}
+
+static auto ReadCoprocessor(
+  Coprocessor* coprocessor,
+  uint opcode1,
+  uint cn,
+  uint cm,
+  uint opcode2
+) -> u32 {
+  return coprocessor->Read(opcode1, cn, cm, opcode2);
+}
+
+static void WriteCoprocessor(
+  Coprocessor* coprocessor,
+  uint opcode1,
+  uint cn,
+  uint cm,
+  uint opcode2,
+  u32 value
+) {
+  coprocessor->Write(opcode1, cn, cm, opcode2, value);
 }
 
 X64Backend::X64Backend(
@@ -120,7 +143,7 @@ void X64Backend::EmitCallBlock() {
 
   code.mov(r12, kRegArg0); // r12 = function pointer
   code.mov(rbx, kRegArg1); // rbx = cycle counter
-    
+
   // Load carry flag into AH
   code.mov(rcx, uintptr(&state));
   code.mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
@@ -267,6 +290,8 @@ void X64Backend::CompileIROp(
     case IROpcodeClass::CLZ: CompileCLZ(context, lunatic_cast<IRCountLeadingZeros>(op.get())); break;
     case IROpcodeClass::QADD: CompileQADD(context, lunatic_cast<IRSaturatingAdd>(op.get())); break;
     case IROpcodeClass::QSUB: CompileQSUB(context, lunatic_cast<IRSaturatingSub>(op.get())); break;
+    case IROpcodeClass::MRC: CompileMRC(context, lunatic_cast<IRReadCoprocessorRegister>(op.get())); break;
+    case IROpcodeClass::MCR: CompileMCR(context, lunatic_cast<IRWriteCoprocessorRegister>(op.get())); break;
     default: {
       throw std::runtime_error(
         fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
@@ -1365,6 +1390,46 @@ void X64Backend::CompileQSUB(CompileContext const& context, IRSaturatingSub* op)
 
   code.L(label_skip_saturate);
   code.seto(al);
+}
+
+void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegister* op) {
+  DESTRUCTURE_CONTEXT;
+
+  // TODO: determine which registers need to be saved.
+  Push(code, {rax, rcx, rdx, r8, r9, r10, r11});
+#ifdef ABI_SYSV
+  Push(code, {rsi, rdi});
+#endif
+
+  code.mov(kRegArg0, u64(coprocessors[op->coprocessor_id]));
+  code.mov(kRegArg1.cvt32(), op->opcode1);
+  code.mov(kRegArg2.cvt32(), op->cn);
+  code.mov(kRegArg3.cvt32(), op->cm);
+
+#ifdef ABI_MSVC
+  code.push(op->opcode2);
+  code.sub(rsp, 0x28);
+#else
+  code.mov(kRegArg4, op->opcode2);
+#endif
+
+  code.mov(rax, u64(ReadCoprocessor));
+  code.call(rax);
+  code.mov(reg_alloc.GetVariableHostReg(op->result), eax);
+
+#ifdef ABI_MSVC
+  code.add(rsp, 0x30);
+#endif
+
+#ifdef ABI_SYSV
+  Pop(code, {rsi, rdi});
+#endif
+  Pop(code, {rax, rcx, rdx, r8, r9, r10, r11});
+}
+
+void X64Backend::CompileMCR(CompileContext const& context, IRWriteCoprocessorRegister* op) {
+  DESTRUCTURE_CONTEXT;
+
 }
 
 } // namespace lunatic::backend

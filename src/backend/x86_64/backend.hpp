@@ -96,6 +96,8 @@ private:
   void CompileCLZ(CompileContext const& context, IRCountLeadingZeros* op);
   void CompileQADD(CompileContext const& context, IRSaturatingAdd* op);
   void CompileQSUB(CompileContext const& context, IRSaturatingSub* op);
+  void CompileMRC(CompileContext const& context, IRReadCoprocessorRegister* op);
+  void CompileMCR(CompileContext const& context, IRWriteCoprocessorRegister* op);
 
   Memory& memory;
   State& state;

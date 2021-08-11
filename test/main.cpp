@@ -139,6 +139,7 @@ struct StupidCP15 : lunatic::Coprocessor {
     int cm,
     int opcode2
   ) -> u32 override {
+    fmt::print("CP15 read: #{}, {}, {}, #{}\n", opcode1, cn, cm, opcode2);
     return 0xDEADBEEF;
   }
 
@@ -149,7 +150,7 @@ struct StupidCP15 : lunatic::Coprocessor {
     int opcode2,
     u32 value
   ) override {
-    // ...
+    fmt::print("CP15 write: #{}, {}, {}, #{} <- 0x{:08X}\n", opcode1, cn, cm, opcode2, value);
   }
 };
 
