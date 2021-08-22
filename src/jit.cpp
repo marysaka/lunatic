@@ -21,9 +21,27 @@ struct JIT final : CPU {
       , backend(descriptor, state, block_cache, irq_line) {
   }
 
-  bool& IRQLine() override { return irq_line; }
+ ~JIT() override {
+    // TODO: release any memory allocated for basic blocks.
+  }
+
+  bool& IRQLine() override {
+    return irq_line;
+  }
+
+  void WaitForIRQ() override {
+    wait_for_irq = true;
+  }
+
+  auto IsWaitingForIRQ() -> bool override {
+    return wait_for_irq;
+  }
 
   void Run(int cycles) override {
+    if (IsWaitingForIRQ() && !IRQLine()) {
+      return;
+    }
+
     cycles_to_run += cycles;
 
     while (cycles_to_run > 0) {
@@ -35,8 +53,6 @@ struct JIT final : CPU {
       auto basic_block = block_cache.Get(block_key);
 
       if (basic_block == nullptr) {
-        // TODO: because BasícBlock is not copyable right now
-        // we use dynamic allocation, but that's probably not optimal.
         basic_block = new BasicBlock{block_key};
 
         translator.Translate(*basic_block);
@@ -48,6 +64,11 @@ struct JIT final : CPU {
       }
 
       cycles_to_run = backend.Call(*basic_block, cycles_to_run);
+
+      if (IsWaitingForIRQ()) {
+        cycles_to_run = 0;
+        return;
+      }
     }
   }
 
@@ -87,6 +108,8 @@ private:
   void SignalIRQ() {
     auto& cpsr = GetCPSR();
 
+    wait_for_irq = false;
+
     if (!cpsr.f.mask_irq) {
       GetSPSR(Mode::IRQ) = cpsr;
 
@@ -104,6 +127,7 @@ private:
   }
 
   bool irq_line = false;
+  bool wait_for_irq = false;
   int cycles_to_run = 0;
   u32 exception_base;
   Memory& memory;

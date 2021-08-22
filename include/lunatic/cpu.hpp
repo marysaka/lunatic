@@ -73,6 +73,8 @@ struct CPU {
   virtual ~CPU() = default;
 
   virtual auto IRQLine() -> bool& = 0;
+  virtual void WaitForIRQ() = 0;
+  virtual auto IsWaitingForIRQ() -> bool = 0;
   virtual void Run(int cycles) = 0;
 
   virtual auto GetGPR(GPR reg) -> u32& = 0;
