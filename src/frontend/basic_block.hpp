@@ -28,6 +28,8 @@ struct BasicBlock {
       value |= u64(state.GetCPSR().v & 0x3F) << 31; // mode and thumb bit
     }
 
+    Key(u64 value) : value(value) {}
+
     auto Address() -> u32 { return (value & 0x7FFFFFFF) << 1; }
     auto Mode() -> Mode { return static_cast<lunatic::Mode>((value >> 31) & 0x1F); }
     bool Thumb() { return value & (1ULL << 36); }
@@ -53,6 +55,10 @@ struct BasicBlock {
 
   BasicBlock() {}
   BasicBlock(Key key) : key(key) {}
+
+ ~BasicBlock() {
+    // TODO: release the underlying JIT memory.
+  } 
 };
 
 } // namespace lunatic::frontend

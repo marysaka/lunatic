@@ -75,6 +75,8 @@ struct CPU {
   virtual auto IRQLine() -> bool& = 0;
   virtual void WaitForIRQ() = 0;
   virtual auto IsWaitingForIRQ() -> bool = 0;
+  virtual void ClearICache() = 0;
+  virtual void ClearICacheRange(u32 address_lo, u32 address_hi) = 0;
   virtual void Run(int cycles) = 0;
 
   virtual auto GetGPR(GPR reg) -> u32& = 0;

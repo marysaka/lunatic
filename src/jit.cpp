@@ -21,10 +21,6 @@ struct JIT final : CPU {
       , backend(descriptor, state, block_cache, irq_line) {
   }
 
- ~JIT() override {
-    // TODO: release any memory allocated for basic blocks.
-  }
-
   bool& IRQLine() override {
     return irq_line;
   }
@@ -35,6 +31,14 @@ struct JIT final : CPU {
 
   auto IsWaitingForIRQ() -> bool override {
     return wait_for_irq;
+  }
+
+  void ClearICache() override {
+    block_cache.Flush();
+  }
+
+  void ClearICacheRange(u32 address_lo, u32 address_hi) override {
+    block_cache.Flush(address_lo, address_hi);
   }
 
   void Run(int cycles) override {
