@@ -72,6 +72,7 @@ struct CPU {
 
   virtual ~CPU() = default;
 
+  virtual void Reset() = 0;
   virtual auto IRQLine() -> bool& = 0;
   virtual void WaitForIRQ() = 0;
   virtual auto IsWaitingForIRQ() -> bool = 0;
@@ -79,14 +80,14 @@ struct CPU {
   virtual void ClearICacheRange(u32 address_lo, u32 address_hi) = 0;
   virtual void Run(int cycles) = 0;
 
-  virtual auto GetGPR(GPR reg) -> u32& = 0;
   virtual auto GetGPR(GPR reg) const -> u32 = 0;
-  virtual auto GetGPR(GPR reg, Mode mode) -> u32& = 0;
   virtual auto GetGPR(GPR reg, Mode mode) const -> u32 = 0;
-  virtual auto GetCPSR() -> StatusRegister& = 0;
   virtual auto GetCPSR() const -> StatusRegister = 0;
-  virtual auto GetSPSR(Mode mode) -> StatusRegister& = 0;
   virtual auto GetSPSR(Mode mode) const -> StatusRegister = 0;
+  virtual void SetGPR(GPR reg, u32 value) = 0;
+  virtual void SetGPR(GPR reg, Mode mode, u32 value) = 0;
+  virtual void SetCPSR(StatusRegister value) = 0;
+  virtual void SetSPSR(Mode mode, StatusRegister value) = 0;
 };
 
 auto CreateCPU(CPU::Descriptor const& descriptor) -> std::unique_ptr<CPU>;

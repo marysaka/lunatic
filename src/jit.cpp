@@ -21,6 +21,14 @@ struct JIT final : CPU {
       , backend(descriptor, state, block_cache, irq_line) {
   }
 
+  void Reset() override {
+    irq_line = false;
+    wait_for_irq = false;
+    cycles_to_run = 0;
+    state.Reset();
+    block_cache.Flush();
+  }
+
   bool& IRQLine() override {
     return irq_line;
   }
@@ -76,36 +84,44 @@ struct JIT final : CPU {
     }
   }
 
-  auto GetGPR(GPR reg) -> u32& override {
-    return GetGPR(reg, GetCPSR().f.mode);
-  }
-
   auto GetGPR(GPR reg) const -> u32 override {
-    return const_cast<JIT*>(this)->GetGPR(reg);
-  }
-
-  auto GetGPR(GPR reg, Mode mode) -> u32& override {
-    return state.GetGPR(mode, reg);
+    return GetGPR(reg, GetCPSR().f.mode);
   }
 
   auto GetGPR(GPR reg, Mode mode) const -> u32 override {
     return const_cast<JIT*>(this)->GetGPR(reg, mode);
   }
 
-  auto GetCPSR() -> StatusRegister& override {
-    return state.GetCPSR();
-  }
-
   auto GetCPSR() const -> StatusRegister override {
     return const_cast<JIT*>(this)->GetCPSR();
   }
 
-  auto GetSPSR(Mode mode) -> StatusRegister& override {
-    return *state.GetPointerToSPSR(mode);
-  }
-
   auto GetSPSR(Mode mode) const -> StatusRegister override {
     return const_cast<JIT*>(this)->GetSPSR(mode);
+  }
+
+  void SetGPR(GPR reg, u32 value) override {
+    SetGPR(reg, state.GetCPSR().f.mode, value);
+  }
+
+  void SetGPR(GPR reg, Mode mode, u32 value) {
+    state.GetGPR(mode, reg) = value;
+
+    if (reg == GPR::PC) {
+      if (GetCPSR().f.thumb) {
+        state.GetGPR(mode, GPR::PC) += sizeof(u16) * 2;
+      } else {
+        state.GetGPR(mode, GPR::PC) += sizeof(u32) * 2;
+      }
+    }
+  }
+
+  void SetCPSR(StatusRegister value) override {
+    state.GetCPSR() = value;
+  }
+
+  void SetSPSR(Mode mode, StatusRegister value) override {
+    *state.GetPointerToSPSR(mode) = value;
   }
 
 private:
@@ -128,6 +144,22 @@ private:
 
       GetGPR(GPR::PC) = exception_base + 0x18 + sizeof(u32) * 2;
     }
+  }
+
+  auto GetGPR(GPR reg) -> u32& {
+    return GetGPR(reg, GetCPSR().f.mode);
+  }
+
+  auto GetGPR(GPR reg, Mode mode) -> u32& {
+    return state.GetGPR(mode, reg);
+  }
+
+  auto GetCPSR() -> StatusRegister& {
+    return state.GetCPSR();
+  }
+
+  auto GetSPSR(Mode mode) -> StatusRegister& {
+    return *state.GetPointerToSPSR(mode);
   }
 
   bool irq_line = false;
