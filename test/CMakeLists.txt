@@ -32,3 +32,13 @@ target_include_directories(test PRIVATE . ${SDL2_INCLUDE_DIR})
 # Hack to access the internal library headers for testing
 target_include_directories(test PRIVATE ../src)
 target_link_libraries(test xbyak)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(test PRIVATE /clang:-fbracket-depth=4096)
+  endif()
+else ()
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(test PRIVATE -fbracket-depth=4096)
+  endif()
+endif()
