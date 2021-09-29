@@ -104,7 +104,7 @@ struct JIT final : CPU {
     SetGPR(reg, state.GetCPSR().f.mode, value);
   }
 
-  void SetGPR(GPR reg, Mode mode, u32 value) {
+  void SetGPR(GPR reg, Mode mode, u32 value) override {
     state.GetGPR(mode, reg) = value;
 
     if (reg == GPR::PC) {
