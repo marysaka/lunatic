@@ -6,6 +6,8 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   set(IS_SUBPROJECT OFF)
 endif()
 
+option(LUNATIC_USE_EXTERNAL_FMT "Use externally provided {fmt} library." OFF)
+
 project(lunatic-root)
 
 add_subdirectory(external)

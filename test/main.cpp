@@ -211,7 +211,7 @@ int main(int argc, char** argv) {
       nullptr, nullptr, nullptr, &g_cp15
     }
   });
-  jit->GetGPR(GPR::PC) = header.arm9.entrypoint;
+  jit->SetGPR(GPR::PC, header.arm9.entrypoint);
 
   SDL_Init(SDL_INIT_VIDEO);
 

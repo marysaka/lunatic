@@ -97,8 +97,8 @@ X64Backend::X64Backend(
   BasicBlockCache const& block_cache,
   bool const& irq_line
 )   : memory(descriptor.memory)
-    , coprocessors(descriptor.coprocessors)
     , state(state)
+    , coprocessors(descriptor.coprocessors)
     , block_cache(block_cache)
     , irq_line(irq_line) {
   BuildConditionTable();
