@@ -1082,24 +1082,22 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   if (itcm.data != nullptr) {
     auto label_not_itcm = Xbyak::Label{};
 
-    auto itcm_base_reg = reg_alloc.GetTemporaryHostReg().cvt64();
+    auto itcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
-    code.mov(rcx, u64(&itcm.config.enable));
-    code.cmp(byte[rcx], 0);
+    code.mov(itcm_reg, u64(&itcm));
+
+    code.cmp(byte[itcm_reg + offsetof(Memory::TCM, config.enable)], 0);
     code.jz(label_not_itcm);
 
-    code.mov(rcx, u64(&itcm.config.base));
-    code.cmp(address_reg, dword[rcx]);
+    code.cmp(address_reg, dword[itcm_reg + offsetof(Memory::TCM, config.base)]);
     code.jb(label_not_itcm);
 
-    code.mov(rcx, u64(&itcm.config.limit));
-    code.cmp(address_reg, dword[rcx]);
+    code.cmp(address_reg, dword[itcm_reg + offsetof(Memory::TCM, config.limit)]);
     code.ja(label_not_itcm);
 
     code.mov(rcx, u64(itcm.data));
-    code.mov(itcm_base_reg, u64(&itcm.config.base));
     code.mov(result_reg, address_reg);
-    code.sub(result_reg, dword[itcm_base_reg]);
+    code.sub(result_reg, dword[itcm_reg + offsetof(Memory::TCM, config.base)]);
 
     if (flags & Word) {
       code.and_(result_reg, itcm.mask & ~3);
@@ -1127,24 +1125,22 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   if (dtcm.data != nullptr) {
     auto label_not_dtcm = Xbyak::Label{};
 
-    auto dtcm_base_reg = reg_alloc.GetTemporaryHostReg().cvt64();
+    auto dtcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
-    code.mov(rcx, u64(&dtcm.config.enable_read));
-    code.cmp(byte[rcx], 0);
+    code.mov(dtcm_reg, u64(&dtcm));
+
+    code.cmp(byte[dtcm_reg + offsetof(Memory::TCM, config.enable_read)], 0);
     code.jz(label_not_dtcm);
 
-    code.mov(rcx, u64(&dtcm.config.base));
-    code.cmp(address_reg, dword[rcx]);
+    code.cmp(address_reg, dword[dtcm_reg + offsetof(Memory::TCM, config.base)]);
     code.jb(label_not_dtcm);
 
-    code.mov(rcx, u64(&dtcm.config.limit));
-    code.cmp(address_reg, dword[rcx]);
+    code.cmp(address_reg, dword[dtcm_reg + offsetof(Memory::TCM, config.limit)]);
     code.ja(label_not_dtcm);
 
     code.mov(rcx, u64(dtcm.data));
-    code.mov(dtcm_base_reg, u64(&dtcm.config.base));
     code.mov(result_reg, address_reg);
-    code.sub(result_reg, dword[dtcm_base_reg]);
+    code.sub(result_reg, dword[dtcm_reg + offsetof(Memory::TCM, config.base)]);
 
     if (flags & Word) {
       code.and_(result_reg, dtcm.mask & ~3);
@@ -1310,24 +1306,22 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   if (itcm.data != nullptr) {
     auto label_not_itcm = Xbyak::Label{};
 
-    auto itcm_base_reg = reg_alloc.GetTemporaryHostReg().cvt64();
+    auto itcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
-    code.mov(rcx, u64(&itcm.config.enable));
-    code.cmp(byte[rcx], 0);
+    code.mov(itcm_reg, u64(&itcm));
+
+    code.cmp(byte[itcm_reg + offsetof(Memory::TCM, config.enable)], 0);
     code.jz(label_not_itcm);
 
-    code.mov(rcx, u64(&itcm.config.base));
-    code.cmp(address_reg, dword[rcx]);
+    code.cmp(address_reg, dword[itcm_reg + offsetof(Memory::TCM, config.base)]);
     code.jb(label_not_itcm);
 
-    code.mov(rcx, u64(&itcm.config.limit));
-    code.cmp(address_reg, dword[rcx]);
+    code.cmp(address_reg, dword[itcm_reg + offsetof(Memory::TCM, config.limit)]);
     code.ja(label_not_itcm);
 
     code.mov(rcx, u64(itcm.data));
-    code.mov(itcm_base_reg, u64(&itcm.config.base));
     code.mov(scratch_reg, address_reg);
-    code.sub(scratch_reg, dword[itcm_base_reg]);
+    code.sub(scratch_reg, dword[itcm_reg + offsetof(Memory::TCM, config.base)]);
 
     if (flags & Word) {
       code.and_(scratch_reg, itcm.mask & ~3);
@@ -1347,24 +1341,22 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   if (dtcm.data != nullptr) {
     auto label_not_dtcm = Xbyak::Label{};
 
-    auto dtcm_base_reg = reg_alloc.GetTemporaryHostReg().cvt64();
+    auto dtcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
-    code.mov(rcx, u64(&dtcm.config.enable));
-    code.cmp(byte[rcx], 0);
+    code.mov(dtcm_reg, u64(&dtcm));
+
+    code.cmp(byte[dtcm_reg + offsetof(Memory::TCM, config.enable)], 0);
     code.jz(label_not_dtcm);
 
-    code.mov(rcx, u64(&dtcm.config.base));
-    code.cmp(address_reg, dword[rcx]);
+    code.cmp(address_reg, dword[dtcm_reg + offsetof(Memory::TCM, config.base)]);
     code.jb(label_not_dtcm);
 
-    code.mov(rcx, u64(&dtcm.config.limit));
-    code.cmp(address_reg, dword[rcx]);
+    code.cmp(address_reg, dword[dtcm_reg + offsetof(Memory::TCM, config.limit)]);
     code.ja(label_not_dtcm);
 
     code.mov(rcx, u64(dtcm.data));
-    code.mov(dtcm_base_reg, u64(&dtcm.config.base));
     code.mov(scratch_reg, address_reg);
-    code.sub(scratch_reg, dword[dtcm_base_reg]);
+    code.sub(scratch_reg, dword[dtcm_reg + offsetof(Memory::TCM, config.base)]);
 
     if (flags & Word) {
       code.and_(scratch_reg, dtcm.mask & ~3);
