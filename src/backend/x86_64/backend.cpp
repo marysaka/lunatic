@@ -1086,7 +1086,7 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
     code.mov(itcm_reg, u64(&itcm));
 
-    code.cmp(byte[itcm_reg + offsetof(Memory::TCM, config.enable)], 0);
+    code.cmp(byte[itcm_reg + offsetof(Memory::TCM, config.enable_read)], 0);
     code.jz(label_not_itcm);
 
     code.cmp(address_reg, dword[itcm_reg + offsetof(Memory::TCM, config.base)]);
