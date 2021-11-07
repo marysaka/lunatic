@@ -11,10 +11,15 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMBranchRelative const& opcode) -> Status {
-  auto target_addr = code_address + opcode_size * 2 + opcode.offset;
+  auto branch_address = code_address + opcode_size * 2 + opcode.offset;
 
   if (opcode.link) {
-    emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{code_address + opcode_size});
+    // Note: thumb BL consists of two 16-bit opcodes.
+    u32 link_address = code_address + sizeof(u32);
+    if (thumb_mode) {
+      link_address |= 1;
+    }
+    emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{link_address});
   }
 
   if (opcode.exchange) {
@@ -22,15 +27,22 @@ auto Translator::Handle(ARMBranchRelative const& opcode) -> Status {
     auto& cpsr_out = emitter->CreateVar(IRDataType::UInt32, "cpsr_out");
   
     emitter->LoadCPSR(cpsr_in);
-    emitter->ORR(cpsr_out, cpsr_in, IRConstant{32}, false);
-    emitter->StoreCPSR(cpsr_out);
 
-    target_addr += sizeof(u16) * 2;
+    if (thumb_mode) {
+      branch_address &= ~3;
+      branch_address += sizeof(u32) * 2;
+      emitter->BIC(cpsr_out, cpsr_in, IRConstant{32}, false);
+    } else {
+      branch_address += sizeof(u16) * 2;
+      emitter->ORR(cpsr_out, cpsr_in, IRConstant{32}, false);
+    }
+
+    emitter->StoreCPSR(cpsr_out);
   } else {
-    target_addr += opcode_size * 2;
+    branch_address += opcode_size * 2;
   }
 
-  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, IRConstant{target_addr});
+  emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, IRConstant{branch_address});
   return Status::BreakBasicBlock;
 }
 

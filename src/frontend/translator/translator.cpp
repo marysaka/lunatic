@@ -102,7 +102,14 @@ void Translator::TranslateThumb(BasicBlock& basic_block) {
   };
 
   for (int i = 0; i < max_block_size; i++) {
-    auto instruction = memory.FastRead<u16, Memory::Bus::Code>(code_address);
+    u32 instruction;
+
+    if (code_address & 2) {
+      instruction  = memory.FastRead<u16, Memory::Bus::Code>(code_address + 0);
+      instruction |= memory.FastRead<u16, Memory::Bus::Code>(code_address + 2) << 16;
+    } else {
+      instruction = memory.FastRead<u32, Memory::Bus::Code>(code_address);
+    }
 
     // HACK: detect conditional branches and break the micro block early.
     if ((instruction & 0xF000) == 0xD000 && (instruction & 0xF00) != 0xF00) {
