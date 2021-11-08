@@ -9,7 +9,6 @@
 
 #include <lunatic/integer.hpp>
 
-// FIXME: do not include the whole damn thing.
 #include "arm.hpp"
 
 namespace lunatic {
@@ -537,15 +536,33 @@ inline auto decode_branch_link_suffix(u16 opcode, T& client, bool exchange) -> U
   });
 }
 
+template<typename T, typename U = typename T::return_type>
+inline auto decode_branch_link_full(u32 opcode, T& client) -> U {
+  auto offset = bit::get_field<u32, s32>(opcode, 16, 11) << 1;
+
+  offset += (bit::get_field<u32, s32>(opcode, 0, 11) << 21) >> 9;
+
+  return client.Handle(ARMBranchRelative{
+    .condition = Condition::AL,
+    .offset = offset,
+    .link = true,
+    .exchange = !bit::get_bit<u32, bool>(opcode, 28)
+  });
+}
+
 } // namespace lunatic::frontend::detail
 
 /// Decodes a Thumb opcode into one of multiple structures,
 /// passes the resulting structure to a client and returns the client's return value.
 template<typename T, typename U = typename T::return_type>
-inline auto decode_thumb(u16 opcode, T& client) -> U {
+inline auto decode_thumb(u32 opcode, T& client) -> U {
   using namespace detail;
 
   // TODO: use string pattern based approach to decoding.
+
+  if ((opcode & 0xE800'F800) == 0xE800'F000) {
+    return decode_branch_link_full(opcode, client);
+  }
 
   if ((opcode & 0xF800) <  0x1800) return decode_move_shifted_register(opcode, client);
   if ((opcode & 0xF800) == 0x1800) return decode_add_sub(opcode, client);
