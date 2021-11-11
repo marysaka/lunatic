@@ -23,6 +23,7 @@ void Translator::Translate(BasicBlock& basic_block) {
   thumb_mode = basic_block.key.Thumb();
   opcode_size = thumb_mode ? sizeof(u16) : sizeof(u32);
   code_address = basic_block.key.Address() - 2 * opcode_size;
+  this->basic_block = &basic_block;
 
   if (thumb_mode) {
     TranslateThumb(basic_block);

@@ -218,31 +218,59 @@ void X64Backend::Compile(BasicBlock& basic_block) {
   code->cmp(byte[rdx], 0);
   code->jnz(label_return_to_dispatch);
 
-  // Build the block key from R15 and CPSR.
-  // See frontend/basic_block.hpp
-  code->mov(edx, dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)]);
-  code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
-  code->shr(edx, 1);
-  code->and_(esi, 0x3F);
-  code->shl(rsi, 31);
-  code->or_(rdx, rsi);
+  auto& branch_target = basic_block.branch_target;
+  bool did_link = false;
+  auto label_runtime_block_lookup = Xbyak::Label{};
 
-  // Split key into key0 and key1
-  // TODO: can we exploit how the block lookup works?
-  code->mov(rsi, rdx);
-  code->shr(rsi, 19);
-  code->and_(edx, 0x7FFFF);
+  if (branch_target.key.value != 0) {
+    auto target_block = block_cache.Get(branch_target.key);
+    if (target_block != nullptr) {
+      // TODO: deduplicate this!
+      if (branch_target.condition != Condition::AL) {
+        code->mov(r8, u64(&condition_table[static_cast<int>(branch_target.condition)]));
+        code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+        code->shr(edx, 28);
+        code->cmp(byte[r8 + rdx], 0);
+        code->je(label_runtime_block_lookup, Xbyak::CodeGenerator::T_NEAR);
+      } else {
+        did_link = true;
+      }
 
-  // Look block key up in the block cache.
-  code->mov(rdi, uintptr(block_cache.data));
-  code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
-  code->cmp(rdi, 0);
-  code->jz(label_return_to_dispatch); // fixme?
-  code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
-  code->cmp(rdi, 0);
-  code->jz(label_return_to_dispatch); // fixme?
-  code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
-  code->jmp(rdi);
+      code->mov(rsi, u64(target_block->function));
+      code->jmp(rsi);
+    }
+  }
+
+  // TODO: maybe better to move this into the entrance function
+  if (!did_link) {
+    code->L(label_runtime_block_lookup);
+
+    // Build the block key from R15 and CPSR.
+    // See frontend/basic_block.hpp
+    code->mov(edx, dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)]);
+    code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
+    code->shr(edx, 1);
+    code->and_(esi, 0x3F);
+    code->shl(rsi, 31);
+    code->or_(rdx, rsi);
+
+    // Split key into key0 and key1
+    // TODO: can we exploit how the block lookup works?
+    code->mov(rsi, rdx);
+    code->shr(rsi, 19);
+    code->and_(edx, 0x7FFFF);
+
+    // Look block key up in the block cache.
+    code->mov(rdi, uintptr(block_cache.data));
+    code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
+    code->cmp(rdi, 0);
+    code->jz(label_return_to_dispatch); // fixme?
+    code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
+    code->cmp(rdi, 0);
+    code->jz(label_return_to_dispatch); // fixme?
+    code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
+    code->jmp(rdi);
+  }
 
   code->L(label_return_to_dispatch);
   code->ret();

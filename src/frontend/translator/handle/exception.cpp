@@ -42,11 +42,17 @@ auto Translator::Handle(ARMException const& opcode) -> Status {
   // Set PC to the exception vector.
   emitter->StoreGPR(IRGuestReg{GPR::PC, new_mode}, IRConstant{branch_address});
 
-  // TODO: rework this optimisation to apply to more cases.
   if (opcode.condition == Condition::AL && !thumb_mode) {
     code_address = branch_address - 3 * opcode_size;
     mode = new_mode;
     return Status::Continue;
+  } else {
+    basic_block->branch_target.condition = opcode.condition;
+    basic_block->branch_target.key = BasicBlock::Key{
+      branch_address,
+      mode,
+      false
+    };
   }
 
   return Status::BreakBasicBlock;

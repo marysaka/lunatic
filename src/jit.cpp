@@ -71,6 +71,7 @@ struct JIT final : CPU {
         for (auto &micro_block : basic_block->micro_blocks) {
           micro_block.emitter.Optimize();
         }
+        // TODO: check for branch target and compile the targets first to ensure best linking.
         backend.Compile(*basic_block);
         block_cache.Set(block_key, basic_block);
       }

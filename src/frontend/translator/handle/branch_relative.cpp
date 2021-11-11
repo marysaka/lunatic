@@ -44,10 +44,19 @@ auto Translator::Handle(ARMBranchRelative const& opcode) -> Status {
 
   emitter->StoreGPR(IRGuestReg{GPR::PC, mode}, IRConstant{branch_address});
 
-  // TODO: rework this optimisation to apply to more cases.
   if (!opcode.exchange && opcode.condition == Condition::AL) {
     code_address = branch_address - opcode_size * 3;
     return Status::Continue;
+  } else {
+    if (opcode.exchange) {
+      thumb_mode = !thumb_mode;
+    }
+    basic_block->branch_target.condition = opcode.condition;
+    basic_block->branch_target.key = BasicBlock::Key{
+      branch_address,
+      mode,
+      thumb_mode
+    };
   }
 
   return Status::BreakBasicBlock;
