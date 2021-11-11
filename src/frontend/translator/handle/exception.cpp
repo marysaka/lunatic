@@ -45,12 +45,12 @@ auto Translator::Handle(ARMException const& opcode) -> Status {
   if (opcode.condition == Condition::AL && !thumb_mode) {
     code_address = branch_address - 3 * opcode_size;
     mode = new_mode;
+    basic_block->branch_target.key = {};
     return Status::Continue;
   } else {
-    basic_block->branch_target.condition = opcode.condition;
     basic_block->branch_target.key = BasicBlock::Key{
       branch_address,
-      mode,
+      new_mode,
       false
     };
   }

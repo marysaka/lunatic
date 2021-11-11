@@ -61,8 +61,8 @@ struct BasicBlock {
   // Pointer to the compiled code.
   CompiledFn function = CompiledFn(nullptr);
 
+  // TODO: clean this up
   struct BranchTarget {
-    Condition condition;
     Key key{};
   } branch_target;
 
