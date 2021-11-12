@@ -32,12 +32,12 @@ set(SOURCES
   jit.cpp)
 
 set(HEADERS
-  common/bit.hpp
-  common/meta.hpp
-  common/optional.hpp
   backend/x86_64/backend.hpp
   backend/x86_64/register_allocator.hpp
   backend/backend.hpp
+  common/bit.hpp
+  common/meta.hpp
+  common/optional.hpp
   frontend/decode/definition/block_data_transfer.hpp
   frontend/decode/definition/branch_relative.hpp
   frontend/decode/definition/coprocessor_register_transfer.hpp

@@ -25,9 +25,11 @@ struct X64Backend : Backend {
   X64Backend(
     CPU::Descriptor const& descriptor,
     State& state,
-    BasicBlockCache const& block_cache,
+    BasicBlockCache& block_cache,
     bool const& irq_line
   );
+
+ ~X64Backend();
 
   void Compile(BasicBlock& basic_block);
 
@@ -36,6 +38,8 @@ struct X64Backend : Backend {
   }
 
 private:
+  static constexpr size_t kCodeBufferSize = 32 * 1024 * 1024;
+
   struct CompileContext {
     Xbyak::CodeGenerator& code;
     X64RegisterAllocator& reg_alloc;
@@ -43,6 +47,7 @@ private:
     int& location;
   };
 
+  void CreateCodeGenerator();
   void BuildConditionTable();
   void EmitCallBlock();
 
@@ -102,11 +107,13 @@ private:
   Memory& memory;
   State& state;
   std::array<Coprocessor*, 16> coprocessors;
-  BasicBlockCache const& block_cache;
+  BasicBlockCache& block_cache;
   bool const& irq_line;
   bool condition_table[16][16];
-  Xbyak::CodeGenerator code;
   int (*CallBlock)(BasicBlock::CompiledFn, int);
+
+  u8* buffer;
+  Xbyak::CodeGenerator* code;
 };
 
 } // namespace lunatic::backend

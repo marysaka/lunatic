@@ -126,7 +126,7 @@ private:
       micro_block.emitter.Optimize();
     }
 
-    if (depth <= 8) {
+    if (depth <= 32) {
       auto branch_target_key = basic_block->branch_target.key;
       if (branch_target_key.value != 0 && !block_cache.Get(branch_target_key)) {
         Compile(branch_target_key, ++depth);
