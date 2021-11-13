@@ -6,10 +6,12 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <list>
 #include <stdexcept>
 
 #include "backend.hpp"
+#include "common/aligned_memory.hpp"
 #include "common/bit.hpp"
 
 /**
@@ -108,11 +110,11 @@ X64Backend::X64Backend(
 
 X64Backend::~X64Backend() {
   delete code;
-  std::free(buffer);
+  memory::free(buffer);
 }
 
 void X64Backend::CreateCodeGenerator() {
-  buffer = reinterpret_cast<u8*>(std::aligned_alloc(4096, kCodeBufferSize));
+  buffer = reinterpret_cast<u8*>(memory::aligned_alloc(4096, kCodeBufferSize));
 
   if (buffer == nullptr) {
     throw std::runtime_error(

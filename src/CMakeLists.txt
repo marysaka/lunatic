@@ -36,6 +36,7 @@ set(HEADERS
   backend/x86_64/register_allocator.hpp
   backend/backend.hpp
   common/bit.hpp
+  common/aligned_memory.hpp
   common/meta.hpp
   common/optional.hpp
   frontend/decode/definition/block_data_transfer.hpp
