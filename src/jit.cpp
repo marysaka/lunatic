@@ -29,15 +29,11 @@ struct JIT final : CPU {
     block_cache.Flush();
   }
 
-  bool& IRQLine() override {
+  auto IRQLine() -> bool& override {
     return irq_line;
   }
 
-  void WaitForIRQ() override {
-    wait_for_irq = true;
-  }
-
-  auto IsWaitingForIRQ() -> bool override {
+  auto WaitForIRQ() -> bool& override {
     return wait_for_irq;
   }
 
@@ -49,12 +45,14 @@ struct JIT final : CPU {
     block_cache.Flush(address_lo, address_hi);
   }
 
-  void Run(int cycles) override {
-    if (IsWaitingForIRQ() && !IRQLine()) {
-      return;
+  auto Run(int cycles) -> int override {
+    if (WaitForIRQ() && !IRQLine()) {
+      return 0;
     }
 
     cycles_to_run += cycles;
+
+    int cycles_available = cycles_to_run;
 
     while (cycles_to_run > 0) {
       if (IRQLine()) {
@@ -65,23 +63,19 @@ struct JIT final : CPU {
       auto basic_block = block_cache.Get(block_key);
 
       if (basic_block == nullptr) {
-        basic_block = new BasicBlock{block_key};
-
-        translator.Translate(*basic_block);
-        for (auto &micro_block : basic_block->micro_blocks) {
-          micro_block.emitter.Optimize();
-        }
-        backend.Compile(*basic_block);
-        block_cache.Set(block_key, basic_block);
+        basic_block = Compile(block_key, 0);
       }
 
       cycles_to_run = backend.Call(*basic_block, cycles_to_run);
 
-      if (IsWaitingForIRQ()) {
+      if (WaitForIRQ()) {
+        int cycles_executed = cycles_available - cycles_to_run;
         cycles_to_run = 0;
-        return;
+        return cycles_executed;
       }
     }
+
+    return cycles_available - cycles_to_run;
   }
 
   auto GetGPR(GPR reg) const -> u32 override {
@@ -125,6 +119,26 @@ struct JIT final : CPU {
   }
 
 private:
+  auto Compile(BasicBlock::Key block_key, int depth) -> BasicBlock* {
+    auto basic_block = new BasicBlock{block_key};
+
+    translator.Translate(*basic_block);
+    for (auto &micro_block : basic_block->micro_blocks) {
+      micro_block.emitter.Optimize();
+    }
+
+    if (depth <= 8) {
+      auto branch_target_key = basic_block->branch_target.key;
+      if (branch_target_key.value != 0 && !block_cache.Get(branch_target_key)) {
+        Compile(branch_target_key, ++depth);
+      }
+    }
+
+    backend.Compile(*basic_block);
+    block_cache.Set(block_key, basic_block);
+    return basic_block;
+  }
+
   void SignalIRQ() {
     auto& cpsr = GetCPSR();
 

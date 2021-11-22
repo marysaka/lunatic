@@ -18,20 +18,19 @@ namespace lunatic {
 namespace backend {
 
 struct X64RegisterAllocator {
+  using IREmitter = lunatic::frontend::IREmitter;
+
   static constexpr int kSpillAreaSize = 32;
 
   X64RegisterAllocator(
-    lunatic::frontend::IREmitter const& emitter,
+    IREmitter const& emitter,
     Xbyak::CodeGenerator& code
   );
 
   /**
-   * Set the current location in the IR program.
-   * 
-   * @param  location The current location in the IR program.
-   * @returns nothing
+   * Advance to the next IR opcode in the IR program.
    */
-  void SetCurrentLocation(int location);
+  void AdvanceLocation();
 
   /**
    * Get the host register currently allocated to a variable.
@@ -69,7 +68,7 @@ private:
    */
   auto FindFreeHostReg() -> Xbyak::Reg32;
 
-  lunatic::frontend::IREmitter const& emitter;
+  IREmitter const& emitter;
   Xbyak::CodeGenerator& code;
 
   /// Host register that are free and can be allocated.
@@ -92,6 +91,9 @@ private:
 
   /// The current IR program location.
   int location = 0;
+
+  /// Iterator pointing to the current IR program location.
+  IREmitter::InstructionList::const_iterator current_op_iter;
 };
 
 } // namespace lunatic::backend

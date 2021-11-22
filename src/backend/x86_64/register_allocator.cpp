@@ -44,14 +44,13 @@ X64RegisterAllocator::X64RegisterAllocator(
   var_id_to_spill_slot.resize(number_of_vars);
 
   EvaluateVariableLifetimes();
+
+  current_op_iter = emitter.Code().begin();
 }
 
-void X64RegisterAllocator::SetCurrentLocation(int location) {
-  if (location <= this->location) {
-    return;
-  }
-
-  this->location = location;
+void X64RegisterAllocator::AdvanceLocation() {
+  location++;
+  current_op_iter++;
 
   // Release host regs that hold variables which now are dead.
   ReleaseDeadVariables();
@@ -135,17 +134,14 @@ auto X64RegisterAllocator::FindFreeHostReg() -> Xbyak::Reg32 {
     return reg;
   }
 
+  auto const& current_op = *current_op_iter;
+
   // Find a variable to be spilled and deallocate it.
   // TODO: think of a smart way to pick which variable/register to spill.
   for (auto const& var : emitter.Vars()) {
     if (var_id_to_host_reg[var->id].HasValue()) {
-      // TODO: make this faster.
-      auto it = emitter.Code().begin();
-      std::advance(it, location);
-      auto const& op = *it;    
-
       // Make sure the variable that we spill is not currently used.
-      if (op->Reads(*var) || op->Writes(*var)) {
+      if (current_op->Reads(*var) || current_op->Writes(*var)) {
         continue;
       }
 

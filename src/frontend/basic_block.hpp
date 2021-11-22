@@ -30,6 +30,14 @@ struct BasicBlock {
 
     Key(u64 value) : value(value) {}
 
+    Key(u32 address, Mode mode, bool thumb) {
+      value  = address >> 1;
+      value |= static_cast<u64>(mode) << 31;
+      if (thumb) {
+        value |= 1ULL << 36;
+      }
+    }
+
     auto Address() -> u32 { return (value & 0x7FFFFFFF) << 1; }
     auto Mode() -> Mode { return static_cast<lunatic::Mode>((value >> 31) & 0x1F); }
     bool Thumb() { return value & (1ULL << 36); }
@@ -52,6 +60,11 @@ struct BasicBlock {
 
   // Pointer to the compiled code.
   CompiledFn function = CompiledFn(nullptr);
+
+  // TODO: clean this up
+  struct BranchTarget {
+    Key key{};
+  } branch_target;
 
   BasicBlock() {}
   BasicBlock(Key key) : key(key) {}

@@ -6,10 +6,12 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <list>
 #include <stdexcept>
 
 #include "backend.hpp"
+#include "common/aligned_memory.hpp"
 #include "common/bit.hpp"
 
 /**
@@ -19,7 +21,7 @@
  * - ...
  */
 
-#define DESTRUCTURE_CONTEXT auto& [code, reg_alloc, state, location] = context;
+#define DESTRUCTURE_CONTEXT auto& [code, reg_alloc, state] = context;
 
 namespace lunatic {
 namespace backend {
@@ -94,15 +96,39 @@ static void WriteCoprocessor(
 X64Backend::X64Backend(
   CPU::Descriptor const& descriptor,
   State& state,
-  BasicBlockCache const& block_cache,
+  BasicBlockCache& block_cache,
   bool const& irq_line
 )   : memory(descriptor.memory)
     , state(state)
     , coprocessors(descriptor.coprocessors)
     , block_cache(block_cache)
     , irq_line(irq_line) {
+  CreateCodeGenerator();
   BuildConditionTable();
   EmitCallBlock();
+}
+
+X64Backend::~X64Backend() {
+  delete code;
+  memory::free(buffer);
+}
+
+void X64Backend::CreateCodeGenerator() {
+  buffer = reinterpret_cast<u8*>(memory::aligned_alloc(4096, kCodeBufferSize));
+
+  if (buffer == nullptr) {
+    throw std::runtime_error(
+      fmt::format("lunatic: failed to allocate memory for JIT compilation")
+    );
+  }
+
+  Xbyak::CodeArray::protect(
+    buffer,
+    kCodeBufferSize,
+    Xbyak::CodeArray::PROTECT_RWE
+  );
+
+  code = new Xbyak::CodeGenerator{kCodeBufferSize, buffer};
 }
 
 void X64Backend::BuildConditionTable() {
@@ -134,121 +160,159 @@ void X64Backend::BuildConditionTable() {
 void X64Backend::EmitCallBlock() {
   auto stack_displacement = sizeof(u64) + X64RegisterAllocator::kSpillAreaSize * sizeof(u32);
 
-  Push(code, {rbx, rbp, r12, r13, r14, r15});
-#ifdef ABI_MSVC
-  Push(code, {rsi, rdi});
-#endif
-  code.sub(rsp, stack_displacement);
-  code.mov(rbp, rsp);
+  CallBlock = (int (*)(BasicBlock::CompiledFn, int))code->getCurr();
 
-  code.mov(r12, kRegArg0); // r12 = function pointer
-  code.mov(rbx, kRegArg1); // rbx = cycle counter
+  Push(*code, {rbx, rbp, r12, r13, r14, r15});
+#ifdef ABI_MSVC
+  Push(*code, {rsi, rdi});
+#endif
+  code->sub(rsp, stack_displacement);
+  code->mov(rbp, rsp);
+
+  code->mov(r12, kRegArg0); // r12 = function pointer
+  code->mov(rbx, kRegArg1); // rbx = cycle counter
 
   // Load carry flag into AH
-  code.mov(rcx, uintptr(&state));
-  code.mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
-  code.bt(edx, 29); // CF = value of bit 29
-  code.lahf();
+  code->mov(rcx, uintptr(&state));
+  code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+  code->bt(edx, 29); // CF = value of bit 29
+  code->lahf();
   
-  code.call(r12);
+  code->call(r12);
 
   // Return remaining number of cycles
-  code.mov(rax, rbx);
+  code->mov(rax, rbx);
 
-  code.add(rsp, stack_displacement);
+  code->add(rsp, stack_displacement);
 #ifdef ABI_MSVC
-  Pop(code, {rsi, rdi});
+  Pop(*code, {rsi, rdi});
 #endif
-  Pop(code, {rbx, rbp, r12, r13, r14, r15});
-  code.ret();
-
-  CallBlock = code.getCode<int (*)(BasicBlock::CompiledFn, int)>();
+  Pop(*code, {rbx, rbp, r12, r13, r14, r15});
+  code->ret();
 }
 
 void X64Backend::Compile(BasicBlock& basic_block) {
-  auto code = new Xbyak::CodeGenerator{4096, Xbyak::AutoGrow};
-  auto label_return_to_dispatch = Xbyak::Label{};
-  auto opcode_size = basic_block.key.Thumb() ? sizeof(u16) : sizeof(u32);
+  try {
+    auto label_return_to_dispatch = Xbyak::Label{};
+    auto opcode_size = basic_block.key.Thumb() ? sizeof(u16) : sizeof(u32);
 
-  for (auto const& micro_block : basic_block.micro_blocks) {
-    auto& emitter  = micro_block.emitter;
-    auto condition = micro_block.condition;
-    auto reg_alloc = X64RegisterAllocator{emitter, *code};
-    auto location = 0;
-    auto context  = CompileContext{*code, reg_alloc, state, location};
+    // TODO: clean this mess up
+    auto i = 0;
+    auto size = basic_block.micro_blocks.size();
 
-    auto label_skip = Xbyak::Label{};
-    auto label_done = Xbyak::Label{};
+    basic_block.function = (BasicBlock::CompiledFn)code->getCurr();
 
-    // Skip micro block if íts condition is not met.
-    if (condition != Condition::AL) {
-      // TODO: can we perform a conditional jump based on eflags?
-      code->mov(r8, u64(&condition_table[static_cast<int>(condition)]));
-      code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
-      code->shr(edx, 28);
-      code->cmp(byte[r8 + rdx], 0);
-      code->je(label_skip, Xbyak::CodeGenerator::T_NEAR);
+    for (auto const& micro_block : basic_block.micro_blocks) {
+      auto& emitter  = micro_block.emitter;
+      auto condition = micro_block.condition;
+      auto reg_alloc = X64RegisterAllocator{emitter, *code};
+      auto context   = CompileContext{*code, reg_alloc, state};
+
+      auto label_skip = Xbyak::Label{};
+      auto label_done = Xbyak::Label{};
+
+      // Skip micro block if íts condition is not met.
+      if (condition != Condition::AL) {
+        // TODO: can we perform a conditional jump based on eflags?
+        code->mov(r8, u64(&condition_table[static_cast<int>(condition)]));
+        code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+        code->shr(edx, 28);
+        code->cmp(byte[r8 + rdx], 0);
+        code->je(label_skip, Xbyak::CodeGenerator::T_NEAR);
+      }
+
+      for (auto const& op : emitter.Code()) {
+        CompileIROp(context, op);
+        reg_alloc.AdvanceLocation();
+      }
+
+      if (i == size - 1) {
+        auto& branch_target = basic_block.branch_target;
+
+        if (branch_target.key.value != 0) {
+          auto target_block = block_cache.Get(branch_target.key);
+
+          // TODO: deduplicate this code.
+          if (target_block != nullptr) {
+            // Return to the dispatcher if we ran out of cycles.
+            code->sub(rbx, basic_block.length);
+            code->jle(label_return_to_dispatch);
+
+            // Return to the dispatcher if there is an IRQ to handle
+            code->mov(rdx, uintptr(&irq_line));
+            code->cmp(byte[rdx], 0);
+            code->jnz(label_return_to_dispatch);
+
+            code->mov(rsi, u64(target_block->function));
+            code->jmp(rsi);
+          }
+        }
+      }
+
+      if (condition != Condition::AL) {
+        code->jmp(label_done);
+
+        // If the micro block was skipped advance PC by the number of instructions in it. 
+        code->L(label_skip);
+        code->add(
+          dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
+          micro_block.length * opcode_size
+        );
+
+        code->L(label_done);
+      }
+
+      i++;
     }
 
-    for (auto const& op : emitter.Code()) {
-      reg_alloc.SetCurrentLocation(location++);
-      CompileIROp(context, op);
-    }
+    // Return to the dispatcher if we ran out of cycles.
+    code->sub(rbx, basic_block.length);
+    code->jle(label_return_to_dispatch);
 
-    if (condition != Condition::AL) {
-      code->jmp(label_done);
+    // Return to the dispatcher if there is an IRQ to handle
+    code->mov(rdx, uintptr(&irq_line));
+    code->cmp(byte[rdx], 0);
+    code->jnz(label_return_to_dispatch);
 
-      // If the micro block was skipped advance PC by the number of instructions in it. 
-      code->L(label_skip);
-      code->add(
-        dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
-        micro_block.length * opcode_size
-      );
+    // Build the block key from R15 and CPSR.
+    // See frontend/basic_block.hpp
+    code->mov(edx, dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)]);
+    code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
+    code->shr(edx, 1);
+    code->and_(esi, 0x3F);
+    code->shl(rsi, 31);
+    code->or_(rdx, rsi);
 
-      code->L(label_done);
+    // Split key into key0 and key1
+    // TODO: can we exploit how the block lookup works?
+    code->mov(rsi, rdx);
+    code->shr(rsi, 19);
+    code->and_(edx, 0x7FFFF);
+
+    // Look block key up in the block cache.
+    code->mov(rdi, uintptr(block_cache.data));
+    code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
+    code->cmp(rdi, 0);
+    code->jz(label_return_to_dispatch); // fixme?
+    code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
+    code->cmp(rdi, 0);
+    code->jz(label_return_to_dispatch); // fixme?
+    code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
+    code->jmp(rdi);
+
+    code->L(label_return_to_dispatch);
+    code->ret();
+  } catch (Xbyak::Error error) {
+    if (int(error) == Xbyak::ERR_CODE_IS_TOO_BIG) {
+      fmt::print("FLUSH\n");
+      block_cache.Flush();
+      code->resetSize();
+      EmitCallBlock();
+      Compile(basic_block);
+    } else {
+      throw;
     }
   }
-
-  // Return to the dispatcher if we ran out of cycles.
-  code->sub(rbx, basic_block.length);
-  code->jle(label_return_to_dispatch);
-
-  // Return to the dispatcher if there is an IRQ to handle
-  code->mov(rdx, uintptr(&irq_line));
-  code->cmp(byte[rdx], 0);
-  code->jnz(label_return_to_dispatch);
-
-  // Build the block key from R15 and CPSR.
-  // See frontend/basic_block.hpp
-  code->mov(edx, dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)]);
-  code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
-  code->shr(edx, 1);
-  code->and_(esi, 0x3F);
-  code->shl(rsi, 31);
-  code->or_(rdx, rsi);
-
-  // Split key into key0 and key1
-  // TODO: can we exploit how the block lookup works?
-  code->mov(rsi, rdx);
-  code->shr(rsi, 19);
-  code->and_(edx, 0x7FFFF);
-
-  // Look block key up in the block cache.
-  code->mov(rdi, uintptr(block_cache.data));
-  code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
-  code->cmp(rdi, 0);
-  code->jz(label_return_to_dispatch); // fixme?
-  code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
-  code->cmp(rdi, 0);
-  code->jz(label_return_to_dispatch); // fixme?
-  code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
-  code->jmp(rdi);
-
-  code->L(label_return_to_dispatch);
-  code->ret();
-  code->ready();
-
-  basic_block.function = code->getCode<BasicBlock::CompiledFn>();
 }
 
 void X64Backend::CompileIROp(
@@ -295,7 +359,7 @@ void X64Backend::CompileIROp(
     case IROpcodeClass::MCR: CompileMCR(context, lunatic_cast<IRWriteCoprocessorRegister>(op.get())); break;
     default: {
       throw std::runtime_error(
-        fmt::format("X64Backend: unhandled IR opcode: {}", op->ToString())
+        fmt::format("lunatic: unhandled IR opcode: {}", op->ToString())
       );
     }
   }
