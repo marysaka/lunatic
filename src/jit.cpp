@@ -55,7 +55,8 @@ struct JIT final : CPU {
     }
 
     cycles_to_run += cycles;
-    int start_cycles = cycles_to_run;
+
+    int cycles_available = cycles_to_run;
 
     while (cycles_to_run > 0) {
       if (IRQLine()) {
@@ -72,12 +73,13 @@ struct JIT final : CPU {
       cycles_to_run = backend.Call(*basic_block, cycles_to_run);
 
       if (IsWaitingForIRQ()) {
-        int cycles_executed = start_cycles - cycles_to_run;
+        int cycles_executed = cycles_available - cycles_to_run;
         cycles_to_run = 0;
         return cycles_executed;
       }
     }
-    return start_cycles - cycles_to_run;
+
+    return cycles_available - cycles_to_run;
   }
 
   auto GetGPR(GPR reg) const -> u32 override {
