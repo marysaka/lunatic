@@ -44,7 +44,6 @@ private:
     Xbyak::CodeGenerator& code;
     X64RegisterAllocator& reg_alloc;
     State& state;
-    int& location;
   };
 
   void CreateCodeGenerator();

@@ -26,12 +26,9 @@ struct X64RegisterAllocator {
   );
 
   /**
-   * Set the current location in the IR program.
-   * 
-   * @param  location The current location in the IR program.
-   * @returns nothing
+   * Advance to the next IR opcode in the IR program.
    */
-  void SetCurrentLocation(int location);
+  void AdvanceLocation();
 
   /**
    * Get the host register currently allocated to a variable.
@@ -92,6 +89,9 @@ private:
 
   /// The current IR program location.
   int location = 0;
+
+  /// Iterator pointing to the current IR program location.
+  lunatic::frontend::IREmitter::InstructionList::const_iterator current_op_iter;
 };
 
 } // namespace lunatic::backend

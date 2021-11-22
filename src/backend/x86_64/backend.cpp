@@ -21,7 +21,7 @@
  * - ...
  */
 
-#define DESTRUCTURE_CONTEXT auto& [code, reg_alloc, state, location] = context;
+#define DESTRUCTURE_CONTEXT auto& [code, reg_alloc, state] = context;
 
 namespace lunatic {
 namespace backend {
@@ -206,8 +206,7 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       auto& emitter  = micro_block.emitter;
       auto condition = micro_block.condition;
       auto reg_alloc = X64RegisterAllocator{emitter, *code};
-      auto location = 0;
-      auto context  = CompileContext{*code, reg_alloc, state, location};
+      auto context   = CompileContext{*code, reg_alloc, state};
 
       auto label_skip = Xbyak::Label{};
       auto label_done = Xbyak::Label{};
@@ -223,8 +222,8 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       }
 
       for (auto const& op : emitter.Code()) {
-        reg_alloc.SetCurrentLocation(location++);
         CompileIROp(context, op);
+        reg_alloc.AdvanceLocation();
       }
 
       if (i == size - 1) {
