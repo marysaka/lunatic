@@ -29,15 +29,11 @@ struct JIT final : CPU {
     block_cache.Flush();
   }
 
-  bool& IRQLine() override {
+  auto IRQLine() -> bool& override {
     return irq_line;
   }
 
-  void WaitForIRQ() override {
-    wait_for_irq = true;
-  }
-
-  auto IsWaitingForIRQ() -> bool override {
+  auto WaitForIRQ() -> bool& override {
     return wait_for_irq;
   }
 
@@ -49,8 +45,8 @@ struct JIT final : CPU {
     block_cache.Flush(address_lo, address_hi);
   }
 
-  int Run(int cycles) override {
-    if (IsWaitingForIRQ() && !IRQLine()) {
+  auto Run(int cycles) -> int override {
+    if (WaitForIRQ() && !IRQLine()) {
       return 0;
     }
 
@@ -72,7 +68,7 @@ struct JIT final : CPU {
 
       cycles_to_run = backend.Call(*basic_block, cycles_to_run);
 
-      if (IsWaitingForIRQ()) {
+      if (WaitForIRQ()) {
         int cycles_executed = cycles_available - cycles_to_run;
         cycles_to_run = 0;
         return cycles_executed;
