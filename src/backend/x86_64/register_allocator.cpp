@@ -150,11 +150,11 @@ auto X64RegisterAllocator::FindFreeHostReg() -> Xbyak::Reg32 {
       var_id_to_host_reg[var->id] = {};
 
       // Spill the variable into one of the free slots.
-      for (int i = 0; i < kSpillAreaSize; i++) {
-        if (!free_spill_bitmap[i]) {
-          code.mov(dword[rbp + i * sizeof(u32)], reg);
-          free_spill_bitmap[i] = true;
-          var_id_to_spill_slot[var->id] = i;
+      for (int slot = 0; slot < kSpillAreaSize; slot++) {
+        if (!free_spill_bitmap[slot]) {
+          code.mov(dword[rbp + slot * sizeof(u32)], reg);
+          free_spill_bitmap[slot] = true;
+          var_id_to_spill_slot[var->id] = slot;
           return reg;
         }
       }
