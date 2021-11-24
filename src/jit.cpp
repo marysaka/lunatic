@@ -61,8 +61,9 @@ struct JIT final : CPU {
 
       auto block_key = BasicBlock::Key{state};
       auto basic_block = block_cache.Get(block_key);
+      auto hash = GetBasicBlockHash(block_key);
 
-      if (basic_block == nullptr) {
+      if (basic_block == nullptr || basic_block->hash != hash) {
         basic_block = Compile(block_key, 0);
       }
 
@@ -127,6 +128,8 @@ private:
       micro_block.emitter.Optimize();
     }
 
+    basic_block->hash = GetBasicBlockHash(block_key);
+
     if (depth <= 8) {
       auto branch_target_key = basic_block->branch_target.key;
       if (branch_target_key.value != 0 && !block_cache.Get(branch_target_key)) {
@@ -158,6 +161,10 @@ private:
 
       GetGPR(GPR::PC) = exception_base + 0x18 + sizeof(u32) * 2;
     }
+  }
+
+  auto GetBasicBlockHash(BasicBlock::Key block_key) -> u32 {
+    return memory.FastRead<u32, Memory::Bus::Code>(block_key.Address());
   }
 
   auto GetGPR(GPR reg) -> u32& {

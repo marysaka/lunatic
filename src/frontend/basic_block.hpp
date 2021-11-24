@@ -48,6 +48,8 @@ struct BasicBlock {
     u64 value = 0;
   } key;
 
+  u32 hash = 0;
+
   int length = 0;
 
   struct MicroBlock {
