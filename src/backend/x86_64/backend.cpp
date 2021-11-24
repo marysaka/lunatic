@@ -1675,12 +1675,12 @@ void X64Backend::CompileMCR(CompileContext const& context, IRWriteCoprocessorReg
   code.push(op->opcode2);
   code.sub(rsp, 0x20);
 #else
-  code.mov(kRegArg4, op->opcode2);
   if (op->value.IsConstant()) {
     code.mov(kRegArg5, op->value.GetConst().value);
   } else {
     code.mov(kRegArg5, reg_alloc.GetVariableHostReg(op->value.GetVar()));
   }
+  code.mov(kRegArg4, op->opcode2);
 #endif
 
   code.mov(kRegArg0, u64(coprocessors[op->coprocessor_id]));
