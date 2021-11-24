@@ -1141,12 +1141,17 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   auto& itcm = memory.itcm;
   auto& dtcm = memory.dtcm;
 
+
+  Xbyak::Reg64 itcm_reg;
+
+  if (itcm.data != nullptr || dtcm.data != nullptr) {
+    itcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
+  }
+
   // TODO: deduplicate and clean this up in general.
 
   if (itcm.data != nullptr) {
     auto label_not_itcm = Xbyak::Label{};
-
-    auto itcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
     code.mov(itcm_reg, u64(&itcm));
 
@@ -1185,6 +1190,8 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
     code.jmp(label_final, Xbyak::CodeGenerator::T_NEAR);
     code.L(label_not_itcm);
   }
+
+  auto dtcm_reg = itcm_reg;
 
   if (dtcm.data != nullptr) {
     auto label_not_dtcm = Xbyak::Label{};
@@ -1365,12 +1372,16 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   auto& itcm = memory.itcm;
   auto& dtcm = memory.dtcm;
 
+  Xbyak::Reg64 itcm_reg;
+
+  if (itcm.data != nullptr || dtcm.data != nullptr) {
+    itcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
+  }
+
   // TODO: deduplicate and clean this up in general.
 
   if (itcm.data != nullptr) {
     auto label_not_itcm = Xbyak::Label{};
-
-    auto itcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
     code.mov(itcm_reg, u64(&itcm));
 
@@ -1402,10 +1413,10 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
     code.L(label_not_itcm);
   }
 
+  auto dtcm_reg = itcm_reg;
+
   if (dtcm.data != nullptr) {
     auto label_not_dtcm = Xbyak::Label{};
-
-    auto dtcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
     code.mov(dtcm_reg, u64(&dtcm));
 
