@@ -1196,8 +1196,6 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   if (dtcm.data != nullptr) {
     auto label_not_dtcm = Xbyak::Label{};
 
-    auto dtcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
-
     code.mov(dtcm_reg, u64(&dtcm));
 
     code.cmp(byte[dtcm_reg + offsetof(Memory::TCM, config.enable_read)], 0);
