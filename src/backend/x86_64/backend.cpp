@@ -236,7 +236,7 @@ void X64Backend::Compile(BasicBlock& basic_block) {
           if (target_block != nullptr) {
             // Return to the dispatcher if we ran out of cycles.
             code->sub(rbx, basic_block.length);
-            code->jle(label_return_to_dispatch);
+            code->jle(label_return_to_dispatch, Xbyak::CodeGenerator::T_NEAR);
 
             // Return to the dispatcher if there is an IRQ to handle
             code->mov(rdx, uintptr(&irq_line));
@@ -298,6 +298,12 @@ void X64Backend::Compile(BasicBlock& basic_block) {
     code->cmp(rdi, 0);
     code->jz(label_return_to_dispatch); // fixme?
     code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
+
+    // Load carry flag into AH
+    code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+    code->bt(edx, 29); // CF = value of bit 29
+    code->lahf();
+
     code->jmp(rdi);
 
     code->L(label_return_to_dispatch);
