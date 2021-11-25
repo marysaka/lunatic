@@ -48,7 +48,13 @@ struct BasicBlock {
     u64 value = 0;
   } key;
 
-  u32 hash = 0;
+
+  BasicBlock() {}
+  BasicBlock(Key key) : key(key) {}
+
+ ~BasicBlock() {
+    // TODO: release the underlying JIT memory.
+  }
 
   int length = 0;
 
@@ -68,12 +74,9 @@ struct BasicBlock {
     Key key{};
   } branch_target;
 
-  BasicBlock() {}
-  BasicBlock(Key key) : key(key) {}
 
- ~BasicBlock() {
-    // TODO: release the underlying JIT memory.
-  } 
+  u32 hash = 0;
+  bool enable_fast_dispatch = true;
 };
 
 } // namespace lunatic::frontend

@@ -226,7 +226,7 @@ void X64Backend::Compile(BasicBlock& basic_block) {
         reg_alloc.AdvanceLocation();
       }
 
-      if (i == size - 1) {
+      if (basic_block.enable_fast_dispatch && i == size - 1) {
         auto& branch_target = basic_block.branch_target;
 
         if (branch_target.key.value != 0) {
@@ -265,49 +265,54 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       i++;
     }
 
-    // Return to the dispatcher if we ran out of cycles.
-    code->sub(rbx, basic_block.length);
-    code->jle(label_return_to_dispatch);
+    if (basic_block.enable_fast_dispatch) {
+      // Return to the dispatcher if we ran out of cycles.
+      code->sub(rbx, basic_block.length);
+      code->jle(label_return_to_dispatch);
 
-    // Return to the dispatcher if there is an IRQ to handle
-    code->mov(rdx, uintptr(&irq_line));
-    code->cmp(byte[rdx], 0);
-    code->jnz(label_return_to_dispatch);
+      // Return to the dispatcher if there is an IRQ to handle
+      code->mov(rdx, uintptr(&irq_line));
+      code->cmp(byte[rdx], 0);
+      code->jnz(label_return_to_dispatch);
 
-    // Build the block key from R15 and CPSR.
-    // See frontend/basic_block.hpp
-    code->mov(edx, dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)]);
-    code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
-    code->shr(edx, 1);
-    code->and_(esi, 0x3F);
-    code->shl(rsi, 31);
-    code->or_(rdx, rsi);
+      // Build the block key from R15 and CPSR.
+      // See frontend/basic_block.hpp
+      code->mov(edx, dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)]);
+      code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
+      code->shr(edx, 1);
+      code->and_(esi, 0x3F);
+      code->shl(rsi, 31);
+      code->or_(rdx, rsi);
 
-    // Split key into key0 and key1
-    // TODO: can we exploit how the block lookup works?
-    code->mov(rsi, rdx);
-    code->shr(rsi, 19);
-    code->and_(edx, 0x7FFFF);
+      // Split key into key0 and key1
+      // TODO: can we exploit how the block lookup works?
+      code->mov(rsi, rdx);
+      code->shr(rsi, 19);
+      code->and_(edx, 0x7FFFF);
 
-    // Look block key up in the block cache.
-    code->mov(rdi, uintptr(block_cache.data));
-    code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
-    code->cmp(rdi, 0);
-    code->jz(label_return_to_dispatch); // fixme?
-    code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
-    code->cmp(rdi, 0);
-    code->jz(label_return_to_dispatch); // fixme?
-    code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
+      // Look block key up in the block cache.
+      code->mov(rdi, uintptr(block_cache.data));
+      code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
+      code->cmp(rdi, 0);
+      code->jz(label_return_to_dispatch); // fixme?
+      code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
+      code->cmp(rdi, 0);
+      code->jz(label_return_to_dispatch); // fixme?
+      code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
 
-    // Load carry flag into AH
-    code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
-    code->bt(edx, 29); // CF = value of bit 29
-    code->lahf();
+      // Load carry flag into AH
+      code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+      code->bt(edx, 29); // CF = value of bit 29
+      code->lahf();
 
-    code->jmp(rdi);
+      code->jmp(rdi);
 
-    code->L(label_return_to_dispatch);
-    code->ret();
+      code->L(label_return_to_dispatch);
+      code->ret();
+    } else {
+      code->sub(rbx, basic_block.length);
+      code->ret();
+    }
   } catch (Xbyak::Error error) {
     if (int(error) == Xbyak::ERR_CODE_IS_TOO_BIG) {
       fmt::print("FLUSH\n");

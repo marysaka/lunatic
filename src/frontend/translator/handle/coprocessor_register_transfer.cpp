@@ -37,8 +37,10 @@ auto Translator::Handle(ARMCoprocessorRegisterTransfer const& opcode) -> Status 
   EmitAdvancePC();
 
   if (!load && coprocessor->ShouldWriteBreakBasicBlock(opcode1, cn, cm, opcode2)) {
-    return Status::BreakBasicBlock;    
+    basic_block->enable_fast_dispatch = false;
+    return Status::BreakBasicBlock;
   }
+
   return Status::Continue;
 }
 
