@@ -104,6 +104,18 @@ private:
   };
 };
 
+/// Represents a variable IR argument
+struct IRVariableRef {
+  IRVariableRef(IRVariable const& var) : p_var(&var) {}
+
+  auto Get() const -> IRVariable const& {
+    return *p_var;
+  }
+
+private:
+  IRVariable const* p_var;
+};
+
 } // namespace lunatic::frontend 
 } // namespace lunatic
 
@@ -144,6 +156,10 @@ inline auto to_string(Optional<lunatic::frontend::IRVariable const&> value) -> s
     return "(null)";
   }
   return std::to_string(value.Unwrap());
+}
+
+inline auto to_string(lunatic::frontend::IRVariableRef const& variable) -> std::string {
+  return std::to_string(variable.Get());
 }
 
 } // namespace std

@@ -69,7 +69,7 @@ void IREmitter::Optimize() {
           auto  op = lunatic_cast<IRLoadGPR>(op_.get());
           auto  gpr_id  = get_gpr_id(op->reg);
           auto  var_src = current_gpr_value[gpr_id];
-          auto& var_dst = op->result;
+          auto& var_dst = op->result.Get();
 
           if (!var_src.IsNull()) {
             it = code.erase(it);
@@ -96,7 +96,7 @@ void IREmitter::Optimize() {
         case IROpcodeClass::LoadCPSR: {
           auto  op = lunatic_cast<IRLoadCPSR>(op_.get());
           auto  var_src = current_cpsr_value;
-          auto& var_dst = op->result;
+          auto& var_dst = op->result.Get();
 
           if (!var_src.IsNull()) {
             it = code.erase(it);
