@@ -89,6 +89,15 @@ struct IRValue {
     return constant;
   }
 
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) {
+    if (IsVariable() && (&GetVar() == &var_old)) {
+      variable = &var_new;
+    }
+  }
+
 private:
   enum class Type {
     Null,
@@ -110,6 +119,15 @@ struct IRVariableRef {
 
   auto Get() const -> IRVariable const& {
     return *p_var;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) {
+    if (&var_old == p_var) {
+      p_var = &var_new;
+    }
   }
 
 private:
