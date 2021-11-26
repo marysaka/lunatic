@@ -12,12 +12,8 @@
 namespace lunatic {
 namespace frontend {
 
-struct IRContextLoadStoreElisionPass final : IRPass {
+struct IRDeadFlagElisionPass final : IRPass {
   void Run(IREmitter& emitter) override;
-
-private:
-  void RemoveLoads(IREmitter& emitter);
-  void RemoveStores(IREmitter& emitter);
 };
 
 } // namespace lunatic::frontend

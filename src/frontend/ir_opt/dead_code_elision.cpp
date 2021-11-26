@@ -1,3 +1,9 @@
+/*
+ * Copyright (C) 2021 fleroviux. All rights reserved.
+ *
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
 
 #include "frontend/ir_opt/dead_code_elision.hpp"
 
@@ -11,6 +17,7 @@ void IRDeadCodeElisionPass::Run(IREmitter& emitter) {
 
   while (it != end) {
     switch (it->get()->GetClass()) {
+    	// ADD #0 is a no-operation
       case IROpcodeClass::ADD: {
         auto op = lunatic_cast<IRAdd>(it->get());
 
@@ -22,6 +29,7 @@ void IRDeadCodeElisionPass::Run(IREmitter& emitter) {
         }
         break;
       }
+      // LSL(S) #0 is a no-operation
       case IROpcodeClass::LSL: {
         auto op = lunatic_cast<IRLogicalShiftLeft>(it->get());
         
@@ -33,6 +41,7 @@ void IRDeadCodeElisionPass::Run(IREmitter& emitter) {
         }
         break;
       }
+      // MOV var_a, var_b: var_a is a redundant variable.
       case IROpcodeClass::MOV: {
         auto op = lunatic_cast<IRMov>(it->get());
 
@@ -43,6 +52,9 @@ void IRDeadCodeElisionPass::Run(IREmitter& emitter) {
           }
         }
         break;
+      }
+      default: {
+      	break;
       }
     }
 
