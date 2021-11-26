@@ -30,7 +30,6 @@ auto IREmitter::ToString() const -> std::string {
 }
 
 void IREmitter::Optimize() {
-  // TODO: come up with a hashing method that produces smaller hashes.
   auto get_gpr_id = [](IRGuestReg reg) -> int {
     auto id = static_cast<int>(reg.reg);
     auto mode = reg.mode;
@@ -53,6 +52,10 @@ void IREmitter::Optimize() {
     IRValue current_gpr_value[512] {};
     IRValue current_cpsr_value;
 
+    auto Move = [&](IRVariable const& dst, IRValue src) {
+      code.insert(it, std::make_unique<IRMov>(dst, src, false));
+    };
+
     while (it != end) {
       auto& op_ = *it;
       auto klass = op_->GetClass();
@@ -74,14 +77,9 @@ void IREmitter::Optimize() {
           if (!var_src.IsNull()) {
             it = code.erase(it);
 
-            // TODO: do not copy source, repoint destination to source instead.
-            // This would only work reliably if source is a variable.
-            code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
-
-            if (var_src.IsVariable()) {
-              // Destination is a younger variable that now contains the current GPR value. 
-              // This helps to reduce the lifetime of the source variable.
-              current_gpr_value[gpr_id] = var_dst;
+            // TODO: if var_src is constant attempt updating IRValues.
+            if (var_src.IsConstant() || !Repoint(var_dst, var_src.GetVar(), it, end)) {
+              Move(var_dst, var_src);
             }
             continue;
           } else {
@@ -101,14 +99,9 @@ void IREmitter::Optimize() {
           if (!var_src.IsNull()) {
             it = code.erase(it);
 
-            // TODO: do not copy source, repoint destination to source instead.
-            // This would only work reliably if source is a variable.
-            code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
-
-            if (var_src.IsVariable()) {
-              // Destination is a younger variable that now contains the current GPR value. 
-              // This helps to reduce the lifetime of the source variable.
-              current_cpsr_value = var_dst;
+            // TODO: if var_src is constant attempt updating IRValues.
+            if (var_src.IsConstant() || !Repoint(var_dst, var_src.GetVar(), it, end)) {
+              Move(var_dst, var_src);
             }
             continue;
           } else {
@@ -116,7 +109,9 @@ void IREmitter::Optimize() {
           }
           break;
         }
-        default: break;
+        default: {
+          break;
+        }
       }
 
       ++it;
@@ -164,6 +159,26 @@ void IREmitter::Optimize() {
       ++it;
     }
   }
+}
+
+bool IREmitter::Repoint(
+  IRVariable const& var_old,
+  IRVariable const& var_new,
+  InstructionList::const_iterator begin,
+  InstructionList::const_iterator end
+) {
+  if (var_old.data_type != var_new.data_type) {
+    return false;
+  }
+  
+  auto it = begin;
+
+  while (it != end) {
+    (*it)->Repoint(var_old, var_new);
+    ++it; 
+  }
+
+  return true;
 }
 
 auto IREmitter::CreateVar(
