@@ -55,7 +55,7 @@ struct IRConstant {
   u32 value;
 };
 
-/// Represents a constant or variable IR opcode argument
+/// Represents an IR argument that can be null, a constant or a variable.
 struct IRValue {
   IRValue() {}
   IRValue(IRVariable const& variable) : type(Type::Variable), variable(&variable) {}
@@ -113,7 +113,7 @@ private:
   };
 };
 
-/// Represents a variable IR argument
+/// Represents an IR argument that always is a variable.
 struct IRVariableRef {
   IRVariableRef(IRVariable const& var) : p_var(&var) {}
 

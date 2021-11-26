@@ -171,11 +171,8 @@ bool IREmitter::Repoint(
     return false;
   }
   
-  auto it = begin;
-
-  while (it != end) {
-    (*it)->Repoint(var_old, var_new);
-    ++it; 
+  for (auto it = begin; it != end; ++it) {
+    (*it)->Repoint(var_old, var_new); 
   }
 
   return true;
