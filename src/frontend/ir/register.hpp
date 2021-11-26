@@ -23,6 +23,21 @@ struct IRGuestReg {
 
   /// The ARM processor mode
   const Mode mode;
+
+  auto ID() -> int {
+    auto id = static_cast<int>(reg);
+    auto mode = this->mode; // TODO!!!
+
+    if (id <= 7 || (id <= 12 && mode != Mode::FIQ) || id == 15) {
+      return id;
+    }
+
+    if (mode == Mode::User) {
+      mode = Mode::System;
+    }
+
+    return (static_cast<int>(mode) << 4) | id;
+  }
 };
 
 } // namespace lunatic::frontend

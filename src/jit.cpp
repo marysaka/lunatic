@@ -3,7 +3,9 @@
  */
 
 #include <lunatic/cpu.hpp>
+#include <vector>
 
+#include "frontend/ir_opt/context_load_store_elision.hpp"
 #include "frontend/state.hpp"
 #include "frontend/translator/translator.hpp"
 #include "backend/x86_64/backend.hpp"
@@ -19,6 +21,7 @@ struct JIT final : CPU {
       , memory(descriptor.memory)
       , translator(descriptor)
       , backend(descriptor, state, block_cache, irq_line) {
+    passes.push_back(std::make_unique<IRContextLoadStoreElisionPass>());
   }
 
   void Reset() override {
@@ -124,9 +127,7 @@ private:
     auto basic_block = new BasicBlock{block_key};
 
     translator.Translate(*basic_block);
-    for (auto &micro_block : basic_block->micro_blocks) {
-      micro_block.emitter.Optimize();
-    }
+    Optimize(basic_block);
 
     basic_block->hash = GetBasicBlockHash(block_key);
 
@@ -140,6 +141,14 @@ private:
     backend.Compile(*basic_block);
     block_cache.Set(block_key, basic_block);
     return basic_block;
+  }
+
+  void Optimize(BasicBlock* basic_block) {
+    for (auto &micro_block : basic_block->micro_blocks) {
+      for (auto& pass : passes) {
+        pass->Run(micro_block.emitter);
+      }
+    }
   }
 
   void SignalIRQ() {
@@ -192,6 +201,7 @@ private:
   Translator translator;
   BasicBlockCache block_cache;
   X64Backend backend;
+  std::vector<std::unique_ptr<IRPass>> passes;
 };
 
 auto CreateCPU(CPU::Descriptor const& descriptor) -> std::unique_ptr<CPU> {

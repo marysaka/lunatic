@@ -35,16 +35,10 @@ struct IREmitter {
     return *this;
   }
 
+  auto Code() -> InstructionList& { return code; }
   auto Code() const -> InstructionList const& { return code; }
   auto Vars() const -> VariableList const& { return variables; }
   auto ToString() const -> std::string;
-  void Optimize();
-  bool Repoint(
-    IRVariable const& var_old,
-    IRVariable const& var_new,
-    InstructionList::const_iterator begin,
-    InstructionList::const_iterator end
-  );
 
   auto CreateVar(
     IRDataType data_type,
