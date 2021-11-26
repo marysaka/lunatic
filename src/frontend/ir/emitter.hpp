@@ -52,12 +52,12 @@ struct IREmitter {
   ) -> IRVariable const&;
 
   void LoadGPR (IRGuestReg reg, IRVariable const& result);
-  void StoreGPR(IRGuestReg reg, IRValue value);
+  void StoreGPR(IRGuestReg reg, IRAnyRef value);
 
   void LoadSPSR (IRVariable const& result, Mode mode);
-  void StoreSPSR(IRValue value, Mode mode);
+  void StoreSPSR(IRAnyRef value, Mode mode);
   void LoadCPSR (IRVariable const& result);
-  void StoreCPSR(IRValue value);
+  void StoreCPSR(IRAnyRef value);
 
   void ClearCarry();
   void SetCarry();
@@ -85,110 +85,110 @@ struct IREmitter {
   void LSL(
     IRVariable const& result,
     IRVariable const& operand,
-    IRValue amount,
+    IRAnyRef amount,
     bool update_host_flags
   );
 
   void LSR(
     IRVariable const& result,
     IRVariable const& operand,
-    IRValue amount,
+    IRAnyRef amount,
     bool update_host_flags
   );
 
   void ASR(
     IRVariable const& result,
     IRVariable const& operand,
-    IRValue amount,
+    IRAnyRef amount,
     bool update_host_flags
   );
 
   void ROR(
     IRVariable const& result,
     IRVariable const& operand,
-    IRValue amount,
+    IRAnyRef amount,
     bool update_host_flags
   );
 
   void AND(
     Optional<IRVariable const&> result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void BIC(
     IRVariable const& result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void EOR(
     Optional<IRVariable const&> result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void SUB(
     Optional<IRVariable const&> result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void RSB(
     IRVariable const& result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void ADD(
     Optional<IRVariable const&> result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void ADC(
     IRVariable const& result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void SBC(
     IRVariable const& result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void RSC(
     IRVariable const& result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void ORR(
     IRVariable const& result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   );
 
   void MOV(
     IRVariable const& result,
-    IRValue source,
+    IRAnyRef source,
     bool update_host_flags
   );
 
   void MVN(
     IRVariable const& result,
-    IRValue source,
+    IRAnyRef source,
     bool update_host_flags
   );
 
@@ -262,7 +262,7 @@ struct IREmitter {
   );
 
   void MCR(
-    IRValue value,
+    IRAnyRef value,
     int coprocessor_id,
     int opcode1,
     int cn,

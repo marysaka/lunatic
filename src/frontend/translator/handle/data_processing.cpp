@@ -13,7 +13,7 @@ namespace frontend {
 auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
   using Opcode = ARMDataProcessing::Opcode;
 
-  auto op2 = IRValue{};
+  auto op2 = IRAnyRef{};
   bool advance_pc_early = false;
 
   // TODO: clean this unholy mess up.
@@ -40,7 +40,7 @@ auto Translator::Handle(ARMDataProcessing const& opcode) -> Status {
   } else {
     auto& shift = opcode.op2_reg.shift;
 
-    auto  amount = IRValue{};
+    auto  amount = IRAnyRef{};
     auto& source = emitter->CreateVar(IRDataType::UInt32, "shift_source");
     auto& result = emitter->CreateVar(IRDataType::UInt32, "shift_result");
 

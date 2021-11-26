@@ -86,7 +86,7 @@ struct IRLoadGPR final : IROpcodeBase<IROpcodeClass::LoadGPR> {
   )   : reg(reg), result(result) {}
 
   IRGuestReg reg;
-  IRVariableRef result;
+  IRVarRef result;
 
   auto Reads(IRVariable const& var) -> bool override {
     return false;
@@ -115,11 +115,11 @@ struct IRLoadGPR final : IROpcodeBase<IROpcodeClass::LoadGPR> {
 struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
   IRStoreGPR(
     IRGuestReg reg,
-    IRValue value
+    IRAnyRef value
   )   : reg(reg), value(value) {}
 
   IRGuestReg reg;
-  IRValue value;
+  IRAnyRef value;
 
   auto Reads(IRVariable const& var) -> bool override {
     if (value.IsVariable()) {
@@ -154,7 +154,7 @@ struct IRLoadSPSR final : IROpcodeBase<IROpcodeClass::LoadSPSR> {
     Mode mode
   )   : result(result), mode(mode) {}
 
-  IRVariableRef result;
+  IRVarRef result;
   Mode mode;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -183,11 +183,11 @@ struct IRLoadSPSR final : IROpcodeBase<IROpcodeClass::LoadSPSR> {
 
 struct IRStoreSPSR final : IROpcodeBase<IROpcodeClass::StoreSPSR> {
   IRStoreSPSR(
-    IRValue value,
+    IRAnyRef value,
     Mode mode
   )   : value(value), mode(mode) {}
 
-  IRValue value;
+  IRAnyRef value;
   Mode mode;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -218,7 +218,7 @@ struct IRLoadCPSR final : IROpcodeBase<IROpcodeClass::LoadCPSR> {
   IRLoadCPSR(IRVariable const& result)
       : result(result) {}
 
-  IRVariableRef result;
+  IRVarRef result;
 
   auto Reads(IRVariable const& var) -> bool override {
     return false;
@@ -241,9 +241,9 @@ struct IRLoadCPSR final : IROpcodeBase<IROpcodeClass::LoadCPSR> {
 };
 
 struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {
-  IRStoreCPSR(IRValue value) : value(value) {}
+  IRStoreCPSR(IRAnyRef value) : value(value) {}
 
-  IRValue value;
+  IRAnyRef value;
 
   auto Reads(IRVariable const& var) -> bool override {
     return value.IsVariable() && &var == &value.GetVar();
@@ -325,8 +325,8 @@ struct IRUpdateFlags final : IROpcodeBase<IROpcodeClass::UpdateFlags> {
       , flag_v(flag_v) {
   }
 
-  IRVariableRef result;
-  IRVariableRef input;
+  IRVarRef result;
+  IRVarRef input;
   bool flag_n;
   bool flag_z;
   bool flag_c;
@@ -367,8 +367,8 @@ struct IRUpdateSticky final : IROpcodeBase<IROpcodeClass::UpdateSticky> {
     IRVariable const& input
   )   : result(result), input(input) {}
 
-  IRVariableRef result;
-  IRVariableRef input;
+  IRVarRef result;
+  IRVarRef input;
 
   auto Reads(IRVariable const& var) -> bool override {
     return &input.Get() == &var;
@@ -400,7 +400,7 @@ struct IRShifterBase : IROpcodeBase<_klass> {
   IRShifterBase(
     IRVariable const& result,
     IRVariable const& operand,
-    IRValue amount,
+    IRAnyRef amount,
     bool update_host_flags
   )   : result(result)
       , operand(operand)
@@ -408,9 +408,9 @@ struct IRShifterBase : IROpcodeBase<_klass> {
       , update_host_flags(update_host_flags) {
   }
 
-  IRVariableRef result;
-  IRVariableRef operand;
-  IRValue amount;
+  IRVarRef result;
+  IRVarRef operand;
+  IRAnyRef amount;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -493,7 +493,7 @@ struct IRBinaryOpBase : IROpcodeBase<_klass> {
   IRBinaryOpBase(
     Optional<IRVariable const&> result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
   )   : result(result)
       , lhs(lhs)
@@ -502,8 +502,8 @@ struct IRBinaryOpBase : IROpcodeBase<_klass> {
   }
 
   Optional<IRVariable const&> result;
-  IRVariableRef lhs;
-  IRValue rhs;
+  IRVarRef lhs;
+  IRAnyRef rhs;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -672,15 +672,15 @@ struct IRBitwiseORR final : IRBinaryOpBase<IROpcodeClass::ORR> {
 struct IRMov final : IROpcodeBase<IROpcodeClass::MOV> {
   IRMov(
     IRVariable const& result,
-    IRValue source,
+    IRAnyRef source,
     bool update_host_flags
   )   : result(result)
       , source(source)
       , update_host_flags(update_host_flags) {
   }
 
-  IRVariableRef result;
-  IRValue source;
+  IRVarRef result;
+  IRAnyRef source;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -712,15 +712,15 @@ struct IRMov final : IROpcodeBase<IROpcodeClass::MOV> {
 struct IRMvn final : IROpcodeBase<IROpcodeClass::MVN> {
   IRMvn(
     IRVariable const& result,
-    IRValue source,
+    IRAnyRef source,
     bool update_host_flags
   )   : result(result)
       , source(source)
       , update_host_flags(update_host_flags) {
   }
 
-  IRVariableRef result;
-  IRValue source;
+  IRVarRef result;
+  IRAnyRef source;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -764,9 +764,9 @@ struct IRMultiply final : IROpcodeBase<IROpcodeClass::MUL> {
   }
 
   Optional<IRVariable const&> result_hi;
-  IRVariableRef result_lo;
-  IRVariableRef lhs;
-  IRVariableRef rhs;
+  IRVarRef result_lo;
+  IRVarRef lhs;
+  IRVarRef rhs;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -832,12 +832,12 @@ struct IRAdd64 final : IROpcodeBase<IROpcodeClass::ADD64> {
       , update_host_flags(update_host_flags) {
   }
 
-  IRVariableRef result_hi;
-  IRVariableRef result_lo;
-  IRVariableRef lhs_hi;
-  IRVariableRef lhs_lo;
-  IRVariableRef rhs_hi;
-  IRVariableRef rhs_lo;
+  IRVarRef result_hi;
+  IRVarRef result_lo;
+  IRVarRef lhs_hi;
+  IRVarRef lhs_lo;
+  IRVarRef rhs_hi;
+  IRVarRef rhs_lo;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -901,8 +901,8 @@ struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
   }
 
   IRMemoryFlags flags;
-  IRVariableRef result;
-  IRVariableRef address;
+  IRVarRef result;
+  IRVarRef address;
 
   auto Reads(IRVariable const& var) -> bool override {
     return &address.Get() == &var;
@@ -947,8 +947,8 @@ struct IRMemoryWrite final : IROpcodeBase<IROpcodeClass::MemoryWrite> {
   }
 
   IRMemoryFlags flags;
-  IRVariableRef source;
-  IRVariableRef address;
+  IRVarRef source;
+  IRVarRef address;
 
   auto Reads(IRVariable const& var) -> bool override {
     return &address.Get() == &var || &source.Get() == &var;
@@ -991,9 +991,9 @@ struct IRFlush final : IROpcodeBase<IROpcodeClass::Flush> {
       , cpsr_in(cpsr_in) {
   }
 
-  IRVariableRef address_out;
-  IRVariableRef address_in;
-  IRVariableRef cpsr_in;
+  IRVarRef address_out;
+  IRVarRef address_in;
+  IRVarRef cpsr_in;
 
   auto Reads(IRVariable const& var) -> bool override {
     return &var == &address_in.Get() || &var == &cpsr_in.Get();
@@ -1034,10 +1034,10 @@ struct IRFlushExchange final : IROpcodeBase<IROpcodeClass::FlushExchange> {
       , cpsr_in(cpsr_in) {
   }
 
-  IRVariableRef address_out;
-  IRVariableRef cpsr_out;
-  IRVariableRef address_in;
-  IRVariableRef cpsr_in;
+  IRVarRef address_out;
+  IRVarRef cpsr_out;
+  IRVarRef address_in;
+  IRVarRef cpsr_in;
 
   auto Reads(IRVariable const& var) -> bool override {
     return &var == &address_in.Get() || &var == &cpsr_in.Get();
@@ -1074,8 +1074,8 @@ struct IRCountLeadingZeros final : IROpcodeBase<IROpcodeClass::CLZ> {
     IRVariable const& operand
   )   : result(result), operand(operand) {}
 
-  IRVariableRef result;
-  IRVariableRef operand;
+  IRVarRef result;
+  IRVarRef operand;
 
   auto Reads(IRVariable const& var) -> bool override {
     return &var == &operand.Get();
@@ -1109,9 +1109,9 @@ struct IRSaturatingAdd final : IROpcodeBase<IROpcodeClass::QADD> {
     IRVariable const& rhs
   )   : result(result), lhs(lhs), rhs(rhs) {}
 
-  IRVariableRef result;
-  IRVariableRef lhs;
-  IRVariableRef rhs;
+  IRVarRef result;
+  IRVarRef lhs;
+  IRVarRef rhs;
 
   auto Reads(IRVariable const& var) -> bool override {
     return &var == &lhs.Get() || &var == &rhs.Get();
@@ -1147,9 +1147,9 @@ struct IRSaturatingSub final : IROpcodeBase<IROpcodeClass::QSUB> {
     IRVariable const& rhs
   ) : result(result), lhs(lhs), rhs(rhs) {}
 
-  IRVariableRef result;
-  IRVariableRef lhs;
-  IRVariableRef rhs;
+  IRVarRef result;
+  IRVarRef lhs;
+  IRVarRef rhs;
 
   auto Reads(IRVariable const& var) -> bool override {
     return &var == &lhs.Get() || &var == &rhs.Get();
@@ -1194,7 +1194,7 @@ struct IRReadCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MRC> {
       , opcode2(opcode2) {
   }
 
-  IRVariableRef result;
+  IRVarRef result;
   uint coprocessor_id;
   uint opcode1;
   uint cn;
@@ -1231,7 +1231,7 @@ struct IRReadCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MRC> {
 
 struct IRWriteCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MCR> {
   IRWriteCoprocessorRegister(
-    IRValue value,
+    IRAnyRef value,
     uint coprocessor_id,
     uint opcode1,
     uint cn,
@@ -1245,7 +1245,7 @@ struct IRWriteCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MCR> {
       , opcode2(opcode2) {
   }
 
-  IRValue value;
+  IRAnyRef value;
   uint coprocessor_id;
   uint opcode1;
   uint cn;

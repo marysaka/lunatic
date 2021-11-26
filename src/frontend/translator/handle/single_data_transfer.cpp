@@ -16,7 +16,7 @@ auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> Status {
     return Status::Unimplemented;
   }
 
-  auto offset = IRValue{};
+  auto offset = IRAnyRef{};
 
   if (opcode.immediate) {
     offset = IRConstant{opcode.offset_imm};

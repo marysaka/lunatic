@@ -49,10 +49,10 @@ void IREmitter::Optimize() {
   {
     auto it = code.begin();
     auto end = code.end();
-    IRValue current_gpr_value[512] {};
-    IRValue current_cpsr_value;
+    IRAnyRef current_gpr_value[512] {};
+    IRAnyRef current_cpsr_value;
 
-    auto Move = [&](IRVariable const& dst, IRValue src) {
+    auto Move = [&](IRVariable const& dst, IRAnyRef src) {
       code.insert(it, std::make_unique<IRMov>(dst, src, false));
     };
 
@@ -77,7 +77,7 @@ void IREmitter::Optimize() {
           if (!var_src.IsNull()) {
             it = code.erase(it);
 
-            // TODO: if var_src is constant attempt updating IRValues.
+            // TODO: if var_src is constant attempt updating IRAnyRefs.
             if (var_src.IsConstant() || !Repoint(var_dst, var_src.GetVar(), it, end)) {
               Move(var_dst, var_src);
             }
@@ -99,7 +99,7 @@ void IREmitter::Optimize() {
           if (!var_src.IsNull()) {
             it = code.erase(it);
 
-            // TODO: if var_src is constant attempt updating IRValues.
+            // TODO: if var_src is constant attempt updating IRAnyRefs.
             if (var_src.IsConstant() || !Repoint(var_dst, var_src.GetVar(), it, end)) {
               Move(var_dst, var_src);
             }
@@ -193,7 +193,7 @@ void IREmitter::LoadGPR(IRGuestReg reg, IRVariable const& result) {
   Push<IRLoadGPR>(reg, result);
 }
 
-void IREmitter::StoreGPR(IRGuestReg reg, IRValue value) {
+void IREmitter::StoreGPR(IRGuestReg reg, IRAnyRef value) {
   if (value.IsNull()) {
     throw std::runtime_error("StoreGPR: value must not be null");
   }
@@ -209,7 +209,7 @@ void IREmitter::LoadSPSR (IRVariable const& result, Mode mode) {
   }
 }
 
-void IREmitter::StoreSPSR(IRValue value, Mode mode) {
+void IREmitter::StoreSPSR(IRAnyRef value, Mode mode) {
   // TODO: I'm not sure if here is the right place to handle this.
   if (mode == Mode::User || mode == Mode::System) {
     return;
@@ -221,7 +221,7 @@ void IREmitter::LoadCPSR(IRVariable const& result) {
   Push<IRLoadCPSR>(result);
 }
 
-void IREmitter::StoreCPSR(IRValue value) {
+void IREmitter::StoreCPSR(IRAnyRef value) {
   if (value.IsNull()) {
     throw std::runtime_error("StoreCPSR: value must not be null");
   }
@@ -267,7 +267,7 @@ void IREmitter::UpdateQ(
 void IREmitter::LSL(
   IRVariable const& result,
   IRVariable const& operand,
-  IRValue amount,
+  IRAnyRef amount,
   bool update_host_flags
 ) {
   if (amount.IsNull()) {
@@ -279,7 +279,7 @@ void IREmitter::LSL(
 void IREmitter::LSR(
   IRVariable const& result,
   IRVariable const& operand,
-  IRValue amount,
+  IRAnyRef amount,
   bool update_host_flags
 ) {
   if (amount.IsNull()) {
@@ -291,7 +291,7 @@ void IREmitter::LSR(
 void IREmitter::ASR(
   IRVariable const& result,
   IRVariable const& operand,
-  IRValue amount,
+  IRAnyRef amount,
   bool update_host_flags
 ) {
   if (amount.IsNull()) {
@@ -303,7 +303,7 @@ void IREmitter::ASR(
 void IREmitter::ROR(
   IRVariable const& result,
   IRVariable const& operand,
-  IRValue amount,
+  IRAnyRef amount,
   bool update_host_flags
 ) {
   if (amount.IsNull()) {
@@ -315,7 +315,7 @@ void IREmitter::ROR(
 void IREmitter::AND(
   Optional<IRVariable const&> result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -327,7 +327,7 @@ void IREmitter::AND(
 void IREmitter::BIC(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -339,7 +339,7 @@ void IREmitter::BIC(
 void IREmitter::EOR(
   Optional<IRVariable const&> result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -351,7 +351,7 @@ void IREmitter::EOR(
 void IREmitter::SUB(
   Optional<IRVariable const&> result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -363,7 +363,7 @@ void IREmitter::SUB(
 void IREmitter::RSB(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -375,7 +375,7 @@ void IREmitter::RSB(
 void IREmitter::ADD(
   Optional<IRVariable const&> result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -387,7 +387,7 @@ void IREmitter::ADD(
 void IREmitter::ADC(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -399,7 +399,7 @@ void IREmitter::ADC(
 void IREmitter::SBC(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -411,7 +411,7 @@ void IREmitter::SBC(
 void IREmitter::RSC(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -423,7 +423,7 @@ void IREmitter::RSC(
 void IREmitter::ORR(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -434,7 +434,7 @@ void IREmitter::ORR(
 
 void IREmitter::MOV(
   IRVariable const& result,
-  IRValue source,
+  IRAnyRef source,
   bool update_host_flags
 ) {
   Push<IRMov>(result, source, update_host_flags);
@@ -442,7 +442,7 @@ void IREmitter::MOV(
 
 void IREmitter::MVN(
   IRVariable const& result,
-  IRValue source,
+  IRAnyRef source,
   bool update_host_flags
 ) {
   Push<IRMvn>(result, source, update_host_flags);
@@ -542,7 +542,7 @@ void IREmitter::MRC(
 }
 
 void IREmitter::MCR(
-  IRValue value,
+  IRAnyRef value,
   int coprocessor_id,
   int opcode1,
   int cn,
