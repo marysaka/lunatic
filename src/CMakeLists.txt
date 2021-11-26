@@ -11,6 +11,8 @@ set(SOURCES
   backend/x86_64/backend.cpp
   backend/x86_64/register_allocator.cpp
   frontend/ir/emitter.cpp
+  frontend/ir_opt/context_load_store_elision.cpp
+  frontend/ir_opt/dead_code_elision.cpp
   frontend/translator/handle/block_data_transfer.cpp
   frontend/translator/handle/branch_exchange.cpp
   frontend/translator/handle/branch_relative.cpp
@@ -62,6 +64,9 @@ set(HEADERS
   frontend/ir/opcode.hpp
   frontend/ir/register.hpp
   frontend/ir/value.hpp
+  frontend/ir_opt/context_load_store_elision.hpp
+  frontend/ir_opt/dead_code_elision.hpp
+  frontend/ir_opt/pass.hpp
   frontend/translator/translator.hpp
   frontend/basic_block.hpp
   frontend/basic_block_cache.hpp
