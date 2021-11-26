@@ -11,7 +11,10 @@ namespace lunatic {
 namespace frontend {
 
 void IRContextLoadStoreElisionPass::Run(IREmitter& emitter) {
+  // Forward pass: remove redundant GPR and CPSR reads
   RemoveLoads(emitter);
+
+  // Backward pass: remove redundant GPR and CPSR stores
   RemoveStores(emitter);
 }
 
