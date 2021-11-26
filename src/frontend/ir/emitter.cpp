@@ -30,7 +30,6 @@ auto IREmitter::ToString() const -> std::string {
 }
 
 void IREmitter::Optimize() {
-  // TODO: come up with a hashing method that produces smaller hashes.
   auto get_gpr_id = [](IRGuestReg reg) -> int {
     auto id = static_cast<int>(reg.reg);
     auto mode = reg.mode;
@@ -50,8 +49,12 @@ void IREmitter::Optimize() {
   {
     auto it = code.begin();
     auto end = code.end();
-    IRValue current_gpr_value[512] {};
-    IRValue current_cpsr_value;
+    IRAnyRef current_gpr_value[512] {};
+    IRAnyRef current_cpsr_value;
+
+    auto Move = [&](IRVariable const& dst, IRAnyRef src) {
+      code.insert(it, std::make_unique<IRMov>(dst, src, false));
+    };
 
     while (it != end) {
       auto& op_ = *it;
@@ -69,19 +72,14 @@ void IREmitter::Optimize() {
           auto  op = lunatic_cast<IRLoadGPR>(op_.get());
           auto  gpr_id  = get_gpr_id(op->reg);
           auto  var_src = current_gpr_value[gpr_id];
-          auto& var_dst = op->result;
+          auto& var_dst = op->result.Get();
 
           if (!var_src.IsNull()) {
             it = code.erase(it);
 
-            // TODO: do not copy source, repoint destination to source instead.
-            // This would only work reliably if source is a variable.
-            code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
-
-            if (var_src.IsVariable()) {
-              // Destination is a younger variable that now contains the current GPR value. 
-              // This helps to reduce the lifetime of the source variable.
-              current_gpr_value[gpr_id] = var_dst;
+            // TODO: if var_src is constant attempt updating IRAnyRefs.
+            if (var_src.IsConstant() || !Repoint(var_dst, var_src.GetVar(), it, end)) {
+              Move(var_dst, var_src);
             }
             continue;
           } else {
@@ -96,19 +94,14 @@ void IREmitter::Optimize() {
         case IROpcodeClass::LoadCPSR: {
           auto  op = lunatic_cast<IRLoadCPSR>(op_.get());
           auto  var_src = current_cpsr_value;
-          auto& var_dst = op->result;
+          auto& var_dst = op->result.Get();
 
           if (!var_src.IsNull()) {
             it = code.erase(it);
 
-            // TODO: do not copy source, repoint destination to source instead.
-            // This would only work reliably if source is a variable.
-            code.insert(it, std::make_unique<IRMov>(var_dst, var_src, false));
-
-            if (var_src.IsVariable()) {
-              // Destination is a younger variable that now contains the current GPR value. 
-              // This helps to reduce the lifetime of the source variable.
-              current_cpsr_value = var_dst;
+            // TODO: if var_src is constant attempt updating IRAnyRefs.
+            if (var_src.IsConstant() || !Repoint(var_dst, var_src.GetVar(), it, end)) {
+              Move(var_dst, var_src);
             }
             continue;
           } else {
@@ -116,7 +109,9 @@ void IREmitter::Optimize() {
           }
           break;
         }
-        default: break;
+        default: {
+          break;
+        }
       }
 
       ++it;
@@ -166,6 +161,23 @@ void IREmitter::Optimize() {
   }
 }
 
+bool IREmitter::Repoint(
+  IRVariable const& var_old,
+  IRVariable const& var_new,
+  InstructionList::const_iterator begin,
+  InstructionList::const_iterator end
+) {
+  if (var_old.data_type != var_new.data_type) {
+    return false;
+  }
+  
+  for (auto it = begin; it != end; ++it) {
+    (*it)->Repoint(var_old, var_new); 
+  }
+
+  return true;
+}
+
 auto IREmitter::CreateVar(
   IRDataType data_type,
   char const* label
@@ -181,7 +193,7 @@ void IREmitter::LoadGPR(IRGuestReg reg, IRVariable const& result) {
   Push<IRLoadGPR>(reg, result);
 }
 
-void IREmitter::StoreGPR(IRGuestReg reg, IRValue value) {
+void IREmitter::StoreGPR(IRGuestReg reg, IRAnyRef value) {
   if (value.IsNull()) {
     throw std::runtime_error("StoreGPR: value must not be null");
   }
@@ -197,7 +209,7 @@ void IREmitter::LoadSPSR (IRVariable const& result, Mode mode) {
   }
 }
 
-void IREmitter::StoreSPSR(IRValue value, Mode mode) {
+void IREmitter::StoreSPSR(IRAnyRef value, Mode mode) {
   // TODO: I'm not sure if here is the right place to handle this.
   if (mode == Mode::User || mode == Mode::System) {
     return;
@@ -209,7 +221,7 @@ void IREmitter::LoadCPSR(IRVariable const& result) {
   Push<IRLoadCPSR>(result);
 }
 
-void IREmitter::StoreCPSR(IRValue value) {
+void IREmitter::StoreCPSR(IRAnyRef value) {
   if (value.IsNull()) {
     throw std::runtime_error("StoreCPSR: value must not be null");
   }
@@ -255,7 +267,7 @@ void IREmitter::UpdateQ(
 void IREmitter::LSL(
   IRVariable const& result,
   IRVariable const& operand,
-  IRValue amount,
+  IRAnyRef amount,
   bool update_host_flags
 ) {
   if (amount.IsNull()) {
@@ -267,7 +279,7 @@ void IREmitter::LSL(
 void IREmitter::LSR(
   IRVariable const& result,
   IRVariable const& operand,
-  IRValue amount,
+  IRAnyRef amount,
   bool update_host_flags
 ) {
   if (amount.IsNull()) {
@@ -279,7 +291,7 @@ void IREmitter::LSR(
 void IREmitter::ASR(
   IRVariable const& result,
   IRVariable const& operand,
-  IRValue amount,
+  IRAnyRef amount,
   bool update_host_flags
 ) {
   if (amount.IsNull()) {
@@ -291,7 +303,7 @@ void IREmitter::ASR(
 void IREmitter::ROR(
   IRVariable const& result,
   IRVariable const& operand,
-  IRValue amount,
+  IRAnyRef amount,
   bool update_host_flags
 ) {
   if (amount.IsNull()) {
@@ -303,7 +315,7 @@ void IREmitter::ROR(
 void IREmitter::AND(
   Optional<IRVariable const&> result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -315,7 +327,7 @@ void IREmitter::AND(
 void IREmitter::BIC(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -327,7 +339,7 @@ void IREmitter::BIC(
 void IREmitter::EOR(
   Optional<IRVariable const&> result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -339,7 +351,7 @@ void IREmitter::EOR(
 void IREmitter::SUB(
   Optional<IRVariable const&> result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -351,7 +363,7 @@ void IREmitter::SUB(
 void IREmitter::RSB(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -363,7 +375,7 @@ void IREmitter::RSB(
 void IREmitter::ADD(
   Optional<IRVariable const&> result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -375,7 +387,7 @@ void IREmitter::ADD(
 void IREmitter::ADC(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -387,7 +399,7 @@ void IREmitter::ADC(
 void IREmitter::SBC(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -399,7 +411,7 @@ void IREmitter::SBC(
 void IREmitter::RSC(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -411,7 +423,7 @@ void IREmitter::RSC(
 void IREmitter::ORR(
   IRVariable const& result,
   IRVariable const& lhs,
-  IRValue rhs,
+  IRAnyRef rhs,
   bool update_host_flags
 ) {
   if (rhs.IsNull()) {
@@ -422,7 +434,7 @@ void IREmitter::ORR(
 
 void IREmitter::MOV(
   IRVariable const& result,
-  IRValue source,
+  IRAnyRef source,
   bool update_host_flags
 ) {
   Push<IRMov>(result, source, update_host_flags);
@@ -430,7 +442,7 @@ void IREmitter::MOV(
 
 void IREmitter::MVN(
   IRVariable const& result,
-  IRValue source,
+  IRAnyRef source,
   bool update_host_flags
 ) {
   Push<IRMvn>(result, source, update_host_flags);
@@ -530,7 +542,7 @@ void IREmitter::MRC(
 }
 
 void IREmitter::MCR(
-  IRValue value,
+  IRAnyRef value,
   int coprocessor_id,
   int opcode1,
   int cn,

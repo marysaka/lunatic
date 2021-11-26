@@ -11,7 +11,7 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMHalfwordSignedTransfer const& opcode) -> Status {
-  auto offset = IRValue{};
+  auto offset = IRAnyRef{};
   bool should_writeback = !opcode.pre_increment || opcode.writeback;
   bool should_flush_pipeline = opcode.load && opcode.reg_dst == GPR::PC;
 

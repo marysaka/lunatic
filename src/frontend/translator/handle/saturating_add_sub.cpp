@@ -18,7 +18,7 @@ auto Translator::Handle(ARMSaturatingAddSub const& opcode) -> Status {
   emitter->LoadGPR(IRGuestReg{opcode.reg_lhs, mode}, lhs);
   emitter->LoadGPR(IRGuestReg{opcode.reg_rhs, mode}, rhs);
 
-  auto rhs_value = IRValue{};
+  auto rhs_value = IRAnyRef{};
 
   if (opcode.double_rhs) {
     // TODO: this likely can be optimized since both operands are equal.

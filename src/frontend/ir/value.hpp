@@ -55,13 +55,13 @@ struct IRConstant {
   u32 value;
 };
 
-/// Represents a constant or variable IR opcode argument
-struct IRValue {
-  IRValue() {}
-  IRValue(IRVariable const& variable) : type(Type::Variable), variable(&variable) {}
-  IRValue(IRConstant const& constant) : type(Type::Constant), constant( constant) {}
+/// Represents an IR argument that can be null, a constant or a variable.
+struct IRAnyRef {
+  IRAnyRef() {}
+  IRAnyRef(IRVariable const& variable) : type(Type::Variable), variable(&variable) {}
+  IRAnyRef(IRConstant const& constant) : type(Type::Constant), constant( constant) {}
 
-  auto operator=(IRValue const& other) -> IRValue& {
+  auto operator=(IRAnyRef const& other) -> IRAnyRef& {
     type = other.type;
     if (IsConstant()) {
       constant = other.constant;
@@ -89,6 +89,15 @@ struct IRValue {
     return constant;
   }
 
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) {
+    if (IsVariable() && (&GetVar() == &var_old)) {
+      variable = &var_new;
+    }
+  }
+
 private:
   enum class Type {
     Null,
@@ -102,6 +111,27 @@ private:
     IRVariable const* variable;
     IRConstant constant;
   };
+};
+
+/// Represents an IR argument that always is a variable.
+struct IRVarRef {
+  IRVarRef(IRVariable const& var) : p_var(&var) {}
+
+  auto Get() const -> IRVariable const& {
+    return *p_var;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) {
+    if (&var_old == p_var) {
+      p_var = &var_new;
+    }
+  }
+
+private:
+  IRVariable const* p_var;
 };
 
 } // namespace lunatic::frontend 
@@ -129,7 +159,7 @@ inline auto to_string(lunatic::frontend::IRConstant const& constant) -> std::str
   return fmt::format("0x{:08X}", constant.value);
 }
 
-inline auto to_string(lunatic::frontend::IRValue const& value) -> std::string {
+inline auto to_string(lunatic::frontend::IRAnyRef const& value) -> std::string {
   if (value.IsNull()) {
     return "(null)";
   }
@@ -144,6 +174,10 @@ inline auto to_string(Optional<lunatic::frontend::IRVariable const&> value) -> s
     return "(null)";
   }
   return std::to_string(value.Unwrap());
+}
+
+inline auto to_string(lunatic::frontend::IRVarRef const& variable) -> std::string {
+  return std::to_string(variable.Get());
 }
 
 } // namespace std

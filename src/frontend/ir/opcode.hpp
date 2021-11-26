@@ -65,6 +65,10 @@ struct IROpcode {
   virtual auto GetClass() const -> IROpcodeClass = 0;
   virtual auto Reads (IRVariable const& var) -> bool = 0;
   virtual auto Writes(IRVariable const& var) -> bool = 0;
+  virtual void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) = 0;
   virtual auto ToString() -> std::string = 0;
 };
 
@@ -76,35 +80,46 @@ struct IROpcodeBase : IROpcode {
 };
 
 struct IRLoadGPR final : IROpcodeBase<IROpcodeClass::LoadGPR> {
-  IRLoadGPR(IRGuestReg reg, IRVariable const& result) : reg(reg), result(result) {}
+  IRLoadGPR(
+    IRGuestReg reg,
+    IRVariable const& result
+  )   : reg(reg), result(result) {}
 
-  /// The GPR to load
   IRGuestReg reg;
-
-  /// The variable to load the GPR into
-  IRVariable const& result;
+  IRVarRef result;
 
   auto Reads(IRVariable const& var) -> bool override {
     return false;
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result;
+    return &var == &result.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("ldgpr {}, {}", std::to_string(reg), std::to_string(result));
+    return fmt::format(
+      "ldgpr {}, {}",
+      std::to_string(reg),
+      std::to_string(result)
+    );
   }
 };
 
 struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
-  IRStoreGPR(IRGuestReg reg, IRValue value) : reg(reg), value(value) {}
+  IRStoreGPR(
+    IRGuestReg reg,
+    IRAnyRef value
+  )   : reg(reg), value(value) {}
 
-  /// The GPR to write
   IRGuestReg reg;
-
-  /// The variable or constant to write to the GPR (must be non-null)
-  IRValue value;
+  IRAnyRef value;
 
   auto Reads(IRVariable const& var) -> bool override {
     if (value.IsVariable()) {
@@ -117,15 +132,29 @@ struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
     return false;
   }
 
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    value.Repoint(var_old, var_new);
+  }
+
   auto ToString() -> std::string override {
-    return fmt::format("stgpr {}, {}", std::to_string(reg), std::to_string(value));
+    return fmt::format(
+      "stgpr {}, {}",
+      std::to_string(reg),
+      std::to_string(value)
+    );
   }
 };
 
 struct IRLoadSPSR final : IROpcodeBase<IROpcodeClass::LoadSPSR> {
-  IRLoadSPSR(IRVariable const& result, Mode mode) : result(result), mode(mode) {}
+  IRLoadSPSR(
+    IRVariable const& result,
+    Mode mode
+  )   : result(result), mode(mode) {}
 
-  IRVariable const& result;
+  IRVarRef result;
   Mode mode;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -133,18 +162,32 @@ struct IRLoadSPSR final : IROpcodeBase<IROpcodeClass::LoadSPSR> {
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result;
+    return &var == &result.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("ldspsr.{} {}", std::to_string(mode), std::to_string(result));
+    return fmt::format(
+      "ldspsr.{} {}",
+      std::to_string(mode),
+      std::to_string(result)
+    );
   }
 };
 
 struct IRStoreSPSR final : IROpcodeBase<IROpcodeClass::StoreSPSR> {
-  IRStoreSPSR(IRValue value, Mode mode) : value(value), mode(mode) {}
+  IRStoreSPSR(
+    IRAnyRef value,
+    Mode mode
+  )   : value(value), mode(mode) {}
 
-  IRValue value;
+  IRAnyRef value;
   Mode mode;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -155,23 +198,41 @@ struct IRStoreSPSR final : IROpcodeBase<IROpcodeClass::StoreSPSR> {
     return false;
   }
 
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    value.Repoint(var_old, var_new);
+  }
+
   auto ToString() -> std::string override {
-    return fmt::format("stspsr.{} {}", std::to_string(mode), std::to_string(value));
+    return fmt::format(
+      "stspsr.{} {}",
+      std::to_string(mode),
+      std::to_string(value)
+    );
   }
 };
 
 struct IRLoadCPSR final : IROpcodeBase<IROpcodeClass::LoadCPSR> {
-  IRLoadCPSR(IRVariable const& result) : result(result) {}
+  IRLoadCPSR(IRVariable const& result)
+      : result(result) {}
 
-  /// The variable to load CPSR into
-  IRVariable const& result;
+  IRVarRef result;
 
   auto Reads(IRVariable const& var) -> bool override {
     return false;
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result;
+    return &var == &result.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
@@ -180,10 +241,9 @@ struct IRLoadCPSR final : IROpcodeBase<IROpcodeClass::LoadCPSR> {
 };
 
 struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {
-  IRStoreCPSR(IRValue value) : value(value) {}
+  IRStoreCPSR(IRAnyRef value) : value(value) {}
 
-  /// The variable or constant to write to CPSR
-  IRValue value;
+  IRAnyRef value;
 
   auto Reads(IRVariable const& var) -> bool override {
     return value.IsVariable() && &var == &value.GetVar();
@@ -191,6 +251,13 @@ struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {
 
   auto Writes(IRVariable const& var) -> bool override {
     return false;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    value.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
@@ -207,6 +274,14 @@ struct IRClearCarry final : IROpcodeBase<IROpcodeClass::ClearCarry> {
     return false;
   }
 
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    (void)var_old;
+    (void)var_new;
+  }
+
   auto ToString() -> std::string override {
     return "clearcarry";
   }
@@ -219,6 +294,14 @@ struct IRSetCarry final : IROpcodeBase<IROpcodeClass::SetCarry> {
 
   auto Writes(IRVariable const& var) -> bool override {
     return false;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    (void)var_old;
+    (void)var_new;
   }
 
   auto ToString() -> std::string override {
@@ -234,31 +317,47 @@ struct IRUpdateFlags final : IROpcodeBase<IROpcodeClass::UpdateFlags> {
     bool flag_z,
     bool flag_c,
     bool flag_v
-  ) : result(result), input(input), flag_n(flag_n), flag_z(flag_z), flag_c(flag_c), flag_v(flag_v) {}
+  )   : result(result)
+      , input(input)
+      , flag_n(flag_n)
+      , flag_z(flag_z)
+      , flag_c(flag_c)
+      , flag_v(flag_v) {
+  }
 
-  IRVariable const& result;
-  IRVariable const& input;
+  IRVarRef result;
+  IRVarRef input;
   bool flag_n;
   bool flag_z;
   bool flag_c;
   bool flag_v;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &input == &var;
+    return &input.Get() == &var;
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &result == &var;
+    return &result.Get() == &var;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
+    input.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("update.{}{}{}{} {}, {}",
+    return fmt::format(
+      "update.{}{}{}{} {}, {}",
       flag_n ? 'n' : '-',
       flag_z ? 'z' : '-',
       flag_c ? 'c' : '-',
       flag_v ? 'v' : '-',
       std::to_string(result),
-      std::to_string(input));
+      std::to_string(input)
+    );
   }
 };
 
@@ -266,23 +365,33 @@ struct IRUpdateSticky final : IROpcodeBase<IROpcodeClass::UpdateSticky> {
   IRUpdateSticky(
     IRVariable const& result,
     IRVariable const& input
-  ) : result(result), input(input) {}
+  )   : result(result), input(input) {}
 
-  IRVariable const& result;
-  IRVariable const& input;
+  IRVarRef result;
+  IRVarRef input;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &input == &var;
+    return &input.Get() == &var;
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &result == &var;
+    return &result.Get() == &var;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
+    input.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("update.q {}, {}",
+    return fmt::format(
+      "update.q {}, {}",
       std::to_string(result),
-      std::to_string(input));
+      std::to_string(input)
+    );
   }
 };
 
@@ -291,28 +400,35 @@ struct IRShifterBase : IROpcodeBase<_klass> {
   IRShifterBase(
     IRVariable const& result,
     IRVariable const& operand,
-    IRValue amount,
+    IRAnyRef amount,
     bool update_host_flags
-  ) : result(result), operand(operand), amount(amount), update_host_flags(update_host_flags) {}
+  )   : result(result)
+      , operand(operand)
+      , amount(amount)
+      , update_host_flags(update_host_flags) {
+  }
 
-  /// The variable to store the result in
-  IRVariable const& result;
-
-  /// The operand to be shifted
-  IRVariable const& operand;
-
-  /// The variable or constant shift amount
-  IRValue amount;
-
-  /// Whether to update/cache the host system flags
+  IRVarRef result;
+  IRVarRef operand;
+  IRAnyRef amount;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &var == &operand || (amount.IsVariable() && &var == &amount.GetVar());
+    return &var == &operand.Get() ||
+          (amount.IsVariable() && &var == &amount.GetVar());
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result;
+    return &var == &result.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
+    operand.Repoint(var_old, var_new);
+    amount.Repoint(var_old, var_new);
   }
 };
 
@@ -320,11 +436,13 @@ struct IRLogicalShiftLeft final : IRShifterBase<IROpcodeClass::LSL> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("lsl{} {}, {}, {}",
+    return fmt::format(
+      "lsl{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(operand),
-      std::to_string(amount));
+      std::to_string(amount)
+    );
   }
 };
 
@@ -332,11 +450,13 @@ struct IRLogicalShiftRight final : IRShifterBase<IROpcodeClass::LSR> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("lsr{} {}, {}, {}",
+    return fmt::format(
+      "lsr{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(operand),
-      std::to_string(amount));
+      std::to_string(amount)
+    );
   }
 };
 
@@ -344,11 +464,13 @@ struct IRArithmeticShiftRight final : IRShifterBase<IROpcodeClass::ASR> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("asr{} {}, {}, {}",
+    return fmt::format(
+      "asr{} {}, {}, {}",
       update_host_flags ? "s": "",
       std::to_string(result),
       std::to_string(operand),
-      std::to_string(amount));
+      std::to_string(amount)
+    );
   }
 };
 
@@ -356,11 +478,13 @@ struct IRRotateRight final : IRShifterBase<IROpcodeClass::ROR> {
   using IRShifterBase::IRShifterBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("ror{} {}, {}, {}",
+    return fmt::format(
+      "ror{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(operand),
-      std::to_string(amount));
+      std::to_string(amount)
+    );
   }
 };
 
@@ -369,28 +493,39 @@ struct IRBinaryOpBase : IROpcodeBase<_klass> {
   IRBinaryOpBase(
     Optional<IRVariable const&> result,
     IRVariable const& lhs,
-    IRValue rhs,
+    IRAnyRef rhs,
     bool update_host_flags
-  ) : result(result), lhs(lhs), rhs(rhs), update_host_flags(update_host_flags) {}
+  )   : result(result)
+      , lhs(lhs)
+      , rhs(rhs)
+      , update_host_flags(update_host_flags) {
+  }
 
-  /// An optional result variable
   Optional<IRVariable const&> result;
-
-  /// The left-hand side operand (variable)
-  IRVariable const& lhs;
-
-  /// The right-hand side operand (variable or constant)
-  IRValue rhs;
-
-  /// Whether to update/cache the host system flags
+  IRVarRef lhs;
+  IRAnyRef rhs;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &lhs == &var || (rhs.IsVariable() && (&rhs.GetVar() == &var));
+    return &lhs.Get() == &var || 
+          (rhs.IsVariable() && (&rhs.GetVar() == &var));
   }
 
   auto Writes(IRVariable const& var) -> bool override {
     return result.HasValue() && (&result.Unwrap() == &var);
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    // TODO: make this reusable?
+    if (result.HasValue() && (&result.Unwrap() == &var_old)) {
+      result = var_new;
+    }
+
+    lhs.Repoint(var_old, var_new);
+    rhs.Repoint(var_old, var_new);
   }
 };
 
@@ -398,11 +533,13 @@ struct IRBitwiseAND final : IRBinaryOpBase<IROpcodeClass::AND> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("and{} {}, {}, {}",
+    return fmt::format(
+      "and{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -410,11 +547,13 @@ struct IRBitwiseBIC final : IRBinaryOpBase<IROpcodeClass::BIC> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("bic{} {}, {}, {}",
+    return fmt::format(
+      "bic{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -422,11 +561,13 @@ struct IRBitwiseEOR final : IRBinaryOpBase<IROpcodeClass::EOR> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("eor{} {}, {}, {}",
+    return fmt::format(
+      "eor{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -434,11 +575,13 @@ struct IRSub final : IRBinaryOpBase<IROpcodeClass::SUB> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("sub{} {}, {}, {}",
+    return fmt::format(
+      "sub{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -446,11 +589,13 @@ struct IRRsb final : IRBinaryOpBase<IROpcodeClass::RSB> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("rsb{} {}, {}, {}",
+    return fmt::format(
+      "rsb{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -458,11 +603,13 @@ struct IRAdd final : IRBinaryOpBase<IROpcodeClass::ADD> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("add{} {}, {}, {}",
+    return fmt::format(
+      "add{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -470,11 +617,13 @@ struct IRAdc final : IRBinaryOpBase<IROpcodeClass::ADC> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("adc{} {}, {}, {}",
+    return fmt::format(
+      "adc{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -482,11 +631,13 @@ struct IRSbc final : IRBinaryOpBase<IROpcodeClass::SBC> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("sbc{} {}, {}, {}",
+    return fmt::format(
+      "sbc{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -494,11 +645,13 @@ struct IRRsc final : IRBinaryOpBase<IROpcodeClass::RSC> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("rsc{} {}, {}, {}",
+    return fmt::format(
+      "rsc{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -506,23 +659,28 @@ struct IRBitwiseORR final : IRBinaryOpBase<IROpcodeClass::ORR> {
   using IRBinaryOpBase::IRBinaryOpBase;
 
   auto ToString() -> std::string override {
-    return fmt::format("orr{} {}, {}, {}",
+    return fmt::format(
+      "orr{} {}, {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
 struct IRMov final : IROpcodeBase<IROpcodeClass::MOV> {
   IRMov(
     IRVariable const& result,
-    IRValue source,
+    IRAnyRef source,
     bool update_host_flags
-  ) : result(result), source(source), update_host_flags(update_host_flags) {}
+  )   : result(result)
+      , source(source)
+      , update_host_flags(update_host_flags) {
+  }
 
-  IRVariable const& result;
-  IRValue source;
+  IRVarRef result;
+  IRAnyRef source;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -530,26 +688,39 @@ struct IRMov final : IROpcodeBase<IROpcodeClass::MOV> {
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &result == &var;
+    return &result.Get() == &var;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
+    source.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("mov{} {}, {}",
+    return fmt::format(
+      "mov{} {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
-      std::to_string(source));
+      std::to_string(source)
+    );
   }
 };
 
 struct IRMvn final : IROpcodeBase<IROpcodeClass::MVN> {
   IRMvn(
     IRVariable const& result,
-    IRValue source,
+    IRAnyRef source,
     bool update_host_flags
-  ) : result(result), source(source), update_host_flags(update_host_flags) {}
+  )   : result(result)
+      , source(source)
+      , update_host_flags(update_host_flags) {
+  }
 
-  IRVariable const& result;
-  IRValue source;
+  IRVarRef result;
+  IRAnyRef source;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
@@ -557,14 +728,24 @@ struct IRMvn final : IROpcodeBase<IROpcodeClass::MVN> {
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &result == &var;
+    return &result.Get() == &var;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
+    source.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("mvn{} {}, {}",
+    return fmt::format(
+      "mvn{} {}, {}",
       update_host_flags ? "s" : "",
       std::to_string(result),
-      std::to_string(source));
+      std::to_string(source)
+    );
   }
 };
 
@@ -583,36 +764,53 @@ struct IRMultiply final : IROpcodeBase<IROpcodeClass::MUL> {
   }
 
   Optional<IRVariable const&> result_hi;
-  IRVariable const& result_lo;
-  IRVariable const& lhs;
-  IRVariable const& rhs;
+  IRVarRef result_lo;
+  IRVarRef lhs;
+  IRVarRef rhs;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &var == &lhs || &var == &rhs;
+    return &var == &lhs.Get() || &var == &rhs.Get();
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result_lo || 
+    return &var == &result_lo.Get() || 
           (result_hi.HasValue() && (&result_hi.Unwrap() == &var));
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    if (result_hi.HasValue() && (&result_hi.Unwrap() == &var_old)) {
+      result_hi = var_new;
+    }
+
+    result_lo.Repoint(var_old, var_new);
+    lhs.Repoint(var_old, var_new);
+    rhs.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
     std::string result_str;
 
     if (result_hi.HasValue()) {
-      result_str = fmt::format("({}, {})",
+      result_str = fmt::format(
+        "({}, {})",
         std::to_string(result_hi.Unwrap()),
-        std::to_string(result_lo));
+        std::to_string(result_lo)
+      );
     } else {
       result_str = std::to_string(result_lo);
     }
 
-    return fmt::format("mul{} {}, {}, {}",
+    return fmt::format(
+      "mul{} {}, {}, {}",
       update_host_flags ? "s" : "",
       result_str,
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -634,40 +832,51 @@ struct IRAdd64 final : IROpcodeBase<IROpcodeClass::ADD64> {
       , update_host_flags(update_host_flags) {
   }
 
-  IRVariable const& result_hi;
-  IRVariable const& result_lo;
-  IRVariable const& lhs_hi;
-  IRVariable const& lhs_lo;
-  IRVariable const& rhs_hi;
-  IRVariable const& rhs_lo;
+  IRVarRef result_hi;
+  IRVarRef result_lo;
+  IRVarRef lhs_hi;
+  IRVarRef lhs_lo;
+  IRVarRef rhs_hi;
+  IRVarRef rhs_lo;
   bool update_host_flags;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &var == &lhs_hi ||
-           &var == &lhs_lo ||
-           &var == &rhs_hi ||
-           &var == &rhs_lo;
+    return &var == &lhs_hi.Get() ||
+           &var == &lhs_lo.Get() ||
+           &var == &rhs_hi.Get() ||
+           &var == &rhs_lo.Get();
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result_hi || &var == &result_lo;
+    return &var == &result_hi.Get() || &var == &result_lo.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result_hi.Repoint(var_old, var_new);
+    result_lo.Repoint(var_old, var_new);
+    lhs_hi.Repoint(var_old, var_new);
+    lhs_lo.Repoint(var_old, var_new);
+    rhs_hi.Repoint(var_old, var_new);
+    rhs_lo.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("add{} ({}, {}), ({}, {}), ({}, {})",
+    return fmt::format(
+      "add{} ({}, {}), ({}, {}), ({}, {})",
       update_host_flags ? "s": "",
       std::to_string(result_hi),
       std::to_string(result_lo),
       std::to_string(lhs_hi),
       std::to_string(lhs_lo),
       std::to_string(rhs_hi),
-      std::to_string(rhs_lo));
+      std::to_string(rhs_lo)
+    );
   }
-
 };
 
-// TODO: maybe the IR prefixes everywhere are a bit silly...
-// TODO: is there a nicer solution that is scoped but allows combining flags easily?
 enum IRMemoryFlags {
   Byte = 1,
   Half = 2,
@@ -686,18 +895,29 @@ struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
     IRMemoryFlags flags,
     IRVariable const& result,
     IRVariable const& address
-  ) : flags(flags), result(result), address(address) {}
+  )   : flags(flags)
+      , result(result)
+      , address(address) {
+  }
 
   IRMemoryFlags flags;
-  IRVariable const& result;
-  IRVariable const& address;
+  IRVarRef result;
+  IRVarRef address;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &address == &var;
+    return &address.Get() == &var;
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &result == &var;
+    return &result.Get() == &var;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
+    address.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
@@ -706,44 +926,58 @@ struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
     if (flags & IRMemoryFlags::Half) size = "h";
     if (flags & IRMemoryFlags::Word) size = "w";
 
-    return fmt::format("ldr.{}{} {}, [{}]",
+    return fmt::format(
+      "ldr.{}{} {}, [{}]",
       size,
       (flags & IRMemoryFlags::Rotate) ? "r" : "",
       std::to_string(result),
-      std::to_string(address));
+      std::to_string(address)
+    );
   }
 };
 
-// TODO: is there a valid case where we'd like source to be a constant?
 struct IRMemoryWrite final : IROpcodeBase<IROpcodeClass::MemoryWrite> {
   IRMemoryWrite(
     IRMemoryFlags flags,
     IRVariable const& source,
     IRVariable const& address
-  ) : flags(flags), source(source), address(address) {}
+  )   : flags(flags)
+      , source(source)
+      , address(address) {
+  }
 
   IRMemoryFlags flags;
-  IRVariable const& source;
-  IRVariable const& address;
+  IRVarRef source;
+  IRVarRef address;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &address == &var || &source == &var;
+    return &address.Get() == &var || &source.Get() == &var;
   }
 
   auto Writes(IRVariable const& var) -> bool override {
     return false;
   }
 
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    source.Repoint(var_old, var_new);
+    address.Repoint(var_old, var_new);
+  }
+
   auto ToString() -> std::string override {
     auto size = "b";
 
     if (flags & IRMemoryFlags::Half) size = "h";
     if (flags & IRMemoryFlags::Word) size = "w";
 
-    return fmt::format("str.{} {}, [{}]",
+    return fmt::format(
+      "str.{} {}, [{}]",
       size,
       std::to_string(source),
-      std::to_string(address));
+      std::to_string(address)
+    );
   }
 };
 
@@ -752,25 +986,39 @@ struct IRFlush final : IROpcodeBase<IROpcodeClass::Flush> {
     IRVariable const& address_out,
     IRVariable const& address_in,
     IRVariable const& cpsr_in
-  ) : address_out(address_out), address_in(address_in), cpsr_in(cpsr_in) {}
+  )   : address_out(address_out)
+      , address_in(address_in)
+      , cpsr_in(cpsr_in) {
+  }
 
-  IRVariable const& address_out;
-  IRVariable const& address_in;
-  IRVariable const& cpsr_in;
+  IRVarRef address_out;
+  IRVarRef address_in;
+  IRVarRef cpsr_in;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &var == &address_in || &var == &cpsr_in;
+    return &var == &address_in.Get() || &var == &cpsr_in.Get();
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &address_out;
+    return &var == &address_out.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    address_out.Repoint(var_old, var_new);
+    address_in.Repoint(var_old, var_new);
+    cpsr_in.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("flush {}, {}, {}",
+    return fmt::format(
+      "flush {}, {}, {}",
       std::to_string(address_out),
       std::to_string(address_in),
-      std::to_string(cpsr_in));
+      std::to_string(cpsr_in)
+    );
   }
 };
 
@@ -780,27 +1028,43 @@ struct IRFlushExchange final : IROpcodeBase<IROpcodeClass::FlushExchange> {
     IRVariable const& cpsr_out,
     IRVariable const& address_in,
     IRVariable const& cpsr_in
-  ) : address_out(address_out), cpsr_out(cpsr_out), address_in(address_in), cpsr_in(cpsr_in) {}
+  )   : address_out(address_out)
+      , cpsr_out(cpsr_out)
+      , address_in(address_in)
+      , cpsr_in(cpsr_in) {
+  }
 
-  IRVariable const& address_out;
-  IRVariable const& cpsr_out;
-  IRVariable const& address_in;
-  IRVariable const& cpsr_in;
+  IRVarRef address_out;
+  IRVarRef cpsr_out;
+  IRVarRef address_in;
+  IRVarRef cpsr_in;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &var == &address_in || &var == &cpsr_in;
+    return &var == &address_in.Get() || &var == &cpsr_in.Get();
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &address_out || &var == &cpsr_out;
+    return &var == &address_out.Get() || &var == &cpsr_out.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    address_out.Repoint(var_old, var_new);
+    cpsr_out.Repoint(var_old, var_new);
+    address_in.Repoint(var_old, var_new);
+    cpsr_in.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("flushxchg {}, {}, {}, {}",
+    return fmt::format(
+      "flushxchg {}, {}, {}, {}",
       std::to_string(address_out),
       std::to_string(cpsr_out),
       std::to_string(address_in),
-      std::to_string(cpsr_in));
+      std::to_string(cpsr_in)
+    );
   }
 };
 
@@ -808,23 +1072,33 @@ struct IRCountLeadingZeros final : IROpcodeBase<IROpcodeClass::CLZ> {
   IRCountLeadingZeros(
     IRVariable const& result,
     IRVariable const& operand
-  ) : result(result), operand(operand) {}
+  )   : result(result), operand(operand) {}
 
-  IRVariable const& result;
-  IRVariable const& operand;
+  IRVarRef result;
+  IRVarRef operand;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &var == &operand;
+    return &var == &operand.Get();
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result;
+    return &var == &result.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
+    operand.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("clz {}, {}",
+    return fmt::format(
+      "clz {}, {}",
       std::to_string(result),
-      std::to_string(operand));
+      std::to_string(operand)
+    );
   }
 };
 
@@ -833,25 +1107,36 @@ struct IRSaturatingAdd final : IROpcodeBase<IROpcodeClass::QADD> {
     IRVariable const& result,
     IRVariable const& lhs,
     IRVariable const& rhs
-  ) : result(result), lhs(lhs), rhs(rhs) {}
+  )   : result(result), lhs(lhs), rhs(rhs) {}
 
-  IRVariable const& result;
-  IRVariable const& lhs;
-  IRVariable const& rhs;
+  IRVarRef result;
+  IRVarRef lhs;
+  IRVarRef rhs;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &var == &lhs || &var == &rhs;
+    return &var == &lhs.Get() || &var == &rhs.Get();
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result;
+    return &var == &result.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
+    lhs.Repoint(var_old, var_new);
+    rhs.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("qadd {}, {}, {}",
+    return fmt::format(
+      "qadd {}, {}, {}",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -862,23 +1147,34 @@ struct IRSaturatingSub final : IROpcodeBase<IROpcodeClass::QSUB> {
     IRVariable const& rhs
   ) : result(result), lhs(lhs), rhs(rhs) {}
 
-  IRVariable const& result;
-  IRVariable const& lhs;
-  IRVariable const& rhs;
+  IRVarRef result;
+  IRVarRef lhs;
+  IRVarRef rhs;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &var == &lhs || &var == &rhs;
+    return &var == &lhs.Get() || &var == &rhs.Get();
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result;
+    return &var == &result.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
+    lhs.Repoint(var_old, var_new);
+    rhs.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("qsub {}, {}, {}",
+    return fmt::format(
+      "qsub {}, {}, {}",
       std::to_string(result),
       std::to_string(lhs),
-      std::to_string(rhs));
+      std::to_string(rhs)
+    );
   }
 };
 
@@ -890,16 +1186,15 @@ struct IRReadCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MRC> {
     uint cn,
     uint cm,
     uint opcode2
-  )   :
-    result(result),
-    coprocessor_id(coprocessor_id),
-    opcode1(opcode1),
-    cn(cn),
-    cm(cm),
-    opcode2(opcode2) {
+  )   : result(result)
+      , coprocessor_id(coprocessor_id)
+      , opcode1(opcode1)
+      , cn(cn)
+      , cm(cm)
+      , opcode2(opcode2) {
   }
 
-  IRVariable const& result;
+  IRVarRef result;
   uint coprocessor_id;
   uint opcode1;
   uint cn;
@@ -911,38 +1206,46 @@ struct IRReadCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MRC> {
   }
 
   auto Writes(IRVariable const& var) -> bool override {
-    return &var == &result;
+    return &var == &result.Get();
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    result.Repoint(var_old, var_new);
   }
 
   auto ToString() -> std::string override {
-    return fmt::format("mrc {}, cp{}, #{}, {}, {}, #{}",
+    return fmt::format(
+      "mrc {}, cp{}, #{}, {}, {}, #{}",
       std::to_string(result),
       coprocessor_id,
       opcode1,
       cn,
       cm,
-      opcode2);
+      opcode2
+    );
   }
 };
 
 struct IRWriteCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MCR> {
   IRWriteCoprocessorRegister(
-    IRValue value,
+    IRAnyRef value,
     uint coprocessor_id,
     uint opcode1,
     uint cn,
     uint cm,
     uint opcode2
-  )   :
-    value(value),
-    coprocessor_id(coprocessor_id),
-    opcode1(opcode1),
-    cn(cn),
-    cm(cm),
-    opcode2(opcode2) {
+  )   : value(value)
+      , coprocessor_id(coprocessor_id)
+      , opcode1(opcode1)
+      , cn(cn)
+      , cm(cm)
+      , opcode2(opcode2) {
   }
 
-  IRValue value;
+  IRAnyRef value;
   uint coprocessor_id;
   uint opcode1;
   uint cn;
@@ -957,14 +1260,23 @@ struct IRWriteCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MCR> {
     return false;
   }
 
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+    value.Repoint(var_old, var_new);
+  }
+
   auto ToString() -> std::string override {
-    return fmt::format("mcr {}, cp{}, #{}, {}, {}, #{}",
+    return fmt::format(
+      "mcr {}, cp{}, #{}, {}, {}, #{}",
       std::to_string(value),
       coprocessor_id,
       opcode1,
       cn,
       cm,
-      opcode2);
+      opcode2
+    );
   }
 };
 

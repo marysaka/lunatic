@@ -400,7 +400,7 @@ void X64Backend::CompileLoadGPR(CompileContext const& context, IRLoadGPR* op) {
   DESTRUCTURE_CONTEXT;
 
   auto address  = rcx + state.GetOffsetToGPR(op->reg.mode, op->reg.reg);
-  auto host_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto host_reg = reg_alloc.GetVariableHostReg(op->result.Get());
 
   code.mov(host_reg, dword[address]);
 }
@@ -423,7 +423,7 @@ void X64Backend::CompileLoadSPSR(CompileContext const& context, IRLoadSPSR* op) 
   DESTRUCTURE_CONTEXT;
 
   auto address = rcx + state.GetOffsetToSPSR(op->mode);
-  auto host_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto host_reg = reg_alloc.GetVariableHostReg(op->result.Get());
 
   code.mov(host_reg, dword[address]);
 }
@@ -446,7 +446,7 @@ void X64Backend::CompileLoadCPSR(CompileContext const& context, IRLoadCPSR* op) 
   DESTRUCTURE_CONTEXT;
 
   auto address = rcx + state.GetOffsetToCPSR();
-  auto host_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto host_reg = reg_alloc.GetVariableHostReg(op->result.Get());
 
   code.mov(host_reg, dword[address]);
 }
@@ -477,8 +477,8 @@ void X64Backend::CompileUpdateFlags(CompileContext const& context, IRUpdateFlags
   DESTRUCTURE_CONTEXT;
 
   u32 mask = 0;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
-  auto input_reg  = reg_alloc.GetVariableHostReg(op->input);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto input_reg  = reg_alloc.GetVariableHostReg(op->input.Get());
 
   if (op->flag_n) mask |= 0x80000000;
   if (op->flag_z) mask |= 0x40000000;
@@ -504,8 +504,8 @@ void X64Backend::CompileUpdateFlags(CompileContext const& context, IRUpdateFlags
 void X64Backend::CompileUpdateSticky(CompileContext const& context, IRUpdateSticky* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
-  auto input_reg  = reg_alloc.GetVariableHostReg(op->input);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto input_reg  = reg_alloc.GetVariableHostReg(op->input.Get());
 
   code.movzx(result_reg, al);
   code.shl(result_reg, 27);
@@ -516,8 +516,8 @@ void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* o
   DESTRUCTURE_CONTEXT;
 
   auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
 
   code.mov(result_reg, operand_reg);
   code.shl(result_reg.cvt64(), 32);
@@ -553,8 +553,8 @@ void X64Backend::CompileLSR(CompileContext const& context, IRLogicalShiftRight* 
   DESTRUCTURE_CONTEXT;
 
   auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
 
   code.mov(result_reg, operand_reg);
 
@@ -593,8 +593,8 @@ void X64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRigh
   DESTRUCTURE_CONTEXT;
 
   auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
 
   // Mirror sign-bit in the upper 32-bit of the full 64-bit register.
   code.movsxd(result_reg.cvt64(), operand_reg);
@@ -639,8 +639,8 @@ void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
   DESTRUCTURE_CONTEXT;
 
   auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
   auto label_done = Xbyak::Label{};
 
   code.mov(result_reg, operand_reg);
@@ -692,7 +692,7 @@ void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
 void X64Backend::CompileAND(CompileContext const& context, IRBitwiseAND* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
@@ -729,7 +729,7 @@ void X64Backend::CompileBIC(CompileContext const& context, IRBitwiseBIC* op) {
   DESTRUCTURE_CONTEXT;
 
   auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
@@ -754,7 +754,7 @@ void X64Backend::CompileBIC(CompileContext const& context, IRBitwiseBIC* op) {
 void X64Backend::CompileEOR(CompileContext const& context, IRBitwiseEOR* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
@@ -806,7 +806,7 @@ void X64Backend::CompileEOR(CompileContext const& context, IRBitwiseEOR* op) {
 void X64Backend::CompileSUB(CompileContext const& context, IRSub* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
@@ -846,7 +846,7 @@ void X64Backend::CompileRSB(CompileContext const& context, IRRsb* op) {
   DESTRUCTURE_CONTEXT;
 
   auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
@@ -871,7 +871,7 @@ void X64Backend::CompileRSB(CompileContext const& context, IRRsb* op) {
 void X64Backend::CompileADD(CompileContext const& context, IRAdd* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   if (op->result.IsNull() && !op->update_host_flags) {
     return;
@@ -915,7 +915,7 @@ void X64Backend::CompileADC(CompileContext const& context, IRAdc* op) {
   DESTRUCTURE_CONTEXT;
 
   auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   code.sahf();
 
@@ -941,7 +941,7 @@ void X64Backend::CompileSBC(CompileContext const& context, IRSbc* op) {
   DESTRUCTURE_CONTEXT;
 
   auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   code.sahf();
   code.cmc();
@@ -970,7 +970,7 @@ void X64Backend::CompileRSC(CompileContext const& context, IRRsc* op) {
   DESTRUCTURE_CONTEXT;
 
   auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   code.sahf();
   code.cmc();
@@ -999,7 +999,7 @@ void X64Backend::CompileORR(CompileContext const& context, IRBitwiseORR* op) {
   DESTRUCTURE_CONTEXT;
 
   auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
@@ -1023,7 +1023,7 @@ void X64Backend::CompileORR(CompileContext const& context, IRBitwiseORR* op) {
 void X64Backend::CompileMOV(CompileContext const& context, IRMov* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
 
   if (op->source.IsConstant()) {
     code.mov(result_reg, op->source.GetConst().value);
@@ -1042,7 +1042,7 @@ void X64Backend::CompileMOV(CompileContext const& context, IRMov* op) {
 void X64Backend::CompileMVN(CompileContext const& context, IRMvn* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
 
   if (op->source.IsConstant()) {
     code.mov(result_reg, op->source.GetConst().value);
@@ -1063,15 +1063,15 @@ void X64Backend::CompileMVN(CompileContext const& context, IRMvn* op) {
 void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo);
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
-  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs);
+  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo.Get());
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
 
   if (op->result_hi.HasValue()) {
     auto result_hi_reg = reg_alloc.GetVariableHostReg(op->result_hi.Unwrap());
     auto rhs_ext_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
-    if (op->lhs.data_type == IRDataType::SInt32) {
+    if (op->lhs.Get().data_type == IRDataType::SInt32) {
       code.movsxd(result_hi_reg.cvt64(), lhs_reg);
       code.movsxd(rhs_ext_reg, rhs_reg);
     } else {
@@ -1102,12 +1102,12 @@ void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
 void X64Backend::CompileADD64(CompileContext const& context, IRAdd64* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_hi_reg = reg_alloc.GetVariableHostReg(op->result_hi);
-  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo);
-  auto lhs_hi_reg = reg_alloc.GetVariableHostReg(op->lhs_hi);
-  auto lhs_lo_reg = reg_alloc.GetVariableHostReg(op->lhs_lo);
-  auto rhs_hi_reg = reg_alloc.GetVariableHostReg(op->rhs_hi);
-  auto rhs_lo_reg = reg_alloc.GetVariableHostReg(op->rhs_lo);
+  auto result_hi_reg = reg_alloc.GetVariableHostReg(op->result_hi.Get());
+  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo.Get());
+  auto lhs_hi_reg = reg_alloc.GetVariableHostReg(op->lhs_hi.Get());
+  auto lhs_lo_reg = reg_alloc.GetVariableHostReg(op->lhs_lo.Get());
+  auto rhs_hi_reg = reg_alloc.GetVariableHostReg(op->rhs_hi.Get());
+  auto rhs_lo_reg = reg_alloc.GetVariableHostReg(op->rhs_lo.Get());
 
   if (op->update_host_flags) {
     // Pack (lhs_hi, lhs_lo) into result_hi
@@ -1137,8 +1137,8 @@ void X64Backend::CompileADD64(CompileContext const& context, IRAdd64* op) {
 void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
-  auto address_reg = reg_alloc.GetVariableHostReg(op->address);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto address_reg = reg_alloc.GetVariableHostReg(op->address.Get());
   auto flags = op->flags;
 
   auto label_slowmem = Xbyak::Label{};
@@ -1367,8 +1367,8 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto source_reg  = reg_alloc.GetVariableHostReg(op->source);
-  auto address_reg = reg_alloc.GetVariableHostReg(op->address);
+  auto source_reg  = reg_alloc.GetVariableHostReg(op->source.Get());
+  auto address_reg = reg_alloc.GetVariableHostReg(op->address.Get());
   auto scratch_reg = reg_alloc.GetTemporaryHostReg();
   auto flags = op->flags;
 
@@ -1542,9 +1542,9 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
 void X64Backend::CompileFlush(CompileContext const& context, IRFlush* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto cpsr_reg = reg_alloc.GetVariableHostReg(op->cpsr_in);
-  auto r15_in_reg = reg_alloc.GetVariableHostReg(op->address_in);
-  auto r15_out_reg = reg_alloc.GetVariableHostReg(op->address_out);
+  auto cpsr_reg = reg_alloc.GetVariableHostReg(op->cpsr_in.Get());
+  auto r15_in_reg = reg_alloc.GetVariableHostReg(op->address_in.Get());
+  auto r15_out_reg = reg_alloc.GetVariableHostReg(op->address_out.Get());
 
   // Thanks to @wheremyfoodat (github.com/wheremyfoodat) for coming up with this.
   code.test(cpsr_reg, 1 << 5);
@@ -1556,10 +1556,10 @@ void X64Backend::CompileFlush(CompileContext const& context, IRFlush* op) {
 void X64Backend::CompileFlushExchange(const CompileContext &context, IRFlushExchange *op) {
   DESTRUCTURE_CONTEXT;
 
-  auto address_out_reg = reg_alloc.GetVariableHostReg(op->address_out);
-  auto address_in_reg = reg_alloc.GetVariableHostReg(op->address_in);
-  auto cpsr_out_reg = reg_alloc.GetVariableHostReg(op->cpsr_out);
-  auto cpsr_in_reg = reg_alloc.GetVariableHostReg(op->cpsr_in);
+  auto address_out_reg = reg_alloc.GetVariableHostReg(op->address_out.Get());
+  auto address_in_reg = reg_alloc.GetVariableHostReg(op->address_in.Get());
+  auto cpsr_out_reg = reg_alloc.GetVariableHostReg(op->cpsr_out.Get());
+  auto cpsr_in_reg = reg_alloc.GetVariableHostReg(op->cpsr_in.Get());
 
   auto label_arm = Xbyak::Label{};
   auto label_done = Xbyak::Label{};
@@ -1591,18 +1591,19 @@ void X64Backend::CompileFlushExchange(const CompileContext &context, IRFlushExch
 
 void X64Backend::CompileCLZ(CompileContext const& context, IRCountLeadingZeros* op) {
   DESTRUCTURE_CONTEXT;
+
   code.lzcnt(
-    reg_alloc.GetVariableHostReg(op->result),
-    reg_alloc.GetVariableHostReg(op->operand)
+    reg_alloc.GetVariableHostReg(op->result.Get()),
+    reg_alloc.GetVariableHostReg(op->operand.Get())
   );
 }
 
 void X64Backend::CompileQADD(CompileContext const& context, IRSaturatingAdd* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
-  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
   auto temp_reg = reg_alloc.GetTemporaryHostReg();
   auto label_skip_saturate = Xbyak::Label{};
 
@@ -1621,9 +1622,9 @@ void X64Backend::CompileQADD(CompileContext const& context, IRSaturatingAdd* op)
 void X64Backend::CompileQSUB(CompileContext const& context, IRSaturatingSub* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result);
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs);
-  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs);
+  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
   auto temp_reg = reg_alloc.GetTemporaryHostReg();
   auto label_skip_saturate = Xbyak::Label{};
 
@@ -1673,7 +1674,7 @@ void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegi
   Pop(code, {rsi, rdi});
 #endif
   Pop(code, {rcx, rdx, r8, r9, r10, r11});
-  code.mov(reg_alloc.GetVariableHostReg(op->result), eax);
+  code.mov(reg_alloc.GetVariableHostReg(op->result.Get()), eax);
   code.pop(rax);
 }
 
