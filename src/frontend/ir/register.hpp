@@ -26,17 +26,18 @@ struct IRGuestReg {
 
   auto ID() -> int {
     auto id = static_cast<int>(reg);
-    auto mode = this->mode; // TODO!!!
 
     if (id <= 7 || (id <= 12 && mode != Mode::FIQ) || id == 15) {
       return id;
     }
 
     if (mode == Mode::User) {
-      mode = Mode::System;
+      id |= static_cast<int>(Mode::System) << 4;
+    } else {
+      id |= static_cast<int>(mode) << 4;
     }
 
-    return (static_cast<int>(mode) << 4) | id;
+    return id;
   }
 };
 

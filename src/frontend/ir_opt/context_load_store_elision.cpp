@@ -16,33 +16,27 @@ void IRContextLoadStoreElisionPass::Run(IREmitter& emitter) {
 }
 
 void IRContextLoadStoreElisionPass::RemoveLoads(IREmitter& emitter) {
-  // TODO: do not hardcode the number of register IDs.
-
   auto& code = emitter.Code();
   auto it = code.begin();
   auto end = code.end();
   IRAnyRef current_gpr_value[512] {};
   IRAnyRef current_cpsr_value;
 
-  // TODO: move this to the pass base class, probably.
   auto Move = [&](IRVariable const& dst, IRAnyRef src) {
     code.insert(it, std::make_unique<IRMov>(dst, src, false));
   };
 
   while (it != end) {
-    auto& op_ = *it;
-    auto klass = op_->GetClass();
-
-    switch (klass) {
+    switch (it->get()->GetClass()) {
       case IROpcodeClass::StoreGPR: {
-        auto op = lunatic_cast<IRStoreGPR>(op_.get());
+        auto op = lunatic_cast<IRStoreGPR>(it->get());
         auto gpr_id = op->reg.ID();
 
         current_gpr_value[gpr_id] = op->value;
         break;
       }
       case IROpcodeClass::LoadGPR: {
-        auto  op = lunatic_cast<IRLoadGPR>(op_.get());
+        auto  op = lunatic_cast<IRLoadGPR>(it->get());
         auto  gpr_id  = op->reg.ID();
         auto  var_src = current_gpr_value[gpr_id];
         auto& var_dst = op->result.Get();
@@ -61,11 +55,11 @@ void IRContextLoadStoreElisionPass::RemoveLoads(IREmitter& emitter) {
         break;
       }
       case IROpcodeClass::StoreCPSR: {
-        current_cpsr_value = lunatic_cast<IRStoreCPSR>(op_.get())->value;
+        current_cpsr_value = lunatic_cast<IRStoreCPSR>(it->get())->value;
         break;
       }
       case IROpcodeClass::LoadCPSR: {
-        auto  op = lunatic_cast<IRLoadCPSR>(op_.get());
+        auto  op = lunatic_cast<IRLoadCPSR>(it->get());
         auto  var_src = current_cpsr_value;
         auto& var_dst = op->result.Get();
 
@@ -92,8 +86,6 @@ void IRContextLoadStoreElisionPass::RemoveLoads(IREmitter& emitter) {
 }
 
 void IRContextLoadStoreElisionPass::RemoveStores(IREmitter& emitter) {
-  // TODO: do not hardcode the number of register IDs.
-
   auto& code = emitter.Code();
   auto it = code.rbegin();
   auto end = code.rend();
@@ -101,12 +93,9 @@ void IRContextLoadStoreElisionPass::RemoveStores(IREmitter& emitter) {
   bool cpsr_already_stored = false;
 
   while (it != end) {
-    auto& op_ = *it;
-    auto klass = op_->GetClass();
-
-    switch (klass) {
+    switch (it->get()->GetClass()) {
       case IROpcodeClass::StoreGPR: {
-        auto op = lunatic_cast<IRStoreGPR>(op_.get());
+        auto op = lunatic_cast<IRStoreGPR>(it->get());
         auto gpr_id = op->reg.ID();
 
         if (gpr_already_stored[gpr_id]) {
@@ -128,7 +117,9 @@ void IRContextLoadStoreElisionPass::RemoveStores(IREmitter& emitter) {
         }
         break;
       }
-      default: break;
+      default: {
+        break;
+      }
     }
 
     ++it;
