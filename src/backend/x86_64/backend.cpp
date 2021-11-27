@@ -1792,20 +1792,32 @@ void X64Backend::CompileFlush(CompileContext const& context, IRFlush* op) {
 void X64Backend::CompileFlushExchange(const CompileContext &context, IRFlushExchange *op) {
   DESTRUCTURE_CONTEXT;
 
-  auto address_out_reg = reg_alloc.GetVariableHostReg(op->address_out.Get());
-  auto address_in_reg = reg_alloc.GetVariableHostReg(op->address_in.Get());
-  auto cpsr_out_reg = reg_alloc.GetVariableHostReg(op->cpsr_out.Get());
-  auto cpsr_in_reg = reg_alloc.GetVariableHostReg(op->cpsr_in.Get());
+  auto& address_in_var = op->address_in.Get();
+  auto  address_in_reg = reg_alloc.GetVariableHostReg(address_in_var);
+  auto& cpsr_in_var = op->cpsr_in.Get();
+  auto  cpsr_in_reg = reg_alloc.GetVariableHostReg(cpsr_in_var);
+
+  auto& address_out_var = op->address_out.Get();
+  auto& cpsr_out_var = op->cpsr_out.Get();
+
+  reg_alloc.ReleaseVarAndReuseHostReg(address_in_var, address_out_var);
+  reg_alloc.ReleaseVarAndReuseHostReg(cpsr_in_var, cpsr_out_var);
+
+  auto address_out_reg = reg_alloc.GetVariableHostReg(address_out_var);
+  auto cpsr_out_reg = reg_alloc.GetVariableHostReg(cpsr_out_var);
 
   auto label_arm = Xbyak::Label{};
   auto label_done = Xbyak::Label{};
 
-  // TODO: fix this horrible codegen.
-  // a) try to make this branch-less
-  // b) do we always need to mask with ~1 / ~3?
+  if (address_out_reg != address_in_reg) {
+    code.mov(address_out_reg, address_in_reg);
+  }
 
-  code.mov(address_out_reg, address_in_reg);
-  code.mov(cpsr_out_reg, cpsr_in_reg);
+  if (cpsr_out_reg != cpsr_in_reg) {
+    code.mov(cpsr_out_reg, cpsr_in_reg);
+  }
+
+  // TODO: attempt to make this branchless.
 
   code.test(address_in_reg, 1);
   code.je(label_arm);
