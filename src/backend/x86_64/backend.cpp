@@ -523,11 +523,19 @@ void X64Backend::CompileUpdateSticky(CompileContext const& context, IRUpdateStic
 void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
+  auto& amount = op->amount;
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto operand_reg = reg_alloc.GetVariableHostReg(operand_var);
 
-  code.mov(result_reg, operand_reg);
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+  if (result_reg != operand_reg) {
+    code.mov(result_reg, operand_reg);
+  }
+  
   code.shl(result_reg.cvt64(), 32);
 
   if (amount.IsConstant()) {
@@ -536,7 +544,7 @@ void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* o
     }
     code.shl(result_reg.cvt64(), u8(std::min(amount.GetConst().value, 33U)));
   } else {
-    auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
+    auto amount_reg = reg_alloc.GetVariableHostReg(amount.GetVar());
 
     code.push(rcx);
     code.mov(cl, 33);
@@ -560,11 +568,18 @@ void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* o
 void X64Backend::CompileLSR(CompileContext const& context, IRLogicalShiftRight* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
+  auto& amount = op->amount;
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto operand_reg = reg_alloc.GetVariableHostReg(operand_var);
 
-  code.mov(result_reg, operand_reg);
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+  
+  if (result_reg != operand_reg) {
+    code.mov(result_reg, operand_reg);
+  }
 
   if (amount.IsConstant()) {
     auto amount_value = amount.GetConst().value;
@@ -600,9 +615,14 @@ void X64Backend::CompileLSR(CompileContext const& context, IRLogicalShiftRight* 
 void X64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRight* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
+  auto& amount = op->amount;
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto operand_reg = reg_alloc.GetVariableHostReg(operand_var);
+
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
 
   // Mirror sign-bit in the upper 32-bit of the full 64-bit register.
   code.movsxd(result_reg.cvt64(), operand_reg);
@@ -646,12 +666,19 @@ void X64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRigh
 void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
+  auto& amount = op->amount;
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto operand_reg = reg_alloc.GetVariableHostReg(operand_var);
+
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
   auto label_done = Xbyak::Label{};
 
-  code.mov(result_reg, operand_reg);
+  if (result_reg != operand_reg) {
+    code.mov(result_reg, operand_reg);
+  }
 
   if (amount.IsConstant()) {
     auto amount_value = amount.GetConst().value;
