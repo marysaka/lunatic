@@ -1076,8 +1076,13 @@ void X64Backend::CompileADC(CompileContext const& context, IRAdc* op) {
 void X64Backend::CompileSBC(CompileContext const& context, IRSbc* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& result_var = op->result.Unwrap();
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
+
+  reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
 
   code.sahf();
   code.cmc();
@@ -1085,13 +1090,17 @@ void X64Backend::CompileSBC(CompileContext const& context, IRSbc* op) {
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
 
-    code.mov(result_reg, lhs_reg);
+    if (result_reg != lhs_reg) {
+      code.mov(result_reg, lhs_reg);
+    }
     code.sbb(result_reg, imm);
     code.cmc();
   } else {
     auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
 
-    code.mov(result_reg, lhs_reg);
+    if (result_reg != lhs_reg) {
+      code.mov(result_reg, lhs_reg);
+    }
     code.sbb(result_reg, rhs_reg);
     code.cmc();
   }
