@@ -1852,16 +1852,30 @@ void X64Backend::CompileCLZ(CompileContext const& context, IRCountLeadingZeros* 
 void X64Backend::CompileQADD(CompileContext const& context, IRSaturatingAdd* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
-  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
+  auto& result_var = op->result.Get();
+  auto& lhs_var = op->lhs.Get();
+  auto& rhs_var = op->rhs.Get();
+
+  auto lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
+  auto rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
   auto temp_reg = reg_alloc.GetTemporaryHostReg();
   auto label_skip_saturate = Xbyak::Label{};
 
-  code.mov(result_reg, lhs_reg);
-  code.add(result_reg, rhs_reg);
-  code.jno(label_skip_saturate);
+  reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+  reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
 
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+  if (result_reg == lhs_reg) {
+    code.add(lhs_reg, rhs_reg);
+  } else if (result_reg == rhs_reg) {
+    code.add(rhs_reg, lhs_reg);
+  } else {
+    code.mov(result_reg, lhs_reg);
+    code.add(result_reg, rhs_reg);
+  }
+
+  code.jno(label_skip_saturate);
   code.mov(temp_reg, 0x7FFF'FFFF);
   code.mov(result_reg, 0x8000'0000);
   code.cmovs(result_reg, temp_reg);
@@ -1873,16 +1887,25 @@ void X64Backend::CompileQADD(CompileContext const& context, IRSaturatingAdd* op)
 void X64Backend::CompileQSUB(CompileContext const& context, IRSaturatingSub* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
-  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
+  auto& result_var = op->result.Get();
+  auto& lhs_var = op->lhs.Get();
+  auto& rhs_var = op->rhs.Get();
+
+  auto lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
+  auto rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
   auto temp_reg = reg_alloc.GetTemporaryHostReg();
   auto label_skip_saturate = Xbyak::Label{};
 
-  code.mov(result_reg, lhs_reg);
-  code.sub(result_reg, rhs_reg);
-  code.jno(label_skip_saturate);
+  reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
 
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+  if (result_reg != lhs_reg) {
+    code.mov(result_reg, lhs_reg);
+  }
+  code.sub(result_reg, rhs_reg);
+
+  code.jno(label_skip_saturate);
   code.mov(temp_reg, 0x7FFF'FFFF);
   code.mov(result_reg, 0x8000'0000);
   code.cmovs(result_reg, temp_reg);
