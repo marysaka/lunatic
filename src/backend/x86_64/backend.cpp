@@ -477,8 +477,13 @@ void X64Backend::CompileUpdateFlags(CompileContext const& context, IRUpdateFlags
   DESTRUCTURE_CONTEXT;
 
   u32 mask = 0;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto input_reg  = reg_alloc.GetVariableHostReg(op->input.Get());
+  auto& result_var = op->result.Get();
+  auto& input_var = op->input.Get();
+  auto input_reg  = reg_alloc.GetVariableHostReg(input_var);
+
+  reg_alloc.ReleaseVarAndReuseHostReg(input_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
 
   if (op->flag_n) mask |= 0x80000000;
   if (op->flag_z) mask |= 0x40000000;
@@ -495,8 +500,11 @@ void X64Backend::CompileUpdateFlags(CompileContext const& context, IRUpdateFlags
   code.shl(flags_reg, 28);
   code.and_(flags_reg, mask);
 
+  if (result_reg != input_reg) {
+    code.mov(result_reg, input_reg);
+  }
+
   // Clear the bits to be updated, then OR the new values.
-  code.mov(result_reg, input_reg);
   code.and_(result_reg, ~mask);
   code.or_(result_reg, flags_reg);
 }
@@ -515,11 +523,19 @@ void X64Backend::CompileUpdateSticky(CompileContext const& context, IRUpdateStic
 void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
+  auto& amount = op->amount;
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto operand_reg = reg_alloc.GetVariableHostReg(operand_var);
 
-  code.mov(result_reg, operand_reg);
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+  if (result_reg != operand_reg) {
+    code.mov(result_reg, operand_reg);
+  }
+  
   code.shl(result_reg.cvt64(), 32);
 
   if (amount.IsConstant()) {
@@ -528,7 +544,7 @@ void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* o
     }
     code.shl(result_reg.cvt64(), u8(std::min(amount.GetConst().value, 33U)));
   } else {
-    auto amount_reg = reg_alloc.GetVariableHostReg(op->amount.GetVar());
+    auto amount_reg = reg_alloc.GetVariableHostReg(amount.GetVar());
 
     code.push(rcx);
     code.mov(cl, 33);
@@ -552,11 +568,18 @@ void X64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft* o
 void X64Backend::CompileLSR(CompileContext const& context, IRLogicalShiftRight* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
+  auto& amount = op->amount;
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto operand_reg = reg_alloc.GetVariableHostReg(operand_var);
 
-  code.mov(result_reg, operand_reg);
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+  
+  if (result_reg != operand_reg) {
+    code.mov(result_reg, operand_reg);
+  }
 
   if (amount.IsConstant()) {
     auto amount_value = amount.GetConst().value;
@@ -592,9 +615,14 @@ void X64Backend::CompileLSR(CompileContext const& context, IRLogicalShiftRight* 
 void X64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRight* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
+  auto& amount = op->amount;
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto operand_reg = reg_alloc.GetVariableHostReg(operand_var);
+
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
 
   // Mirror sign-bit in the upper 32-bit of the full 64-bit register.
   code.movsxd(result_reg.cvt64(), operand_reg);
@@ -638,12 +666,19 @@ void X64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRigh
 void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto amount = op->amount;
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto operand_reg = reg_alloc.GetVariableHostReg(op->operand.Get());
+  auto& amount = op->amount;
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto operand_reg = reg_alloc.GetVariableHostReg(operand_var);
+
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
   auto label_done = Xbyak::Label{};
 
-  code.mov(result_reg, operand_reg);
+  if (result_reg != operand_reg) {
+    code.mov(result_reg, operand_reg);
+  }
 
   if (amount.IsConstant()) {
     auto amount_value = amount.GetConst().value;
@@ -692,7 +727,8 @@ void X64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) {
 void X64Backend::CompileAND(CompileContext const& context, IRBitwiseAND* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
@@ -700,21 +736,39 @@ void X64Backend::CompileAND(CompileContext const& context, IRBitwiseAND* op) {
     if (op->result.IsNull()) {
       code.test(lhs_reg, imm);
     } else {
-      auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+      auto& result_var = op->result.Unwrap();
 
-      code.mov(result_reg, lhs_reg);
+      reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+      auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+      if (result_reg != lhs_reg) {
+        code.mov(result_reg, lhs_reg);
+      }
       code.and_(result_reg, imm);
     }
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
     if (op->result.IsNull()) {
       code.test(lhs_reg, rhs_reg);
     } else {
-      auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+      auto& result_var = op->result.Unwrap(); 
 
-      code.mov(result_reg, lhs_reg);
-      code.and_(result_reg, rhs_reg);
+      reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+      reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+      auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+      if (result_reg == lhs_reg) {
+        code.and_(lhs_reg, rhs_reg);
+      } else if (result_reg == rhs_reg) {
+        code.and_(rhs_reg, lhs_reg);
+      } else {
+        code.mov(result_reg, lhs_reg);
+        code.and_(result_reg, rhs_reg);
+      }
     }
   }
 
@@ -728,18 +782,32 @@ void X64Backend::CompileAND(CompileContext const& context, IRBitwiseAND* op) {
 void X64Backend::CompileBIC(CompileContext const& context, IRBitwiseBIC* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& result_var = op->result.Unwrap();
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
 
-    code.mov(result_reg, lhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != lhs_reg) {
+      code.mov(result_reg, lhs_reg);
+    }
     code.and_(result_reg, ~imm);
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
-    code.mov(result_reg, rhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != rhs_reg) {
+      code.mov(result_reg, rhs_reg);
+    }
     code.not_(result_reg);
     code.and_(result_reg, lhs_reg);
   }
@@ -754,45 +822,54 @@ void X64Backend::CompileBIC(CompileContext const& context, IRBitwiseBIC* op) {
 void X64Backend::CompileEOR(CompileContext const& context, IRBitwiseEOR* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
 
     if (op->result.IsNull()) {
-      /* TODO: possible optimization when lhs_reg != rhs_reg
-       *   xor lhs_reg, rhs_reg
-       *   bt ax, 8
-       *   lahf
-       *   xor lhs_reg, rhs_reg
-       */
+      // TODO: optimize this? use a temporary register?
       code.push(lhs_reg.cvt64());
       code.xor_(lhs_reg, imm);
       code.pop(lhs_reg.cvt64());
     } else {
-      auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+      auto& result_var = op->result.Unwrap();
 
-      code.mov(result_reg, lhs_reg);
+      reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+      auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+      if (result_reg != lhs_reg) {
+        code.mov(result_reg, lhs_reg);
+      }
       code.xor_(result_reg, imm);
     }
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
     if (op->result.IsNull()) {
-      /* TODO: possible optimization when lhs_reg != rhs_reg
-       *   xor lhs_reg, rhs_reg
-       *   bt ax, 8
-       *   lahf
-       *   xor lhs_reg, rhs_reg
-       */
+      // TODO: optimize this? use a temporary register?
       code.push(lhs_reg.cvt64());
       code.xor_(lhs_reg, rhs_reg);
       code.pop(lhs_reg.cvt64());
     } else {
-      auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+      auto& result_var = op->result.Unwrap();
 
-      code.mov(result_reg, lhs_reg);
-      code.xor_(result_reg, rhs_reg);
+      reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+      reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+      auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+      if (result_reg == lhs_reg) {
+        code.xor_(lhs_reg, rhs_reg);
+      } else if (result_reg == rhs_reg) {
+        code.xor_(rhs_reg, lhs_reg);
+      } else {
+        code.mov(result_reg, lhs_reg);
+        code.xor_(result_reg, rhs_reg);
+      }
     }
   }
 
@@ -806,7 +883,8 @@ void X64Backend::CompileEOR(CompileContext const& context, IRBitwiseEOR* op) {
 void X64Backend::CompileSUB(CompileContext const& context, IRSub* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
@@ -815,9 +893,15 @@ void X64Backend::CompileSUB(CompileContext const& context, IRSub* op) {
       code.cmp(lhs_reg, imm);
       code.cmc();
     } else {
-      auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+      auto& result_var = op->result.Unwrap();
 
-      code.mov(result_reg, lhs_reg);
+      reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+      auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+      if (result_reg != lhs_reg) {
+        code.mov(result_reg, lhs_reg);
+      }
       code.sub(result_reg, imm);
       code.cmc();
     }
@@ -828,9 +912,15 @@ void X64Backend::CompileSUB(CompileContext const& context, IRSub* op) {
       code.cmp(lhs_reg, rhs_reg);
       code.cmc();
     } else {
-      auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+      auto& result_var = op->result.Unwrap();
 
-      code.mov(result_reg, lhs_reg);
+      reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+      auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+      if (result_reg != lhs_reg) {
+        code.mov(result_reg, lhs_reg);
+      }
       code.sub(result_reg, rhs_reg);
       code.cmc();
     }
@@ -845,19 +935,27 @@ void X64Backend::CompileSUB(CompileContext const& context, IRSub* op) {
 void X64Backend::CompileRSB(CompileContext const& context, IRRsb* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+  auto& result_var = op->result.Unwrap();
   auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
 
     code.mov(result_reg, imm);
     code.sub(result_reg, lhs_reg);
     code.cmc();
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
-    code.mov(result_reg, rhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != rhs_reg) {
+      code.mov(result_reg, rhs_reg);
+    }
     code.sub(result_reg, lhs_reg);
     code.cmc();
   }
@@ -871,7 +969,8 @@ void X64Backend::CompileRSB(CompileContext const& context, IRRsb* op) {
 void X64Backend::CompileADD(CompileContext const& context, IRAdd* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
 
   if (op->result.IsNull() && !op->update_host_flags) {
     return;
@@ -885,23 +984,41 @@ void X64Backend::CompileADD(CompileContext const& context, IRAdd* op) {
       code.mov(eax, lhs_reg);
       code.add(eax, imm);
     } else {
-      auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+      auto& result_var = op->result.Unwrap();
 
-      code.mov(result_reg, lhs_reg);
+      reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+      auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+      if (result_reg != lhs_reg) {
+        code.mov(result_reg, lhs_reg);
+      }
       code.add(result_reg, imm);
     }
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
     if (op->result.IsNull()) {
       // eax will be trashed by lahf anyways
       code.mov(eax, lhs_reg);
       code.add(eax, rhs_reg);
     } else {
-      auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+      auto& result_var = op->result.Unwrap();
 
-      code.mov(result_reg, lhs_reg);
-      code.add(result_reg, rhs_reg);
+      reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+      reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+      auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+      if (result_reg == lhs_reg) {
+        code.add(lhs_reg, rhs_reg);
+      } else if (result_reg == rhs_reg) {
+        code.add(rhs_reg, lhs_reg);
+      } else {
+        code.mov(result_reg, lhs_reg);
+        code.add(result_reg, rhs_reg);
+      }
     }
   }
 
@@ -914,21 +1031,40 @@ void X64Backend::CompileADD(CompileContext const& context, IRAdd* op) {
 void X64Backend::CompileADC(CompileContext const& context, IRAdc* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& result_var = op->result.Unwrap();
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
 
   code.sahf();
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
 
-    code.mov(result_reg, lhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != lhs_reg) {
+      code.mov(result_reg, lhs_reg);
+    }
     code.adc(result_reg, imm);
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
-    code.mov(result_reg, lhs_reg);
-    code.adc(result_reg, rhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg == lhs_reg) {
+      code.adc(lhs_reg, rhs_reg);
+    } else if (result_reg == rhs_reg) {
+      code.adc(rhs_reg, lhs_reg);
+    } else {
+      code.mov(result_reg, lhs_reg);
+      code.adc(result_reg, rhs_reg);
+    }
   }
 
   if (op->update_host_flags) {
@@ -940,8 +1076,9 @@ void X64Backend::CompileADC(CompileContext const& context, IRAdc* op) {
 void X64Backend::CompileSBC(CompileContext const& context, IRSbc* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& result_var = op->result.Unwrap();
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
 
   code.sahf();
   code.cmc();
@@ -949,13 +1086,25 @@ void X64Backend::CompileSBC(CompileContext const& context, IRSbc* op) {
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
 
-    code.mov(result_reg, lhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != lhs_reg) {
+      code.mov(result_reg, lhs_reg);
+    }
     code.sbb(result_reg, imm);
     code.cmc();
   } else {
     auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
 
-    code.mov(result_reg, lhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != lhs_reg) {
+      code.mov(result_reg, lhs_reg);
+    }
     code.sbb(result_reg, rhs_reg);
     code.cmc();
   }
@@ -969,7 +1118,7 @@ void X64Backend::CompileSBC(CompileContext const& context, IRSbc* op) {
 void X64Backend::CompileRSC(CompileContext const& context, IRRsc* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+  auto& result_var = op->result.Unwrap();
   auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   code.sahf();
@@ -977,14 +1126,22 @@ void X64Backend::CompileRSC(CompileContext const& context, IRRsc* op) {
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
 
     code.mov(result_reg, imm);
     code.sbb(result_reg, lhs_reg);
     code.cmc();
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
-    code.mov(result_reg, rhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != rhs_reg) {
+      code.mov(result_reg, rhs_reg);
+    }
     code.sbb(result_reg, lhs_reg);
     code.cmc();
   }
@@ -998,19 +1155,38 @@ void X64Backend::CompileRSC(CompileContext const& context, IRRsc* op) {
 void X64Backend::CompileORR(CompileContext const& context, IRBitwiseORR* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& result_var = op->result.Unwrap();
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
 
-    code.mov(result_reg, lhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != lhs_reg) {
+      code.mov(result_reg, lhs_reg);
+    }
     code.or_(result_reg, imm);
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
-    code.mov(result_reg, lhs_reg);
-    code.or_(result_reg, rhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg == lhs_reg) {
+      code.or_(lhs_reg, rhs_reg);
+    } else if (result_reg == rhs_reg) {
+      code.or_(rhs_reg, lhs_reg);
+    } else {
+      code.mov(result_reg, lhs_reg);
+      code.or_(result_reg, rhs_reg);
+    }
   }
 
   if (op->update_host_flags) {
@@ -1023,12 +1199,22 @@ void X64Backend::CompileORR(CompileContext const& context, IRBitwiseORR* op) {
 void X64Backend::CompileMOV(CompileContext const& context, IRMov* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto& result_var = op->result.Get();
+  auto  result_reg = Xbyak::Reg32{};
 
   if (op->source.IsConstant()) {
+    result_reg = reg_alloc.GetVariableHostReg(result_var);
     code.mov(result_reg, op->source.GetConst().value);
   } else {
-    code.mov(result_reg, reg_alloc.GetVariableHostReg(op->source.GetVar()));
+    auto& source_var = op->source.GetVar();
+    auto  source_reg = reg_alloc.GetVariableHostReg(source_var);
+
+    reg_alloc.ReleaseVarAndReuseHostReg(source_var, result_var);
+    result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != source_reg) {
+      code.mov(result_reg, source_reg);
+    }
   }
 
   if (op->update_host_flags) {
@@ -1042,12 +1228,22 @@ void X64Backend::CompileMOV(CompileContext const& context, IRMov* op) {
 void X64Backend::CompileMVN(CompileContext const& context, IRMvn* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
+  auto& result_var = op->result.Get();
+  auto  result_reg = Xbyak::Reg32{};
 
   if (op->source.IsConstant()) {
+    result_reg = reg_alloc.GetVariableHostReg(result_var);
     code.mov(result_reg, op->source.GetConst().value);
   } else {
-    code.mov(result_reg, reg_alloc.GetVariableHostReg(op->source.GetVar()));
+    auto& source_var = op->source.GetVar();
+    auto  source_reg = reg_alloc.GetVariableHostReg(source_var);
+
+    reg_alloc.ReleaseVarAndReuseHostReg(source_var, result_var);
+    result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != source_reg) {
+      code.mov(result_reg, source_reg);
+    }
   }
 
   code.not_(result_reg);
@@ -1063,11 +1259,14 @@ void X64Backend::CompileMVN(CompileContext const& context, IRMvn* op) {
 void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo.Get());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
-  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
+  auto& result_lo_var = op->result_lo.Get();
+  auto& lhs_var = op->lhs.Get();
+  auto& rhs_var = op->rhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto  rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
 
   if (op->result_hi.HasValue()) {
+    auto result_lo_reg = reg_alloc.GetVariableHostReg(result_lo_var);
     auto result_hi_reg = reg_alloc.GetVariableHostReg(op->result_hi.Unwrap());
     auto rhs_ext_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
@@ -1089,8 +1288,19 @@ void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
     code.mov(result_lo_reg, result_hi_reg);
     code.shr(result_hi_reg.cvt64(), 32);
   } else {
-    code.mov(result_lo_reg, lhs_reg);
-    code.imul(result_lo_reg, rhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_lo_var);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_lo_var);
+
+    auto result_lo_reg = reg_alloc.GetVariableHostReg(result_lo_var);
+
+    if (result_lo_reg == lhs_reg) {
+      code.imul(lhs_reg, rhs_reg);
+    } else if (result_lo_reg == rhs_reg) {
+      code.imul(rhs_reg, lhs_reg);
+    } else {
+      code.mov(result_lo_reg, lhs_reg);
+      code.imul(result_lo_reg, rhs_reg);
+    }
 
     if (op->update_host_flags) {
       code.test(result_lo_reg, result_lo_reg);
@@ -1102,21 +1312,37 @@ void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
 void X64Backend::CompileADD64(CompileContext const& context, IRAdd64* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_hi_reg = reg_alloc.GetVariableHostReg(op->result_hi.Get());
-  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo.Get());
-  auto lhs_hi_reg = reg_alloc.GetVariableHostReg(op->lhs_hi.Get());
-  auto lhs_lo_reg = reg_alloc.GetVariableHostReg(op->lhs_lo.Get());
-  auto rhs_hi_reg = reg_alloc.GetVariableHostReg(op->rhs_hi.Get());
-  auto rhs_lo_reg = reg_alloc.GetVariableHostReg(op->rhs_lo.Get());
+  auto& lhs_hi_var = op->lhs_hi.Get();
+  auto& lhs_lo_var = op->lhs_lo.Get();
+  auto  lhs_hi_reg = reg_alloc.GetVariableHostReg(lhs_hi_var);
+  auto  lhs_lo_reg = reg_alloc.GetVariableHostReg(lhs_lo_var);
+
+  auto& rhs_hi_var = op->rhs_hi.Get();
+  auto& rhs_lo_var = op->rhs_lo.Get();
+  auto  rhs_hi_reg = reg_alloc.GetVariableHostReg(rhs_hi_var);
+  auto  rhs_lo_reg = reg_alloc.GetVariableHostReg(rhs_lo_var);
+
+  auto& result_hi_var = op->result_hi.Get();
+  auto& result_lo_var = op->result_lo.Get();
 
   if (op->update_host_flags) {
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_hi_var, result_hi_var);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_hi_var, result_lo_var);
+
+    auto result_hi_reg = reg_alloc.GetVariableHostReg(result_hi_var);
+    auto result_lo_reg = reg_alloc.GetVariableHostReg(result_lo_var);
+
     // Pack (lhs_hi, lhs_lo) into result_hi
-    code.mov(result_hi_reg, lhs_hi_reg);
+    if (result_hi_reg != lhs_hi_reg) {
+      code.mov(result_hi_reg, lhs_hi_reg);
+    }
     code.shl(result_hi_reg.cvt64(), 32);
     code.or_(result_hi_reg.cvt64(), lhs_lo_reg);
 
     // Pack (rhs_hi, rhs_lo) into result_lo
-    code.mov(result_lo_reg, rhs_hi_reg);
+    if (result_lo_reg != rhs_hi_reg) {
+      code.mov(result_lo_reg, rhs_hi_reg);
+    }
     code.shl(result_lo_reg.cvt64(), 32);
     code.or_(result_lo_reg.cvt64(), rhs_lo_reg);
 
@@ -1126,8 +1352,18 @@ void X64Backend::CompileADD64(CompileContext const& context, IRAdd64* op) {
     code.mov(result_lo_reg, result_hi_reg);
     code.shr(result_hi_reg.cvt64(), 32);
   } else {
-    code.mov(result_lo_reg, lhs_lo_reg);
-    code.mov(result_hi_reg, lhs_hi_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_lo_var, result_lo_var);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_hi_var, result_hi_var);
+
+    auto result_hi_reg = reg_alloc.GetVariableHostReg(result_hi_var);
+    auto result_lo_reg = reg_alloc.GetVariableHostReg(result_lo_var);
+
+    if (result_lo_reg != lhs_lo_reg) {
+      code.mov(result_lo_reg, lhs_lo_reg);
+    }
+    if (result_hi_reg != lhs_hi_reg) {
+      code.mov(result_hi_reg, lhs_hi_reg);
+    }
 
     code.add(result_lo_reg, rhs_lo_reg);
     code.adc(result_hi_reg, rhs_hi_reg);
@@ -1556,20 +1792,32 @@ void X64Backend::CompileFlush(CompileContext const& context, IRFlush* op) {
 void X64Backend::CompileFlushExchange(const CompileContext &context, IRFlushExchange *op) {
   DESTRUCTURE_CONTEXT;
 
-  auto address_out_reg = reg_alloc.GetVariableHostReg(op->address_out.Get());
-  auto address_in_reg = reg_alloc.GetVariableHostReg(op->address_in.Get());
-  auto cpsr_out_reg = reg_alloc.GetVariableHostReg(op->cpsr_out.Get());
-  auto cpsr_in_reg = reg_alloc.GetVariableHostReg(op->cpsr_in.Get());
+  auto& address_in_var = op->address_in.Get();
+  auto  address_in_reg = reg_alloc.GetVariableHostReg(address_in_var);
+  auto& cpsr_in_var = op->cpsr_in.Get();
+  auto  cpsr_in_reg = reg_alloc.GetVariableHostReg(cpsr_in_var);
+
+  auto& address_out_var = op->address_out.Get();
+  auto& cpsr_out_var = op->cpsr_out.Get();
+
+  reg_alloc.ReleaseVarAndReuseHostReg(address_in_var, address_out_var);
+  reg_alloc.ReleaseVarAndReuseHostReg(cpsr_in_var, cpsr_out_var);
+
+  auto address_out_reg = reg_alloc.GetVariableHostReg(address_out_var);
+  auto cpsr_out_reg = reg_alloc.GetVariableHostReg(cpsr_out_var);
 
   auto label_arm = Xbyak::Label{};
   auto label_done = Xbyak::Label{};
 
-  // TODO: fix this horrible codegen.
-  // a) try to make this branch-less
-  // b) do we always need to mask with ~1 / ~3?
+  if (address_out_reg != address_in_reg) {
+    code.mov(address_out_reg, address_in_reg);
+  }
 
-  code.mov(address_out_reg, address_in_reg);
-  code.mov(cpsr_out_reg, cpsr_in_reg);
+  if (cpsr_out_reg != cpsr_in_reg) {
+    code.mov(cpsr_out_reg, cpsr_in_reg);
+  }
+
+  // TODO: attempt to make this branchless.
 
   code.test(address_in_reg, 1);
   code.je(label_arm);
@@ -1592,25 +1840,42 @@ void X64Backend::CompileFlushExchange(const CompileContext &context, IRFlushExch
 void X64Backend::CompileCLZ(CompileContext const& context, IRCountLeadingZeros* op) {
   DESTRUCTURE_CONTEXT;
 
-  code.lzcnt(
-    reg_alloc.GetVariableHostReg(op->result.Get()),
-    reg_alloc.GetVariableHostReg(op->operand.Get())
-  );
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto  operand_reg = reg_alloc.GetVariableHostReg(operand_var);
+
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  code.lzcnt(reg_alloc.GetVariableHostReg(op->result.Get()), operand_reg);
 }
 
 void X64Backend::CompileQADD(CompileContext const& context, IRSaturatingAdd* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
-  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
+  auto& result_var = op->result.Get();
+  auto& lhs_var = op->lhs.Get();
+  auto& rhs_var = op->rhs.Get();
+
+  auto lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
+  auto rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
   auto temp_reg = reg_alloc.GetTemporaryHostReg();
   auto label_skip_saturate = Xbyak::Label{};
 
-  code.mov(result_reg, lhs_reg);
-  code.add(result_reg, rhs_reg);
-  code.jno(label_skip_saturate);
+  reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+  reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
 
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+  if (result_reg == lhs_reg) {
+    code.add(lhs_reg, rhs_reg);
+  } else if (result_reg == rhs_reg) {
+    code.add(rhs_reg, lhs_reg);
+  } else {
+    code.mov(result_reg, lhs_reg);
+    code.add(result_reg, rhs_reg);
+  }
+
+  code.jno(label_skip_saturate);
   code.mov(temp_reg, 0x7FFF'FFFF);
   code.mov(result_reg, 0x8000'0000);
   code.cmovs(result_reg, temp_reg);
@@ -1622,16 +1887,25 @@ void X64Backend::CompileQADD(CompileContext const& context, IRSaturatingAdd* op)
 void X64Backend::CompileQSUB(CompileContext const& context, IRSaturatingSub* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Get());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
-  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
+  auto& result_var = op->result.Get();
+  auto& lhs_var = op->lhs.Get();
+  auto& rhs_var = op->rhs.Get();
+
+  auto lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
+  auto rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
   auto temp_reg = reg_alloc.GetTemporaryHostReg();
   auto label_skip_saturate = Xbyak::Label{};
 
-  code.mov(result_reg, lhs_reg);
-  code.sub(result_reg, rhs_reg);
-  code.jno(label_skip_saturate);
+  reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
 
+  auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+  if (result_reg != lhs_reg) {
+    code.mov(result_reg, lhs_reg);
+  }
+  code.sub(result_reg, rhs_reg);
+
+  code.jno(label_skip_saturate);
   code.mov(temp_reg, 0x7FFF'FFFF);
   code.mov(result_reg, 0x8000'0000);
   code.cmovs(result_reg, temp_reg);
