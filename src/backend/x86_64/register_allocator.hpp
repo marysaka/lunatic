@@ -49,6 +49,20 @@ struct X64RegisterAllocator {
    */
   auto GetTemporaryHostReg() -> Xbyak::Reg32;
 
+  /**
+   * If var_old will be released after the current opcode,
+   * then it will be released early and the host register
+   * allocated to it will be moved to var_new.
+   * The caller is responsible to not read var_old after writing var_new.
+   * 
+   * @param  var_old  the variable to release
+   * @param  var_new  the variable to receive the released host register
+   */
+  void ReleaseVarAndReuseHostReg(
+    lunatic::frontend::IRVariable const& var_old,
+    lunatic::frontend::IRVariable const& var_new
+  );
+
 private:
   /// Determine when each variable will be dead.
   void EvaluateVariableLifetimes();

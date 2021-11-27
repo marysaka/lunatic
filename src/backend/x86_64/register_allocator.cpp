@@ -87,6 +87,26 @@ auto X64RegisterAllocator::GetTemporaryHostReg() -> Xbyak::Reg32 {
   return reg;
 }
 
+void X64RegisterAllocator::ReleaseVarAndReuseHostReg(
+  IRVariable const& var_old,
+  IRVariable const& var_new
+) {
+  if (var_id_to_host_reg[var_new.id].HasValue()) {
+    return;
+  }
+
+  auto point_of_last_use = var_id_to_point_of_last_use[var_old.id];
+
+  if (point_of_last_use == location) {
+    auto maybe_reg = var_id_to_host_reg[var_old.id];
+
+    if (maybe_reg.HasValue()) {
+      var_id_to_host_reg[var_new.id] = maybe_reg;
+      var_id_to_host_reg[var_old.id] = {};
+    }
+  }
+}
+
 void X64RegisterAllocator::EvaluateVariableLifetimes() {
   for (auto const& var : emitter.Vars()) {
     int point_of_last_use = -1;
