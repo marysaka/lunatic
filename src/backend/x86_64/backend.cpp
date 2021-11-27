@@ -1312,21 +1312,37 @@ void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
 void X64Backend::CompileADD64(CompileContext const& context, IRAdd64* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_hi_reg = reg_alloc.GetVariableHostReg(op->result_hi.Get());
-  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo.Get());
-  auto lhs_hi_reg = reg_alloc.GetVariableHostReg(op->lhs_hi.Get());
-  auto lhs_lo_reg = reg_alloc.GetVariableHostReg(op->lhs_lo.Get());
-  auto rhs_hi_reg = reg_alloc.GetVariableHostReg(op->rhs_hi.Get());
-  auto rhs_lo_reg = reg_alloc.GetVariableHostReg(op->rhs_lo.Get());
+  auto& lhs_hi_var = op->lhs_hi.Get();
+  auto& lhs_lo_var = op->lhs_lo.Get();
+  auto  lhs_hi_reg = reg_alloc.GetVariableHostReg(lhs_hi_var);
+  auto  lhs_lo_reg = reg_alloc.GetVariableHostReg(lhs_lo_var);
+
+  auto& rhs_hi_var = op->rhs_hi.Get();
+  auto& rhs_lo_var = op->rhs_lo.Get();
+  auto  rhs_hi_reg = reg_alloc.GetVariableHostReg(rhs_hi_var);
+  auto  rhs_lo_reg = reg_alloc.GetVariableHostReg(rhs_lo_var);
+
+  auto& result_hi_var = op->result_hi.Get();
+  auto& result_lo_var = op->result_lo.Get();
 
   if (op->update_host_flags) {
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_hi_var, result_hi_var);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_hi_var, result_lo_var);
+
+    auto result_hi_reg = reg_alloc.GetVariableHostReg(result_hi_var);
+    auto result_lo_reg = reg_alloc.GetVariableHostReg(result_lo_var);
+
     // Pack (lhs_hi, lhs_lo) into result_hi
-    code.mov(result_hi_reg, lhs_hi_reg);
+    if (result_hi_reg != lhs_hi_reg) {
+      code.mov(result_hi_reg, lhs_hi_reg);
+    }
     code.shl(result_hi_reg.cvt64(), 32);
     code.or_(result_hi_reg.cvt64(), lhs_lo_reg);
 
     // Pack (rhs_hi, rhs_lo) into result_lo
-    code.mov(result_lo_reg, rhs_hi_reg);
+    if (result_lo_reg != rhs_hi_reg) {
+      code.mov(result_lo_reg, rhs_hi_reg);
+    }
     code.shl(result_lo_reg.cvt64(), 32);
     code.or_(result_lo_reg.cvt64(), rhs_lo_reg);
 
@@ -1336,8 +1352,18 @@ void X64Backend::CompileADD64(CompileContext const& context, IRAdd64* op) {
     code.mov(result_lo_reg, result_hi_reg);
     code.shr(result_hi_reg.cvt64(), 32);
   } else {
-    code.mov(result_lo_reg, lhs_lo_reg);
-    code.mov(result_hi_reg, lhs_hi_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_lo_var, result_lo_var);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_hi_var, result_hi_var);
+
+    auto result_hi_reg = reg_alloc.GetVariableHostReg(result_hi_var);
+    auto result_lo_reg = reg_alloc.GetVariableHostReg(result_lo_var);
+
+    if (result_lo_reg != lhs_lo_reg) {
+      code.mov(result_lo_reg, lhs_lo_reg);
+    }
+    if (result_hi_reg != lhs_hi_reg) {
+      code.mov(result_hi_reg, lhs_hi_reg);
+    }
 
     code.add(result_lo_reg, rhs_lo_reg);
     code.adc(result_hi_reg, rhs_hi_reg);
