@@ -996,7 +996,8 @@ void X64Backend::CompileADD(CompileContext const& context, IRAdd* op) {
       code.add(result_reg, imm);
     }
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
     if (op->result.IsNull()) {
       // eax will be trashed by lahf anyways
@@ -1004,7 +1005,6 @@ void X64Backend::CompileADD(CompileContext const& context, IRAdd* op) {
       code.add(eax, rhs_reg);
     } else {
       auto& result_var = op->result.Unwrap();
-      auto& rhs_var = op->rhs.GetVar();
 
       reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
       reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
@@ -1031,21 +1031,40 @@ void X64Backend::CompileADD(CompileContext const& context, IRAdd* op) {
 void X64Backend::CompileADC(CompileContext const& context, IRAdc* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto& result_var = op->result.Unwrap();
+  auto& lhs_var = op->lhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(lhs_var);
 
   code.sahf();
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
 
-    code.mov(result_reg, lhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != lhs_reg) {
+      code.mov(result_reg, lhs_reg);
+    }
     code.adc(result_reg, imm);
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
-    code.mov(result_reg, lhs_reg);
-    code.adc(result_reg, rhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_var);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg == lhs_reg) {
+      code.adc(lhs_reg, rhs_reg);
+    } else if (result_reg == rhs_reg) {
+      code.adc(rhs_reg, lhs_reg);
+    } else {
+      code.mov(result_reg, lhs_reg);
+      code.adc(result_reg, rhs_reg);
+    }
   }
 
   if (op->update_host_flags) {
