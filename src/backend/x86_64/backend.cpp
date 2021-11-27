@@ -1114,7 +1114,7 @@ void X64Backend::CompileSBC(CompileContext const& context, IRSbc* op) {
 void X64Backend::CompileRSC(CompileContext const& context, IRRsc* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_reg = reg_alloc.GetVariableHostReg(op->result.Unwrap());
+  auto& result_var = op->result.Unwrap();
   auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
 
   code.sahf();
@@ -1122,14 +1122,22 @@ void X64Backend::CompileRSC(CompileContext const& context, IRRsc* op) {
 
   if (op->rhs.IsConstant()) {
     auto imm = op->rhs.GetConst().value;
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
 
     code.mov(result_reg, imm);
     code.sbb(result_reg, lhs_reg);
     code.cmc();
   } else {
-    auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.GetVar());
+    auto& rhs_var = op->rhs.GetVar();
+    auto  rhs_reg = reg_alloc.GetVariableHostReg(rhs_var);
 
-    code.mov(result_reg, rhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_var);
+
+    auto result_reg = reg_alloc.GetVariableHostReg(result_var);
+
+    if (result_reg != rhs_reg) {
+      code.mov(result_reg, rhs_reg);
+    }
     code.sbb(result_reg, lhs_reg);
     code.cmc();
   }
