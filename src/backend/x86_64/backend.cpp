@@ -1840,10 +1840,13 @@ void X64Backend::CompileFlushExchange(const CompileContext &context, IRFlushExch
 void X64Backend::CompileCLZ(CompileContext const& context, IRCountLeadingZeros* op) {
   DESTRUCTURE_CONTEXT;
 
-  code.lzcnt(
-    reg_alloc.GetVariableHostReg(op->result.Get()),
-    reg_alloc.GetVariableHostReg(op->operand.Get())
-  );
+  auto& result_var = op->result.Get();
+  auto& operand_var = op->operand.Get();
+  auto  operand_reg = reg_alloc.GetVariableHostReg(operand_var);
+
+  reg_alloc.ReleaseVarAndReuseHostReg(operand_var, result_var);
+
+  code.lzcnt(reg_alloc.GetVariableHostReg(op->result.Get()), operand_reg);
 }
 
 void X64Backend::CompileQADD(CompileContext const& context, IRSaturatingAdd* op) {
