@@ -1259,11 +1259,14 @@ void X64Backend::CompileMVN(CompileContext const& context, IRMvn* op) {
 void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
   DESTRUCTURE_CONTEXT;
 
-  auto result_lo_reg = reg_alloc.GetVariableHostReg(op->result_lo.Get());
-  auto lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
-  auto rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
+  auto& result_lo_var = op->result_lo.Get();
+  auto& lhs_var = op->lhs.Get();
+  auto& rhs_var = op->rhs.Get();
+  auto  lhs_reg = reg_alloc.GetVariableHostReg(op->lhs.Get());
+  auto  rhs_reg = reg_alloc.GetVariableHostReg(op->rhs.Get());
 
   if (op->result_hi.HasValue()) {
+    auto result_lo_reg = reg_alloc.GetVariableHostReg(result_lo_var);
     auto result_hi_reg = reg_alloc.GetVariableHostReg(op->result_hi.Unwrap());
     auto rhs_ext_reg = reg_alloc.GetTemporaryHostReg().cvt64();
 
@@ -1285,8 +1288,19 @@ void X64Backend::CompileMUL(CompileContext const& context, IRMultiply* op) {
     code.mov(result_lo_reg, result_hi_reg);
     code.shr(result_hi_reg.cvt64(), 32);
   } else {
-    code.mov(result_lo_reg, lhs_reg);
-    code.imul(result_lo_reg, rhs_reg);
+    reg_alloc.ReleaseVarAndReuseHostReg(lhs_var, result_lo_var);
+    reg_alloc.ReleaseVarAndReuseHostReg(rhs_var, result_lo_var);
+
+    auto result_lo_reg = reg_alloc.GetVariableHostReg(result_lo_var);
+
+    if (result_lo_reg == lhs_reg) {
+      code.imul(lhs_reg, rhs_reg);
+    } else if (result_lo_reg == rhs_reg) {
+      code.imul(rhs_reg, lhs_reg);
+    } else {
+      code.mov(result_lo_reg, lhs_reg);
+      code.imul(result_lo_reg, rhs_reg);
+    }
 
     if (op->update_host_flags) {
       code.test(result_lo_reg, result_lo_reg);
