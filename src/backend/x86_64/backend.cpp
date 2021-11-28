@@ -1949,18 +1949,31 @@ void X64Backend::CompileQSUB(CompileContext const& context, IRSaturatingSub* op)
 void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegister* op) {
   DESTRUCTURE_CONTEXT;
 
-  // TODO: determine which registers need to be saved.
-  Push(code, {rax, rcx, rdx, r8, r9, r10, r11});
-#ifdef ABI_SYSV
-  Push(code, {rsi, rdi});
-#endif
+  code.push(rax);
+
+  auto regs_saved = GetUsedHostRegsFromList(reg_alloc, {
+    rcx, rdx, r8, r9, r10, r11,
+
+    #ifdef ABI_SYSV
+      rsi, rdi
+    #endif
+  });
+
+  bool must_align_rsp = (regs_saved.size() % 2) == 1;
+
+  Push(code, regs_saved);
 
 #ifdef ABI_MSVC
-  // TODO: optimize this?
-  code.sub(rsp, 8);
+  // the 'push' below changes the stack-alignment. 
+  if (!must_align_rsp) {
+    code.sub(rsp, sizeof(u64));
+  }
   code.push(op->opcode2);
   code.sub(rsp, 0x20);
 #else
+  if (must_align_rsp) {
+    code.sub(rsp, sizeof(u64));
+  }
   code.mov(kRegArg4, op->opcode2);
 #endif
 
@@ -1973,13 +1986,19 @@ void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegi
   code.call(rax);
 
 #ifdef ABI_MSVC
-  code.add(rsp, 0x30);
+  if (must_align_rsp) {
+    code.add(rsp, 0x28);
+  } else {
+    code.add(rsp, 0x30);
+  }
+#else
+  if (must_align_rsp) {
+    code.add(rsp, sizeof(u64));
+  }
 #endif
 
-#ifdef ABI_SYSV
-  Pop(code, {rsi, rdi});
-#endif
-  Pop(code, {rcx, rdx, r8, r9, r10, r11});
+  Pop(code, regs_saved);
+
   code.mov(reg_alloc.GetVariableHostReg(op->result.Get()), eax);
   code.pop(rax);
 }
@@ -1987,11 +2006,21 @@ void X64Backend::CompileMRC(CompileContext const& context, IRReadCoprocessorRegi
 void X64Backend::CompileMCR(CompileContext const& context, IRWriteCoprocessorRegister* op) {
   DESTRUCTURE_CONTEXT;
 
-  // TODO: determine which registers need to be saved.
-  Push(code, {rax, rcx, rdx, r8, r9, r10, r11});
-#ifdef ABI_SYSV
-  Push(code, {rsi, rdi});
-#endif
+  auto regs_saved = GetUsedHostRegsFromList(reg_alloc, {
+    rax, rcx, rdx, r8, r9, r10, r11,
+
+    #ifdef ABI_SYSV
+    rsi, rdi
+    #endif
+  });
+
+  bool must_align_rsp = (regs_saved.size() % 2) == 0;//1?
+
+  Push(code, regs_saved);
+
+  if (must_align_rsp) {
+    code.sub(rsp, sizeof(u64));
+  }
 
 #ifdef ABI_MSVC
   if (op->value.IsConstant()) {
@@ -2019,13 +2048,18 @@ void X64Backend::CompileMCR(CompileContext const& context, IRWriteCoprocessorReg
   code.call(rax);
 
 #ifdef ABI_MSVC
-  code.add(rsp, 0x30);
+  if (must_align_rsp) {
+    code.add(rsp, 0x38);
+  } else {
+    code.add(rsp, 0x30);
+  }
+#else
+  if (must_align_rsp) {
+    code.add(rsp, sizeof(u64));
+  }
 #endif
 
-#ifdef ABI_SYSV
-  Pop(code, {rsi, rdi});
-#endif
-  Pop(code, {rax, rcx, rdx, r8, r9, r10, r11});
+  Pop(code, regs_saved);
 }
 
 } // namespace lunatic::backend
