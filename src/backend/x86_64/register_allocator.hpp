@@ -63,6 +63,8 @@ struct X64RegisterAllocator {
     lunatic::frontend::IRVariable const& var_new
   );
 
+  bool IsHostRegFree(Xbyak::Reg64 reg) const;
+
 private:
   /// Determine when each variable will be dead.
   void EvaluateVariableLifetimes();
