@@ -12,8 +12,6 @@
 #include <SDL.h>
 #include <unordered_map>
 
-#include <arm/arm.hpp>
-
 /// NDS file header
 struct Header {
   // TODO: add remaining header fields.
