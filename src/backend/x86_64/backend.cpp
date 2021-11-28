@@ -396,6 +396,21 @@ void X64Backend::Pop(
   }
 }
 
+auto X64Backend::GetUsedHostRegsFromList(
+  X64RegisterAllocator const& reg_alloc,
+  std::vector<Xbyak::Reg64> const& regs
+) -> std::vector<Xbyak::Reg64> {
+  auto regs_used = std::vector<Xbyak::Reg64>{};
+
+  for (auto reg : regs) {
+    if (!reg_alloc.IsHostRegFree(reg)) {
+      regs_used.push_back(reg);
+    }
+  }
+
+  return regs_used;
+}
+
 void X64Backend::CompileLoadGPR(CompileContext const& context, IRLoadGPR* op) {
   DESTRUCTURE_CONTEXT;
 
@@ -1451,6 +1466,10 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
     code.cmp(address_reg, dword[dtcm_reg + offsetof(Memory::TCM, config.base)]);
     code.jb(label_not_dtcm);
 
+  auto FilterUnusedHostRegs(
+    std::vector<Xbyak::Reg64> const& regs
+  ) -> std::vector<Xbyak::Reg64>;
+
     code.cmp(address_reg, dword[dtcm_reg + offsetof(Memory::TCM, config.limit)]);
     code.ja(label_not_dtcm);
 
@@ -1519,11 +1538,23 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   code.L(label_slowmem);
 
-  // TODO: determine which registers need to be saved.
-  Push(code, {rax, rdx, r8, r9, r10, r11});
-#ifdef ABI_SYSV
-  Push(code, {rsi, rdi});
-#endif
+  auto stack_offset = 0x20U;
+
+  code.push(rax);
+
+  // Get caller saved registers that need to be saved.
+  // RCX and RAX already have been saved.
+  auto regs_saved = GetUsedHostRegsFromList(reg_alloc, {
+    rdx, r8, r9, r10, r11,
+
+    #ifdef ABI_SYSV
+    rsi, rdi
+    #endif
+  });
+
+  if ((regs_saved.size() % 2) == 0) stack_offset += sizeof(u64);
+
+  Push(code, regs_saved);
 
   code.mov(kRegArg1.cvt32(), address_reg);
 
@@ -1539,14 +1570,11 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
 
   code.mov(kRegArg0, uintptr(&memory));
   code.mov(kRegArg2.cvt32(), u32(Memory::Bus::Data));
-  code.sub(rsp, 0x20);
+  code.sub(rsp, stack_offset);
   code.call(rax);
-  code.add(rsp, 0x20);
+  code.add(rsp, stack_offset);
 
-#ifdef ABI_SYSV
-  Pop(code, {rsi, rdi});
-#endif
-  Pop(code, {rdx, r8, r9, r10, r11});
+  Pop(code, regs_saved);
 
   if (flags & Word) {
     code.mov(result_reg, eax);

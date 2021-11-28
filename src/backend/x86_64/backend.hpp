@@ -65,6 +65,11 @@ private:
     std::vector<Xbyak::Reg64> const& regs
   );
 
+  auto GetUsedHostRegsFromList(
+    X64RegisterAllocator const& reg_alloc,
+    std::vector<Xbyak::Reg64> const& regs
+  ) -> std::vector<Xbyak::Reg64>;
+
   void CompileLoadGPR(CompileContext const& context, IRLoadGPR* op);
   void CompileStoreGPR(CompileContext const& context, IRStoreGPR* op);
   void CompileLoadSPSR(CompileContext const& context, IRLoadSPSR* op);

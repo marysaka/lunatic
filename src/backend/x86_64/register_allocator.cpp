@@ -107,6 +107,13 @@ void X64RegisterAllocator::ReleaseVarAndReuseHostReg(
   }
 }
 
+bool X64RegisterAllocator::IsHostRegFree(Xbyak::Reg64 reg) const {
+  auto begin = free_host_regs.begin();
+  auto end = free_host_regs.end();
+
+  return std::find(begin, end, reg.cvt32()) != end;
+}
+
 void X64RegisterAllocator::EvaluateVariableLifetimes() {
   for (auto const& var : emitter.Vars()) {
     int point_of_last_use = -1;
