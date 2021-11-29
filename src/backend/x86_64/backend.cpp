@@ -1401,7 +1401,7 @@ void X64Backend::CompileMemoryRead(CompileContext const& context, IRMemoryRead* 
   auto& itcm = memory.itcm;
   auto& dtcm = memory.dtcm;
 
-  Xbyak::Reg64 itcm_reg;
+  auto itcm_reg = Xbyak::Reg64{};
 
   if (itcm.data != nullptr || dtcm.data != nullptr) {
     itcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
@@ -1642,7 +1642,7 @@ void X64Backend::CompileMemoryWrite(CompileContext const& context, IRMemoryWrite
   auto& itcm = memory.itcm;
   auto& dtcm = memory.dtcm;
 
-  Xbyak::Reg64 itcm_reg;
+  auto itcm_reg = Xbyak::Reg64{};
 
   if (itcm.data != nullptr || dtcm.data != nullptr) {
     itcm_reg = reg_alloc.GetTemporaryHostReg().cvt64();
