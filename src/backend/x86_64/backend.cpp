@@ -284,20 +284,19 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       code->shl(rsi, 31);
       code->or_(rdx, rsi);
 
-      // Split key into key0 and key1
-      // TODO: can we exploit how the block lookup works?
+      // Hash0 lookup (first level)
       code->mov(rsi, rdx);
       code->shr(rsi, 19);
-      code->and_(edx, 0x7FFFF);
-
-      // Look block key up in the block cache.
       code->mov(rdi, uintptr(block_cache.data));
       code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
-      code->cmp(rdi, 0);
-      code->jz(label_return_to_dispatch); // fixme?
+      code->test(rdi, rdi);
+      code->jz(label_return_to_dispatch);
+
+      // Hash1 lookup (second level)
+      code->and_(edx, 0x7FFFF);
       code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
-      code->cmp(rdi, 0);
-      code->jz(label_return_to_dispatch); // fixme?
+      code->test(rdi, rdi);
+      code->jz(label_return_to_dispatch);
       code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
 
       // Load carry flag into AH
