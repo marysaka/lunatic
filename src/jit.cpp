@@ -33,6 +33,7 @@ struct JIT final : CPU {
     wait_for_irq = false;
     cycles_to_run = 0;
     state.Reset();
+    SetGPR(GPR::PC, exception_base);
     block_cache.Flush();
   }
 
