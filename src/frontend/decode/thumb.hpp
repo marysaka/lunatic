@@ -464,15 +464,24 @@ inline auto decode_push_pop(u16 opcode, T& client) -> U {
 
 template<typename T, typename U = typename T::return_type>
 inline auto decode_ldm_stm(u16 opcode, T& client) -> U {
+  bool writeback = true;
+  bool load = bit::get_bit<u16, bool>(opcode, 11);
+  auto reg_base = bit::get_field<u16, GPR>(opcode, 8, 3);
+  auto reg_list = bit::get_field(opcode, 0, 8);
+
+  if (load && bit::get_bit(reg_list, int(reg_base))) {
+    writeback = false;
+  }
+
   return client.Handle(ARMBlockDataTransfer{
     .condition = Condition::AL,
     .pre_increment = false,
     .add = true,
     .user_mode = false,
-    .writeback = true,
-    .load = bit::get_bit<u16, bool>(opcode, 11),
-    .reg_base = bit::get_field<u16, GPR>(opcode, 8, 3),
-    .reg_list = bit::get_field(opcode, 0, 8)
+    .writeback = writeback,
+    .load = load,
+    .reg_base = reg_base,
+    .reg_list = reg_list
   });
 }
 
