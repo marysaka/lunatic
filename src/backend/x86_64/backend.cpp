@@ -104,7 +104,6 @@ X64Backend::X64Backend(
     , block_cache(block_cache)
     , irq_line(irq_line) {
   CreateCodeGenerator();
-  BuildConditionTable();
   EmitCallBlock();
 }
 
@@ -129,32 +128,6 @@ void X64Backend::CreateCodeGenerator() {
   );
 
   code = new Xbyak::CodeGenerator{kCodeBufferSize, buffer};
-}
-
-void X64Backend::BuildConditionTable() {
-  for (int flags = 0; flags < 16; flags++) {
-    bool n = flags & 8;
-    bool z = flags & 4;
-    bool c = flags & 2;
-    bool v = flags & 1;
-
-    condition_table[int(Condition::EQ)][flags] =  z;
-    condition_table[int(Condition::NE)][flags] = !z;
-    condition_table[int(Condition::CS)][flags] =  c;
-    condition_table[int(Condition::CC)][flags] = !c;
-    condition_table[int(Condition::MI)][flags] =  n;
-    condition_table[int(Condition::PL)][flags] = !n;
-    condition_table[int(Condition::VS)][flags] =  v;
-    condition_table[int(Condition::VC)][flags] = !v;
-    condition_table[int(Condition::HI)][flags] =  c && !z;
-    condition_table[int(Condition::LS)][flags] = !c ||  z;
-    condition_table[int(Condition::GE)][flags] = n == v;
-    condition_table[int(Condition::LT)][flags] = n != v;
-    condition_table[int(Condition::GT)][flags] = !(z || (n != v));
-    condition_table[int(Condition::LE)][flags] =  (z || (n != v));
-    condition_table[int(Condition::AL)][flags] = true;
-    condition_table[int(Condition::NV)][flags] = false;
-  }
 }
 
 void X64Backend::EmitCallBlock() {
@@ -213,12 +186,79 @@ void X64Backend::Compile(BasicBlock& basic_block) {
 
       // Skip micro block if íts condition is not met.
       if (condition != Condition::AL) {
-        // TODO: can we perform a conditional jump based on eflags?
-        code->mov(r8, u64(&condition_table[static_cast<int>(condition)]));
-        code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
-        code->shr(edx, 28);
-        code->cmp(byte[r8 + rdx], 0);
-        code->je(label_skip, Xbyak::CodeGenerator::T_NEAR);
+        // TODO: Keep decompressed flags in eax?
+        code->mov(eax, dword[rcx + state.GetOffsetToCPSR()]);
+        code->shr(eax, 28);
+        code->mov(edx, 0xC101);
+        code->pdep(eax, eax, edx);
+
+        switch (condition) {
+        case Condition::EQ:
+          code->sahf();
+          code->jnz(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::NE:
+          code->sahf();
+          code->jz(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::CS:
+          code->sahf();
+          code->jnc(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::CC:
+          code->sahf();
+          code->jc(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::MI:
+          code->sahf();
+          code->jns(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::PL:
+          code->sahf();
+          code->js(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::VS:
+          code->cmp(al, 0x81);
+          code->jno(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::VC:
+          code->cmp(al, 0x81);
+          code->jo(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::HI:
+          code->sahf();
+          code->cmc();
+          code->jna(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::LS:
+          code->sahf();
+          code->cmc();
+          code->ja(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::GE:
+          code->cmp(al, 0x81);
+          code->sahf();
+          code->jnge(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::LT:
+          code->cmp(al, 0x81);
+          code->sahf();
+          code->jnl(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::GT:
+          code->cmp(al, 0x81);
+          code->sahf();
+          code->jng(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::LE:
+          code->cmp(al, 0x81);
+          code->sahf();
+          code->jnle(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        case Condition::NV:
+          code->jmp(label_skip, Xbyak::CodeGenerator::T_NEAR);
+          break;
+        }
       }
 
       for (auto const& op : emitter.Code()) {

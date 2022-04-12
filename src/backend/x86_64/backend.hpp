@@ -47,7 +47,6 @@ private:
   };
 
   void CreateCodeGenerator();
-  void BuildConditionTable();
   void EmitCallBlock();
 
   void CompileIROp(
@@ -113,7 +112,6 @@ private:
   std::array<Coprocessor*, 16> coprocessors;
   BasicBlockCache& block_cache;
   bool const& irq_line;
-  bool condition_table[16][16];
   int (*CallBlock)(BasicBlock::CompiledFn, int);
 
   u8* buffer;
