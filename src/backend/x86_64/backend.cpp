@@ -378,7 +378,6 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       auto thumbStr = key.Thumb() ? "Thumb" : "ARM";
       auto methodName = fmt::format("lunatic_func_{:X}_{}_{}", key.Address(), modeStr, thumbStr);
 
-      fmt::print("VTune: reporting new function: {}, load address={:X}, size={:X}\n", methodName, key.Address(), code->getSize());
       iJIT_Method_Load_V2 jmethod = { 0 };
       jmethod.method_id = iJIT_GetNewMethodID();
       jmethod.method_name = methodName.data();
