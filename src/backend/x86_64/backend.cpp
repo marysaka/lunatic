@@ -166,6 +166,21 @@ void X64Backend::EmitCallBlock() {
 #endif
   Pop(*code, {rbx, rbp, r12, r13, r14, r15});
   code->ret();
+
+#if LUNATIC_USE_VTUNE
+  if (iJIT_IsProfilingActive() == iJIT_SAMPLING_ON) {
+    char methodName[] = "lunatic_x64_callblock";
+    char moduleName[] = "lunatic-JIT";
+
+    iJIT_Method_Load_V2 jmethod = { 0 };
+    jmethod.method_id = iJIT_GetNewMethodID();
+    jmethod.method_name = methodName;
+    jmethod.method_load_address = reinterpret_cast<void*>(CallBlock);
+    jmethod.method_size = static_cast<unsigned int>(code->getCurr() - reinterpret_cast<const uint8_t*>(CallBlock));
+    jmethod.module_name = moduleName;
+    iJIT_NotifyEvent(iJVM_EVENT_TYPE_METHOD_LOAD_FINISHED_V2, static_cast<void*>(&jmethod));
+  }
+#endif
 }
 
 void X64Backend::Compile(BasicBlock& basic_block) {
@@ -357,7 +372,6 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       code->ret();
     }
 
-
 #if LUNATIC_USE_VTUNE
     if (iJIT_IsProfilingActive() == iJIT_SAMPLING_ON) {
       auto& key = basic_block.key;
@@ -377,14 +391,15 @@ void X64Backend::Compile(BasicBlock& basic_block) {
 
       auto thumbStr = key.Thumb() ? "Thumb" : "ARM";
       auto methodName = fmt::format("lunatic_func_{:X}_{}_{}", key.Address(), modeStr, thumbStr);
+      char moduleName[] = "lunatic-JIT";
 
       iJIT_Method_Load_V2 jmethod = { 0 };
       jmethod.method_id = iJIT_GetNewMethodID();
       jmethod.method_name = methodName.data();
-      jmethod.method_load_address = (void*)basic_block.function;
-      jmethod.method_size = (unsigned int)(code->getCurr() - basic_block.function);
-      jmethod.module_name = "lunatic-JIT";
-      iJIT_NotifyEvent(iJVM_EVENT_TYPE_METHOD_LOAD_FINISHED_V2, (void*)&jmethod);
+      jmethod.method_load_address = reinterpret_cast<void*>(basic_block.function);
+      jmethod.method_size = static_cast<unsigned int>(code->getCurr() - reinterpret_cast<uint8_t*>(basic_block.function));
+      jmethod.module_name = moduleName;
+      iJIT_NotifyEvent(iJVM_EVENT_TYPE_METHOD_LOAD_FINISHED_V2, static_cast<void*>(&jmethod));
     }
 #endif
   } catch (Xbyak::Error error) {
