@@ -14,6 +14,10 @@
 #include "common/aligned_memory.hpp"
 #include "common/bit.hpp"
 
+#if LUNATIC_USE_VTUNE
+#include <jitprofiling.h>
+#endif
+
 /**
  * TODO:
  * - reuse registers that expire in the same operation if possible
@@ -352,6 +356,38 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       code->sub(rbx, basic_block.length);
       code->ret();
     }
+
+
+#if LUNATIC_USE_VTUNE
+    if (iJIT_IsProfilingActive() == iJIT_SAMPLING_ON) {
+      auto& key = basic_block.key;
+
+      auto modeStr = [&]() -> std::string {
+        switch (key.Mode()) {
+        case Mode::User: return "USR";
+        case Mode::FIQ: return "FIQ";
+        case Mode::IRQ: return "IRQ";
+        case Mode::Supervisor: return "SVC";
+        case Mode::Abort: return "ABT";
+        case Mode::Undefined: return "UND";
+        case Mode::System: return "SYS";
+        default: return fmt::format("{:02X}", key.Mode());
+        }
+      }();
+
+      auto thumbStr = key.Thumb() ? "Thumb" : "ARM";
+      auto methodName = fmt::format("lunatic_func_{:X}_{}_{}", key.Address(), modeStr, thumbStr);
+
+      fmt::print("VTune: reporting new function: {}, load address={:X}, size={:X}\n", methodName, key.Address(), code->getSize());
+      iJIT_Method_Load_V2 jmethod = { 0 };
+      jmethod.method_id = iJIT_GetNewMethodID();
+      jmethod.method_name = methodName.data();
+      jmethod.method_load_address = (void*)basic_block.function;
+      jmethod.method_size = (unsigned int)(code->getCurr() - basic_block.function);
+      jmethod.module_name = "lunatic-JIT";
+      iJIT_NotifyEvent(iJVM_EVENT_TYPE_METHOD_LOAD_FINISHED_V2, (void*)&jmethod);
+    }
+#endif
   } catch (Xbyak::Error error) {
     if (int(error) == Xbyak::ERR_CODE_IS_TOO_BIG) {
       fmt::print("FLUSH\n");

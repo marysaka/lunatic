@@ -12,6 +12,14 @@
 #include <SDL.h>
 #include <unordered_map>
 
+#ifdef _WIN32
+// Include required dependencies for SDL2
+#pragma comment(lib, "Imm32.lib")
+#pragma comment(lib, "Setupapi.lib")
+#pragma comment(lib, "Version.lib")
+#pragma comment(lib, "Winmm.lib")
+#endif
+
 /// NDS file header
 struct Header {
   // TODO: add remaining header fields.

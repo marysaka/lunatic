@@ -7,6 +7,7 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 endif()
 
 option(LUNATIC_USE_EXTERNAL_FMT "Use externally provided {fmt} library." OFF)
+option(LUNATIC_USE_VTUNE "Use VTune JIT Profiling API if available" OFF)
 
 project(lunatic-root)
 

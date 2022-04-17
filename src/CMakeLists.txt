@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.2)
 
 project(lunatic CXX)
 
+include(../cmake/FindVTune.cmake)
+
 # TODO: consider going back to C++14 eventually.
 # set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD 17)
@@ -89,6 +91,13 @@ target_include_directories(lunatic PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     $<INSTALL_INTERFACE:include>)
 target_link_libraries(lunatic PRIVATE fmt xbyak)
+
+if (VTune_FOUND AND LUNATIC_USE_VTUNE)
+  message(STATUS "lunatic: Adding VTune JIT Profiling API from ${VTune_LIBRARIES}")
+  target_include_directories(lunatic PRIVATE ${VTune_INCLUDE_DIRS})
+  target_link_libraries(lunatic PRIVATE ${VTune_LIBRARIES})
+  target_compile_definitions(lunatic PRIVATE LUNATIC_USE_VTUNE=1)
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_compile_definitions(lunatic PRIVATE NOMINMAX)
