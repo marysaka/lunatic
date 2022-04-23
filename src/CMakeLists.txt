@@ -48,6 +48,7 @@ set(HEADERS
   backend/x86_64/backend.hpp
   backend/x86_64/common.hpp
   backend/x86_64/register_allocator.hpp
+  backend/x86_64/vtune.hpp
   backend/backend.hpp
   common/bit.hpp
   common/aligned_memory.hpp
