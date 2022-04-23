@@ -18,6 +18,7 @@ set(SOURCES
   backend/x86_64/compile_multiply.cpp
   backend/x86_64/compile_shift.cpp
   backend/x86_64/register_allocator.cpp
+  common/pool_allocator.cpp
   frontend/ir/emitter.cpp
   frontend/ir_opt/context_load_store_elision.cpp
   frontend/ir_opt/dead_code_elision.cpp
@@ -52,6 +53,7 @@ set(HEADERS
   common/aligned_memory.hpp
   common/meta.hpp
   common/optional.hpp
+  common/pool_allocator.hpp
   frontend/decode/definition/block_data_transfer.hpp
   frontend/decode/definition/branch_relative.hpp
   frontend/decode/definition/coprocessor_register_transfer.hpp
