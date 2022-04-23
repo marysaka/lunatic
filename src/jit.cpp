@@ -145,6 +145,7 @@ private:
 
     backend.Compile(*basic_block);
     block_cache.Set(block_key, basic_block);
+    basic_block->micro_blocks.clear();
     return basic_block;
   }
 
