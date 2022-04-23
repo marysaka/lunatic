@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <frontend/basic_block.hpp>
 
 #if LUNATIC_USE_VTUNE
@@ -30,7 +31,7 @@ static void ReportCallBlock(u8* codeBegin, const u8* codeEnd) {
   }
 }
 
-static void ReportBasicBlock(BasicBlock& basic_block, const u8* codeEnd) {
+static void ReportBasicBlock(lunatic::frontend::BasicBlock& basic_block, const u8* codeEnd) {
   if (iJIT_IsProfilingActive() == iJIT_SAMPLING_ON) {
     auto& key = basic_block.key;
 
@@ -38,14 +39,14 @@ static void ReportBasicBlock(BasicBlock& basic_block, const u8* codeEnd) {
       using lunatic::Mode;
 
       switch (key.Mode()) {
-      case Mode::User: return "USR";
-      case Mode::FIQ: return "FIQ";
-      case Mode::IRQ: return "IRQ";
-      case Mode::Supervisor: return "SVC";
-      case Mode::Abort: return "ABT";
-      case Mode::Undefined: return "UND";
-      case Mode::System: return "SYS";
-      default: return fmt::format("{:02X}", static_cast<uint>(key.Mode()));
+        case Mode::User: return "USR";
+        case Mode::FIQ: return "FIQ";
+        case Mode::IRQ: return "IRQ";
+        case Mode::Supervisor: return "SVC";
+        case Mode::Abort: return "ABT";
+        case Mode::Undefined: return "UND";
+        case Mode::System: return "SYS";
+        default: return fmt::format("{:02X}", static_cast<uint>(key.Mode()));
       }
     }();
 
