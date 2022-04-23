@@ -164,7 +164,7 @@ private:
   List full_pools;
 };
 
-extern PoolAllocator<u16, 65536, 96 - sizeof(u16)> g_pool_alloc;
+extern PoolAllocator<u16, 65536, 72> g_pool_alloc;
 
 struct PoolObject {
   auto operator new(size_t size) -> void* {
