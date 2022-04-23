@@ -9,6 +9,6 @@
 
 namespace lunatic {
 
-PoolAllocator<u16, 65536, 72> g_pool_alloc;
+PoolAllocator<u16, 4096, 70> g_pool_alloc;
 
 }

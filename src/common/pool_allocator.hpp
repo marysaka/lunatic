@@ -120,12 +120,18 @@ private:
     void Remove(Pool* pool) {
       if (pool->next == nullptr) {
         tail = pool->prev;
+        if (tail) {
+          tail->next = nullptr;
+        }
       } else {
         pool->next->prev = pool->prev;
       }
 
       if (pool->prev == nullptr) {
         head = pool->next;
+        if (head) {
+          head->prev = nullptr;
+        }
       } else {
         pool->prev->next = pool->next;
       }
@@ -135,6 +141,7 @@ private:
       if (head == nullptr) {
         head = pool;
         tail = pool;
+        pool->prev = nullptr;
       } else {
         auto old_tail = tail;
 
@@ -164,7 +171,7 @@ private:
   List full_pools;
 };
 
-extern PoolAllocator<u16, 65536, 72> g_pool_alloc;
+extern PoolAllocator<u16, 4096, 70> g_pool_alloc;
 
 struct PoolObject {
   auto operator new(size_t size) -> void* {
