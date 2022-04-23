@@ -2,10 +2,8 @@ cmake_minimum_required(VERSION 3.2)
 
 project(lunatic CXX)
 
-include(../cmake/FindVTune.cmake)
+include(../CMakeModules/FindVTune.cmake)
 
-# TODO: consider going back to C++14 eventually.
-# set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
