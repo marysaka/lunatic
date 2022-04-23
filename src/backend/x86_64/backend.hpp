@@ -50,6 +50,7 @@ private:
   void EmitCallBlock();
 
   void EmitConditionalBranch(Condition condition, Xbyak::Label& label_skip);
+  void EmitBasicBlockDispatch(Xbyak::Label& label_cache_miss);
 
   void CompileIROp(
     CompileContext const& context,

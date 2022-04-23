@@ -177,36 +177,8 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       code->cmp(byte[rdx], 0);
       code->jnz(label_return_to_dispatch);
 
-      // Build the block key from R15 and CPSR.
-      // See frontend/basic_block.hpp
-      code->mov(edx, dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)]);
-      code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
-      code->shr(edx, 1);
-      code->and_(esi, 0x3F);
-      code->shl(rsi, 31);
-      code->or_(rdx, rsi);
-
-      // Hash0 lookup (first level)
-      code->mov(rsi, rdx);
-      code->shr(rsi, 19);
-      code->mov(rdi, uintptr(block_cache.data));
-      code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
-      code->test(rdi, rdi);
-      code->jz(label_return_to_dispatch);
-
-      // Hash1 lookup (second level)
-      code->and_(edx, 0x7FFFF);
-      code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
-      code->test(rdi, rdi);
-      code->jz(label_return_to_dispatch);
-      code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
-
-      // Load carry flag into AH
-      code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
-      code->bt(edx, 29); // CF = value of bit 29
-      code->lahf();
-
-      code->jmp(rdi);
+      // If the next basic block already is compiled then jump to it.
+      EmitBasicBlockDispatch(label_return_to_dispatch);
 
       code->L(label_return_to_dispatch);
       code->ret();
@@ -309,6 +281,39 @@ void X64Backend::EmitConditionalBranch(Condition condition, Xbyak::Label& label_
       code->jmp(label_skip, Xbyak::CodeGenerator::T_NEAR);
       break;
   }
+}
+
+void X64Backend::EmitBasicBlockDispatch(Xbyak::Label& label_cache_miss) {
+  // Build the block key from R15 and CPSR.
+  // See frontend/basic_block.hpp
+  code->mov(edx, dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)]);
+  code->mov(esi, dword[rcx + state.GetOffsetToCPSR()]);
+  code->shr(edx, 1);
+  code->and_(esi, 0x3F);
+  code->shl(rsi, 31);
+  code->or_(rdx, rsi);
+
+  // Hash0 lookup (first level)
+  code->mov(rsi, rdx);
+  code->shr(rsi, 19);
+  code->mov(rdi, uintptr(block_cache.data));
+  code->mov(rdi, qword[rdi + rsi * sizeof(uintptr)]);
+  code->test(rdi, rdi);
+  code->jz(label_cache_miss);
+
+  // Hash1 lookup (second level)
+  code->and_(edx, 0x7FFFF);
+  code->mov(rdi, qword[rdi + rdx * sizeof(uintptr)]);
+  code->test(rdi, rdi);
+  code->jz(label_cache_miss);
+  code->mov(rdi, qword[rdi + offsetof(BasicBlock, function)]);
+
+  // Load carry flag into AH
+  code->mov(edx, dword[rcx + state.GetOffsetToCPSR()]);
+  code->bt(edx, 29); // CF = value of bit 29
+  code->lahf();
+
+  code->jmp(rdi);
 }
 
 void X64Backend::CompileIROp(
