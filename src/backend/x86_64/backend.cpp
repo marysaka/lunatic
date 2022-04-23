@@ -49,7 +49,7 @@ static void ReportBasicBlock(BasicBlock& basic_block, const u8* codeEnd) {
       case Mode::Abort: return "ABT";
       case Mode::Undefined: return "UND";
       case Mode::System: return "SYS";
-      default: return fmt::format("{:02X}", key.Mode());
+      default: return fmt::format("{:02X}", static_cast<uint>(key.Mode()));
       }
     }();
 
