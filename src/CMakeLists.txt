@@ -11,6 +11,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SOURCES
   backend/x86_64/backend.cpp
+  backend/x86_64/compile_alu.cpp
+  backend/x86_64/compile_context.cpp
+  backend/x86_64/compile_coprocessor.cpp
+  backend/x86_64/compile_flags.cpp
+  backend/x86_64/compile_flush.cpp
+  backend/x86_64/compile_memory.cpp
+  backend/x86_64/compile_multiply.cpp
+  backend/x86_64/compile_shift.cpp
   backend/x86_64/register_allocator.cpp
   frontend/ir/emitter.cpp
   frontend/ir_opt/context_load_store_elision.cpp
@@ -38,6 +46,7 @@ set(SOURCES
 
 set(HEADERS
   backend/x86_64/backend.hpp
+  backend/x86_64/common.hpp
   backend/x86_64/register_allocator.hpp
   backend/backend.hpp
   common/bit.hpp
