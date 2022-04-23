@@ -10,6 +10,11 @@
 #include <fmt/format.h>
 #include <lunatic/integer.hpp>
 
+#ifdef _WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #include <windows.h>
+#endif
+
 namespace lunatic {
 
 // T = data-type for object IDs (local to a pool)
@@ -74,6 +79,16 @@ private:
 
       stack.length = capacity;
     }
+
+#ifdef _WIN32
+    auto operator new(size_t) -> void* {
+      return VirtualAlloc(nullptr, sizeof(Pool), MEM_COMMIT, PAGE_READWRITE);
+    }
+
+    void operator delete(void* object) {
+      VirtualFree(object, sizeof(Pool), MEM_RELEASE);
+    }
+#endif
 
     bool IsFull() const { return stack.length == 0; }
 
