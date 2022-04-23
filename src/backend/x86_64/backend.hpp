@@ -49,6 +49,8 @@ private:
   void CreateCodeGenerator();
   void EmitCallBlock();
 
+  void EmitConditionalBranch(Condition condition, Xbyak::Label& label_skip);
+
   void CompileIROp(
     CompileContext const& context,
     std::unique_ptr<IROpcode> const& op
