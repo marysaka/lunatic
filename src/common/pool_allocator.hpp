@@ -63,12 +63,12 @@ struct PoolAllocator {
 
     if (pool->IsFull()) {
       // Remove pool from the full list.
-      if (full_pools.tail == pool) {
+      if (pool->next == nullptr) {
         full_pools.tail = pool->prev;
       } else {
         pool->next->prev = pool->prev;
       }
-      if (full_pools.head == pool) {
+      if (pool->prev == nullptr) {
         full_pools.head = pool->next;
       } else {
         pool->prev->next = pool->next;
