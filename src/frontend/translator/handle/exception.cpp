@@ -20,7 +20,7 @@ auto Translator::Handle(ARMException const& opcode) -> Status {
       new_mode = Mode::Supervisor;
       break;
     default:
-      throw std::runtime_error(fmt::format("unhandled exception vector: 0x{:X}", exception));
+      throw std::runtime_error(fmt::format("unhandled exception vector: 0x{:X}", static_cast<int>(exception)));
   }
 
   auto& cpsr_old = emitter->CreateVar(IRDataType::UInt32, "cpsr_old");
