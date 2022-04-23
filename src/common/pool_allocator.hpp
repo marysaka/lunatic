@@ -52,6 +52,13 @@ struct PoolAllocator {
     }
 
     pool->Push(obj);
+
+    // TODO: keep track of how many objects are available
+    // and decide if we should release the pool based on that.
+    if (pool->IsEmpty()) {
+      free_pools.Remove(pool);
+      delete pool;
+    }
   }
 
 private:
@@ -69,6 +76,8 @@ private:
     }
 
     bool IsFull() const { return stack.length == 0; }
+
+    bool IsEmpty() const { return stack.length == capacity; }
 
     void Push(void* object) {
       stack.data[stack.length++] = ((Object*)object)->id;
