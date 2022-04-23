@@ -104,14 +104,12 @@ void X64Backend::Compile(BasicBlock& basic_block) {
   try {
     auto label_return_to_dispatch = Xbyak::Label{};
     auto opcode_size = basic_block.key.Thumb() ? sizeof(u16) : sizeof(u32);
-
-    // TODO: clean this mess up
-    auto i = 0;
-    auto size = basic_block.micro_blocks.size();
+    auto number_of_micro_blocks = basic_block.micro_blocks.size();
 
     basic_block.function = (BasicBlock::CompiledFn)code->getCurr();
 
-    for (auto const& micro_block : basic_block.micro_blocks) {
+    for (size_t i = 0; i < number_of_micro_blocks; i++) {
+      auto const& micro_block = basic_block.micro_blocks[i];
       auto& emitter  = micro_block.emitter;
       auto condition = micro_block.condition;
       auto reg_alloc = X64RegisterAllocator{emitter, *code};
@@ -120,21 +118,26 @@ void X64Backend::Compile(BasicBlock& basic_block) {
       auto label_skip = Xbyak::Label{};
       auto label_done = Xbyak::Label{};
 
-      // Skip micro block if its condition is not met.
+      // Skip past the micro block if its condition is not met
       EmitConditionalBranch(condition, label_skip);
 
+      // Compile each IR opcode inside the micro block
       for (auto const& op : emitter.Code()) {
         CompileIROp(context, op);
         reg_alloc.AdvanceLocation();
       }
 
-      if (basic_block.enable_fast_dispatch && i == size - 1) {
+      /* Once we reached the end of the basic block,
+       * check if we can emit a jump to an already compiled basic block.
+       * Also update the cycle counter in that case and return to the dispatcher
+       * in the case that we ran out of cycles.
+       */
+      if (basic_block.enable_fast_dispatch && i == number_of_micro_blocks - 1) {
         auto& branch_target = basic_block.branch_target;
 
         if (branch_target.key.value != 0) {
           auto target_block = block_cache.Get(branch_target.key);
 
-          // TODO: deduplicate this code.
           if (target_block != nullptr) {
             // Return to the dispatcher if we ran out of cycles.
             code->sub(rbx, basic_block.length);
@@ -151,10 +154,13 @@ void X64Backend::Compile(BasicBlock& basic_block) {
         }
       }
 
+      /* The program counter is normally updated via IR opcodes.
+       * But if we skipped past the code which'd do that, we need to manually
+       * update the program counter.
+       */
       if (condition != Condition::AL) {
         code->jmp(label_done);
 
-        // If the micro block was skipped advance PC by the number of instructions in it. 
         code->L(label_skip);
         code->add(
           dword[rcx + state.GetOffsetToGPR(Mode::User, GPR::PC)],
@@ -163,8 +169,6 @@ void X64Backend::Compile(BasicBlock& basic_block) {
 
         code->L(label_done);
       }
-
-      i++;
     }
 
     if (basic_block.enable_fast_dispatch) {
