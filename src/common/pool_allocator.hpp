@@ -156,7 +156,7 @@ struct PoolObject {
 #ifndef NDEBUG
     if (size > decltype(g_pool_alloc)::max_size) {
       throw std::runtime_error(
-        fmt::format("PoolObject: requested size ({}) is larger than the support maximum ({})",
+        fmt::format("PoolObject: requested size ({}) is larger than the supported maximum ({})",
           size, decltype(g_pool_alloc)::max_size));
     }
 #endif
