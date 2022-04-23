@@ -30,28 +30,10 @@ struct PoolAllocator {
 
     if (pool->IsFull()) {
       // Remove pool from the front of the free list.
-      if (pool->next == nullptr) {
-        free_pools.head = nullptr;
-        free_pools.tail = nullptr;
-      } else {
-        auto new_head = pool->next;
-
-        new_head->prev = nullptr;
-        pool->next = nullptr;
-        free_pools.head = new_head;
-      }
+      free_pools.Remove(pool);
 
       // Add pool to the end of the full list.
-      if (full_pools.head == nullptr) {
-        full_pools.head = pool;
-        full_pools.tail = pool;
-      } else {
-        auto old_tail = full_pools.tail;
-
-        old_tail->next = pool;
-        pool->prev = old_tail;
-        full_pools.tail = pool;
-      }
+      full_pools.Append(pool);
     }
 
     return object;
@@ -63,30 +45,10 @@ struct PoolAllocator {
 
     if (pool->IsFull()) {
       // Remove pool from the full list.
-      if (pool->next == nullptr) {
-        full_pools.tail = pool->prev;
-      } else {
-        pool->next->prev = pool->prev;
-      }
-      if (pool->prev == nullptr) {
-        full_pools.head = pool->next;
-      } else {
-        pool->prev->next = pool->next;
-      }
+      full_pools.Remove(pool);
 
       // Add pool to the end of the free list.
-      if (free_pools.head == nullptr) {
-        free_pools.head = pool;
-        free_pools.tail = pool;
-        pool->prev = nullptr;
-      } else {
-        auto old_tail = free_pools.tail;
-
-        old_tail->next = pool;
-        pool->prev = old_tail;
-        free_pools.tail = pool;
-      }
-      pool->next = nullptr;
+      free_pools.Append(pool);
     }
 
     pool->Push(obj);
@@ -131,6 +93,35 @@ private:
   };
 
   struct List {
+    void Remove(Pool* pool) {
+      if (pool->next == nullptr) {
+        tail = pool->prev;
+      } else {
+        pool->next->prev = pool->prev;
+      }
+
+      if (pool->prev == nullptr) {
+        head = pool->next;
+      } else {
+        pool->prev->next = pool->next;
+      }
+    }
+
+    void Append(Pool* pool) {
+      if (head == nullptr) {
+        head = pool;
+        tail = pool;
+      } else {
+        auto old_tail = tail;
+
+        old_tail->next = pool;
+        pool->prev = old_tail;
+        tail = pool;
+      }
+      
+      pool->next = nullptr;
+    }
+
    ~List() {
       Pool* pool = head;
 
