@@ -10,6 +10,7 @@
 #include <lunatic/integer.hpp>
 #include <vector>
 
+#include "common/pool_allocator.hpp"
 #include "decode/definition/common.hpp"
 #include "ir/emitter.hpp"
 #include "state.hpp"
@@ -17,7 +18,7 @@
 namespace lunatic {
 namespace frontend {
 
-struct BasicBlock {
+struct BasicBlock : PoolObject {
   using CompiledFn = uintptr;
 
   union Key {

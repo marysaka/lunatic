@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <lunatic/integer.hpp>
 
 namespace lunatic {
@@ -16,6 +17,8 @@ namespace lunatic {
 // size = size of each object
 template<typename T, size_t capacity, size_t size>
 struct PoolAllocator {
+  static constexpr size_t max_size = size;
+
   auto Allocate() -> void* {
     if (free_pools.head == nullptr) {
       free_pools.head = new Pool{};
@@ -27,7 +30,6 @@ struct PoolAllocator {
 
     if (pool->IsFull()) {
       // Remove pool from the front of the free list.
-      // Todo: do we really care about setting tail to nullptr?
       if (pool->next == nullptr) {
         free_pools.head = nullptr;
         free_pools.tail = nullptr;
@@ -147,15 +149,44 @@ private:
   List full_pools;
 };
 
-extern PoolAllocator<u16, 65536, 62> g_pool_alloc;
+extern PoolAllocator<u16, 65536, 96 - sizeof(u16)> g_pool_alloc;
 
-struct PoolAllocatedObject {
+struct PoolObject {
   auto operator new(size_t size) -> void* {
+#ifndef NDEBUG
+    if (size > decltype(g_pool_alloc)::max_size) {
+      throw std::runtime_error(
+        fmt::format("PoolObject: requested size ({}) is larger than the support maximum ({})",
+          size, decltype(g_pool_alloc)::max_size));
+    }
+#endif
     return g_pool_alloc.Allocate();
   }
 
   void operator delete(void* object) {
     g_pool_alloc.Release(object);
+  }
+};
+
+// Wrapper around our g_pool_alloc that implements the 'Allocator' named requirements:
+// https://en.cppreference.com/w/cpp/named_req/Allocator
+template<typename T>
+struct StdPoolAlloc {
+  static_assert(sizeof(T) <= decltype(g_pool_alloc)::max_size,
+    "StdPoolAlloc: type exceeds maxmimum supported allocation size");
+
+  using value_type = T;
+
+  auto allocate(std::size_t n) -> T* {
+    return (T*)g_pool_alloc.Allocate();
+  }
+
+  void deallocate(T* p, size_t n) {
+    g_pool_alloc.Release(p);
+  }
+
+  auto max_size() const -> size_t {
+    return 1;
   }
 };
 

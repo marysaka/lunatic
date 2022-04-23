@@ -12,13 +12,15 @@
 #include <vector>
 
 #include "common/optional.hpp"
+#include "common/pool_allocator.hpp"
 #include "opcode.hpp"
 
 namespace lunatic {
 namespace frontend {
 
 struct IREmitter {
-  using InstructionList = std::list<std::unique_ptr<IROpcode>>;
+  using OpcodePtr = std::unique_ptr<IROpcode>;
+  using InstructionList = std::list<OpcodePtr, StdPoolAlloc<OpcodePtr>>;
   using VariableList = std::vector<std::unique_ptr<IRVariable>>;
 
   IREmitter() = default;

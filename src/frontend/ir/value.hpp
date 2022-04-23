@@ -12,6 +12,7 @@
 #include <stdexcept>
 
 #include "common/optional.hpp"
+#include "common/pool_allocator.hpp"
 
 namespace lunatic {
 namespace frontend {
@@ -22,7 +23,7 @@ enum class IRDataType {
 };
 
 /// Represents an immutable variable
-struct IRVariable {
+struct IRVariable : PoolObject {
   IRVariable(IRVariable const& other) = delete;
 
   /// ID that is unique inside the IREmitter instance.

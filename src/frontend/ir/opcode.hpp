@@ -10,6 +10,7 @@
 #include <fmt/format.h>
 #include <stdexcept>
 
+#include "common/pool_allocator.hpp"
 #include "register.hpp"
 #include "value.hpp"
 
@@ -59,7 +60,7 @@ enum class IROpcodeClass {
 // TODO: Reads(), Writes() and ToString() should be const,
 // but due to the nature of this Optional<T> implementation this is not possible at the moment.
 
-struct IROpcode {
+struct IROpcode : PoolObject {
   virtual ~IROpcode() = default;
 
   virtual auto GetClass() const -> IROpcodeClass = 0;
