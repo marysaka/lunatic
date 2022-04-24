@@ -171,7 +171,7 @@ private:
   List full_pools;
 };
 
-extern PoolAllocator<u16, 4096, 70> g_pool_alloc;
+extern PoolAllocator<u16, 4096, 78> g_pool_alloc;
 
 struct PoolObject {
   auto operator new(size_t size) -> void* {
@@ -199,16 +199,25 @@ struct StdPoolAlloc {
 
   using value_type = T;
 
+  StdPoolAlloc() = default;
+
+  template <typename T2>
+  StdPoolAlloc(const StdPoolAlloc<T2>&) {}
+
+  bool operator==(const StdPoolAlloc<T>&) const noexcept {
+    return true;
+  }
+
+  bool operator!=(const StdPoolAlloc<T>&) const noexcept {
+    return false;
+  }
+
   auto allocate(std::size_t n) -> T* {
     return (T*)g_pool_alloc.Allocate();
   }
 
   void deallocate(T* p, size_t n) {
     g_pool_alloc.Release(p);
-  }
-
-  auto max_size() const -> size_t {
-    return 1;
   }
 };
 
