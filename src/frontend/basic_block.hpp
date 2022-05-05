@@ -68,7 +68,7 @@ struct BasicBlock : PoolObject {
   std::vector<MicroBlock> micro_blocks;
 
   // Pointer to the compiled code.
-  CompiledFn function = CompiledFn(nullptr);
+  CompiledFn function = (CompiledFn)0;
 
   // TODO: clean this up
   struct BranchTarget {
