@@ -15,6 +15,8 @@
   #include <windows.h>
 #endif
 
+#include "compiler.hpp"
+
 namespace lunatic {
 
 // T = data-type for object IDs (local to a pool)
@@ -102,10 +104,10 @@ private:
       return &objects[stack.data[--stack.length]];
     }
 
-    struct Object {
+    PACK(struct Object {
       u8 data[size];
       T id;
-    } __attribute__((packed)) objects[capacity];
+    }) objects[capacity];
 
     struct Stack {
       T data[capacity];

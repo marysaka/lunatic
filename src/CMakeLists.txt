@@ -50,6 +50,7 @@ set(HEADERS
   backend/x86_64/vtune.hpp
   backend/backend.hpp
   common/bit.hpp
+  common/compiler.hpp
   common/aligned_memory.hpp
   common/meta.hpp
   common/optional.hpp
