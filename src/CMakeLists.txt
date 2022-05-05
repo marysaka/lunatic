@@ -4,7 +4,7 @@ project(lunatic CXX)
 
 include(../CMakeModules/FindVTune.cmake)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SOURCES
@@ -41,7 +41,8 @@ set(SOURCES
   frontend/translator/handle/thumb_bl_suffix.cpp
   frontend/translator/translator.cpp
   frontend/state.cpp
-  jit.cpp)
+  jit.cpp
+)
 
 set(HEADERS
   backend/x86_64/backend.hpp
@@ -85,7 +86,8 @@ set(HEADERS
   frontend/translator/translator.hpp
   frontend/basic_block.hpp
   frontend/basic_block_cache.hpp
-  frontend/state.hpp)
+  frontend/state.hpp
+)
 
 set(HEADERS_PUBLIC
   ../include/lunatic/detail/meta.hpp
@@ -93,7 +95,8 @@ set(HEADERS_PUBLIC
   ../include/lunatic/coprocessor.hpp
   ../include/lunatic/cpu.hpp
   ../include/lunatic/integer.hpp
-  ../include/lunatic/memory.hpp)
+  ../include/lunatic/memory.hpp
+)
 
 add_library(lunatic STATIC ${SOURCES} ${HEADERS} ${HEADERS_PUBLIC})
 
