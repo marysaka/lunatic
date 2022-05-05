@@ -173,7 +173,7 @@ void render_frame() {
 int main(int argc, char** argv) {
   using namespace lunatic;
 
-  static constexpr auto kROMPath = "rockwrestler.nds";
+  static constexpr auto kROMPath = "armwrestler.nds";
 
   size_t size;
   std::ifstream file { kROMPath, std::ios::binary };
@@ -209,8 +209,7 @@ int main(int argc, char** argv) {
 
   // TODO: better initialization, set exception base for example.
   auto jit = CreateCPU(CPU::Descriptor{
-    .memory = g_memory,
-    .coprocessors = {
+    g_memory, {
       nullptr, nullptr, nullptr, nullptr,
       nullptr, nullptr, nullptr, nullptr,
       nullptr, nullptr, nullptr, nullptr,
