@@ -8,8 +8,13 @@
 #pragma once
 
 #include <bitset>
-#include <xbyak/xbyak.h>
 #include <vector>
+
+#ifdef LUNATIC_INCLUDE_XBYAK_FROM_DIRECTORY
+  #include <xbyak/xbyak.h>
+#else
+  #include <xbyak.h>
+#endif
 
 #include "common/optional.hpp"
 #include "frontend/ir/emitter.hpp"

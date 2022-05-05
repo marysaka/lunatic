@@ -8,6 +8,7 @@ endif()
 
 option(LUNATIC_USE_EXTERNAL_FMT "Use externally provided {fmt} library." OFF)
 option(LUNATIC_USE_VTUNE "Use VTune JIT Profiling API if available" OFF)
+option(LUNATIC_INCLUDE_XBYAK_FROM_DIRECTORY "Get Xbyak from xbyak/xbyak.h and not xbyak.h" ON)
 
 project(lunatic-root)
 

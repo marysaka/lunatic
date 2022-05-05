@@ -106,6 +106,10 @@ target_include_directories(lunatic PUBLIC
     $<INSTALL_INTERFACE:include>)
 target_link_libraries(lunatic PRIVATE fmt xbyak)
 
+if (LUNATIC_INCLUDE_XBYAK_FROM_DIRECTORY)
+  target_compile_definitions(lunatic PRIVATE LUNATIC_INCLUDE_XBYAK_FROM_DIRECTORY)
+endif()
+
 if (VTune_FOUND AND LUNATIC_USE_VTUNE)
   message(STATUS "lunatic: Adding VTune JIT Profiling API from ${VTune_LIBRARIES}")
   target_include_directories(lunatic PRIVATE ${VTune_INCLUDE_DIRS})
