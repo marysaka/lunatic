@@ -38,7 +38,7 @@ enum class Mode : uint {
   IRQ = 0x12,
   Supervisor = 0x13,
   Abort = 0x17,
-  Undefined = 0x18,
+  Undefined = 0x1B,
   System = 0x1F
 };
 
