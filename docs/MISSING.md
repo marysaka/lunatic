@@ -1,7 +1,7 @@
 The following instructions are currently **NOT** emulated:
 - PLD (ARMv5)
 - BKPT (ARMv5)
-- LDRT/STRT
+- LDRT/STRT (treated like LDR/STR)
 - VFP instructions
 - CDP (coprocessor data processing)
 - STC (store coprocessor)

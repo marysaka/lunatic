@@ -10,12 +10,13 @@
 namespace lunatic {
 namespace frontend {
 
-auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> Status {
-  if (!opcode.pre_increment && opcode.writeback) {
-    // LDRT and STRT are not supported right now.
-    return Status::Unimplemented;
-  }
+/*
+ * Note:
+ * Since lunatic does not distinguish system and user memory accesses,
+ * LDRT and STRT are treated like normal LDR/STR for now.
+ */
 
+auto Translator::Handle(ARMSingleDataTransfer const& opcode) -> Status {
   auto offset = IRAnyRef{};
 
   if (opcode.immediate) {
