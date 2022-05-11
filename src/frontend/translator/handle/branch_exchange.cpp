@@ -11,6 +11,10 @@ namespace lunatic {
 namespace frontend {
 
 auto Translator::Handle(ARMBranchExchange const& opcode) -> Status {
+  auto& address = emitter->CreateVar(IRDataType::UInt32, "address");
+
+  emitter->LoadGPR(IRGuestReg{opcode.reg, mode}, address);
+
   if (armv5te && opcode.link) {
     auto link_address = code_address + opcode_size;
     if (thumb_mode) {
@@ -19,8 +23,6 @@ auto Translator::Handle(ARMBranchExchange const& opcode) -> Status {
     emitter->StoreGPR(IRGuestReg{GPR::LR, mode}, IRConstant{link_address});
   }
 
-  auto& address = emitter->CreateVar(IRDataType::UInt32, "address");
-  emitter->LoadGPR(IRGuestReg{opcode.reg, mode}, address);
   EmitFlushExchange(address);
 
   return Status::BreakBasicBlock;
