@@ -12,7 +12,6 @@ namespace frontend {
 
 auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
   auto list = opcode.reg_list;
-  auto transfer_pc = bit::get_bit(list, 15);
   auto reg_base = IRGuestReg{opcode.reg_base, mode};
   bool base_is_first = false;
   bool base_is_last  = false;
@@ -23,7 +22,6 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
     bytes = 16 * sizeof(u32);
     if (!armv5te) {
       list = 1 << 15;
-      transfer_pc = true;
       base_is_last = false;
       base_is_first = false;
     }
@@ -60,11 +58,13 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
     }
   };
 
-  if (!opcode.load || !transfer_pc) {
+  auto loading_pc = opcode.load && bit::get_bit(list, 15);
+
+  if (!loading_pc) {
     EmitAdvancePC();
   }
 
-  auto forced_mode = opcode.user_mode ? Mode::User : mode;
+  auto forced_mode = (opcode.user_mode && !loading_pc) ? Mode::User : mode;
   auto address = &base_lo;
 
   bool early_writeback = opcode.writeback && !opcode.load && !armv5te && !base_is_first;
@@ -103,7 +103,7 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
     }
   }
 
-  if (opcode.user_mode && opcode.load && transfer_pc) {
+  if (opcode.user_mode && loading_pc) {
     // TODO: base writeback happens in which mode? (this is unpredictable)
     // If writeback happens in the new mode, then this might be difficult
     // to emulate because we cannot know the value of SPSR at compile-time.
@@ -127,7 +127,7 @@ auto Translator::Handle(ARMBlockDataTransfer const& opcode) -> Status {
   }
 
   // Flush the pipeline if we loaded R15.
-  if (opcode.load && transfer_pc) {
+  if (loading_pc) {
     if (opcode.user_mode) {
       EmitFlush();
     } else if (armv5te) {
