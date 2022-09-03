@@ -148,8 +148,7 @@ void X64Backend::Compile(BasicBlock& basic_block) {
             code->cmp(byte[rdx], 0);
             code->jnz(label_return_to_dispatch);
 
-            code->mov(rsi, u64(target_block->function));
-            code->jmp(rsi);
+            code->jmp((const void*)target_block->function);
           }
         }
       }
