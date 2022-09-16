@@ -13,6 +13,13 @@ namespace lunatic {
 namespace frontend {
 
 struct BasicBlockCache {
+ ~BasicBlockCache() {
+    /* Make sure that the cache does not consist of stale points,
+     * once the basic blocks are deleted and X64Backend::OnBasicBlockToBeDeleted() will be called.
+     */
+    Flush();
+  }
+
   void Flush() {
     for (int i = 0; i < 0x40000; i++) {
       data[i] = {};
@@ -54,7 +61,17 @@ struct BasicBlockCache {
       data[hash0] = std::make_unique<Table>();
     }
 
-    // TODO: pass basic block as std::unique_ptr?
+    auto current_block = std::move(table->data[hash1]);
+
+    // Temporary fix: remove any linked blocks from the cache as well.
+    if (current_block && current_block.get() != block) {
+      for (auto linking_block : current_block->linking_blocks) {
+        if (linking_block != current_block.get()) {
+          Set(linking_block->key, nullptr);
+        }
+      }
+    }
+
     table->data[hash1] = std::unique_ptr<BasicBlock>{block};
   }
 

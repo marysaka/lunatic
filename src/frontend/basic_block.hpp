@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <functional>
 #include <lunatic/integer.hpp>
 #include <vector>
 
@@ -22,14 +23,14 @@ struct BasicBlock : PoolObject {
   using CompiledFn = uintptr;
 
   union Key {
-    Key() {}
+    Key() = default;
 
-    Key(State& state) {
+    explicit Key(State& state) {
       value  = state.GetGPR(Mode::User, GPR::PC) >> 1;
       value |= u64(state.GetCPSR().v & 0x3F) << 31; // mode and thumb bit
     }
 
-    Key(u64 value) : value(value) {}
+    explicit Key(u64 value) : value(value) {}
 
     Key(u32 address, Mode mode, bool thumb) {
       value  = address >> 1;
@@ -39,9 +40,29 @@ struct BasicBlock : PoolObject {
       }
     }
 
-    auto Address() -> u32 { return (value & 0x7FFFFFFF) << 1; }
-    auto Mode() -> Mode { return static_cast<lunatic::Mode>((value >> 31) & 0x1F); }
-    bool Thumb() { return value & (1ULL << 36); }
+    [[nodiscard]] auto Address() const -> u32 {
+      return (value & 0x7FFFFFFF) << 1;
+    }
+
+    [[nodiscard]] auto Mode() const -> Mode {
+      return static_cast<lunatic::Mode>((value >> 31) & 0x1F);
+    }
+
+    [[nodiscard]] bool Thumb() const {
+      return value & (1ULL << 36);
+    }
+
+    [[nodiscard]] bool IsEmpty() const {
+      return value == 0;
+    }
+
+    bool operator==(Key const& other) const {
+      return value == other.value;
+    }
+
+    bool operator!=(Key const& other) const {
+      return value != other.value;
+    }
     
     // bits  0 - 30: address[31:1]
     // bits 31 - 35: CPU mode
@@ -49,12 +70,23 @@ struct BasicBlock : PoolObject {
     u64 value = 0;
   } key;
 
-
-  BasicBlock() {}
-  BasicBlock(Key key) : key(key) {}
+  BasicBlock() = default;
+  explicit BasicBlock(Key key) : key(key) {}
 
  ~BasicBlock() {
-    // TODO: release the underlying JIT memory.
+    for (auto& callback : release_callbacks) callback(*this);
+  }
+
+  bool operator==(BasicBlock const& other) const {
+    return key == other.key;
+  }
+
+  bool operator!=(BasicBlock const& other) const {
+    return key != other.key;
+  }
+
+  void RegisterReleaseCallback(std::function<void(BasicBlock const&)> const& callback) {
+    release_callbacks.push_back(callback);
   }
 
   int length = 0;
@@ -70,15 +102,26 @@ struct BasicBlock : PoolObject {
   // Pointer to the compiled code.
   CompiledFn function = (CompiledFn)0;
 
-  // TODO: clean this up
   struct BranchTarget {
     Key key{};
+    u8* patch_location = nullptr;
   } branch_target;
 
+  std::vector<BasicBlock*> linking_blocks;
 
   u32 hash = 0;
   bool enable_fast_dispatch = true;
+
+private:
+  std::vector<std::function<void(BasicBlock const&)>> release_callbacks;
 };
 
 } // namespace lunatic::frontend
 } // namespace lunatic
+
+template<>
+struct std::hash<lunatic::frontend::BasicBlock::Key> {
+  std::size_t operator()(lunatic::frontend::BasicBlock::Key const& key) const {
+    return std::hash<u64>{}(key.value);
+  }
+};

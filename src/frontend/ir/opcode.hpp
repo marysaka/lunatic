@@ -18,6 +18,7 @@ namespace lunatic {
 namespace frontend {
 
 enum class IROpcodeClass {
+  NOP,
   LoadGPR,
   StoreGPR,
   LoadSPSR,
@@ -70,6 +71,10 @@ struct IROpcode : PoolObject {
     IRVariable const& var_old,
     IRVariable const& var_new
   ) = 0;
+  virtual void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) {}
   virtual auto ToString() -> std::string = 0;
 };
 
@@ -78,6 +83,26 @@ struct IROpcodeBase : IROpcode {
   static constexpr IROpcodeClass klass = _klass;
 
   auto GetClass() const -> IROpcodeClass override { return _klass; }
+};
+
+struct IRNoOp final : IROpcodeBase<IROpcodeClass::NOP> {
+  auto Reads(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  auto Writes(IRVariable const& var) -> bool override {
+    return false;
+  }
+
+  void Repoint(
+    IRVariable const& var_old,
+    IRVariable const& var_new
+  ) override {
+  }
+
+  auto ToString() -> std::string override {
+    return "nop";
+  }
 };
 
 struct IRLoadGPR final : IROpcodeBase<IROpcodeClass::LoadGPR> {
@@ -138,6 +163,13 @@ struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
     IRVariable const& var_new
   ) override {
     value.Repoint(var_old, var_new);
+  }
+
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) {
+    value.PropagateConstant(var, constant);
   }
 
   auto ToString() -> std::string override {
@@ -206,6 +238,13 @@ struct IRStoreSPSR final : IROpcodeBase<IROpcodeClass::StoreSPSR> {
     value.Repoint(var_old, var_new);
   }
 
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) {
+    value.PropagateConstant(var, constant);  
+  }
+
   auto ToString() -> std::string override {
     return fmt::format(
       "stspsr.{} {}",
@@ -259,6 +298,13 @@ struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {
     IRVariable const& var_new
   ) override {
     value.Repoint(var_old, var_new);
+  }
+
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) {
+    value.PropagateConstant(var, constant);  
   }
 
   auto ToString() -> std::string override {
@@ -431,6 +477,15 @@ struct IRShifterBase : IROpcodeBase<_klass> {
     operand.Repoint(var_old, var_new);
     amount.Repoint(var_old, var_new);
   }
+
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) {
+    // TODO: this is unsafe, because shifter behaviour is different for
+    // shift-by-register vs shift-by-immediate instructions.
+    //amount.PropagateConstant(var, constant);
+  }
 };
 
 struct IRLogicalShiftLeft final : IRShifterBase<IROpcodeClass::LSL> {
@@ -527,6 +582,13 @@ struct IRBinaryOpBase : IROpcodeBase<_klass> {
 
     lhs.Repoint(var_old, var_new);
     rhs.Repoint(var_old, var_new);
+  }
+
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) {
+    rhs.PropagateConstant(var, constant);  
   }
 };
 
@@ -700,6 +762,13 @@ struct IRMov final : IROpcodeBase<IROpcodeClass::MOV> {
     source.Repoint(var_old, var_new);
   }
 
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) {
+    source.PropagateConstant(var, constant);  
+  }
+
   auto ToString() -> std::string override {
     return fmt::format(
       "mov{} {}, {}",
@@ -738,6 +807,13 @@ struct IRMvn final : IROpcodeBase<IROpcodeClass::MVN> {
   ) override {
     result.Repoint(var_old, var_new);
     source.Repoint(var_old, var_new);
+  }
+
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) {
+    source.PropagateConstant(var, constant);
   }
 
   auto ToString() -> std::string override {
@@ -895,7 +971,7 @@ struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
   IRMemoryRead(
     IRMemoryFlags flags,
     IRVariable const& result,
-    IRVariable const& address
+    IRAnyRef address
   )   : flags(flags)
       , result(result)
       , address(address) {
@@ -903,10 +979,10 @@ struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
 
   IRMemoryFlags flags;
   IRVarRef result;
-  IRVarRef address;
+  IRAnyRef address;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &address.Get() == &var;
+    return address.IsVariable() && (&address.GetVar() == &var);
   }
 
   auto Writes(IRVariable const& var) -> bool override {
@@ -919,6 +995,13 @@ struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
   ) override {
     result.Repoint(var_old, var_new);
     address.Repoint(var_old, var_new);
+  }
+
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) override {
+    address.PropagateConstant(var, constant);
   }
 
   auto ToString() -> std::string override {
@@ -940,19 +1023,20 @@ struct IRMemoryRead final : IROpcodeBase<IROpcodeClass::MemoryRead> {
 struct IRMemoryWrite final : IROpcodeBase<IROpcodeClass::MemoryWrite> {
   IRMemoryWrite(
     IRMemoryFlags flags,
-    IRVariable const& source,
-    IRVariable const& address
+    IRAnyRef source,
+    IRAnyRef address
   )   : flags(flags)
       , source(source)
       , address(address) {
   }
 
   IRMemoryFlags flags;
-  IRVarRef source;
-  IRVarRef address;
+  IRAnyRef source;
+  IRAnyRef address;
 
   auto Reads(IRVariable const& var) -> bool override {
-    return &address.Get() == &var || &source.Get() == &var;
+    return (address.IsVariable() && (&address.GetVar() == &var)) ||
+           (source.IsVariable()  && (&source.GetVar()  == &var));
   }
 
   auto Writes(IRVariable const& var) -> bool override {
@@ -965,6 +1049,14 @@ struct IRMemoryWrite final : IROpcodeBase<IROpcodeClass::MemoryWrite> {
   ) override {
     source.Repoint(var_old, var_new);
     address.Repoint(var_old, var_new);
+  }
+
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) override {
+    source.PropagateConstant(var, constant);
+    address.PropagateConstant(var, constant);
   }
 
   auto ToString() -> std::string override {
@@ -1266,6 +1358,13 @@ struct IRWriteCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MCR> {
     IRVariable const& var_new
   ) override {
     value.Repoint(var_old, var_new);
+  }
+
+  void PropagateConstant(
+    IRVariable const& var,
+    IRConstant const& constant
+  ) {
+    value.PropagateConstant(var, constant); 
   }
 
   auto ToString() -> std::string override {
