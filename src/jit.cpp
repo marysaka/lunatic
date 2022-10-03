@@ -37,6 +37,7 @@ struct JIT final : CPU {
     state.Reset();
     SetGPR(GPR::PC, exception_base);
     block_cache.Flush();
+    exception_causing_basic_blocks.clear();
   }
 
   auto IRQLine() -> bool& override {
@@ -45,6 +46,17 @@ struct JIT final : CPU {
 
   auto WaitForIRQ() -> bool& override {
     return wait_for_irq;
+  }
+
+  void SetExceptionBase(u32 new_exception_base) override {
+    if (new_exception_base != exception_base) {
+      // this is expected to happen rarely, so we just invalidate all blocks that may cause an exception.
+      while (!exception_causing_basic_blocks.empty()) {
+        block_cache.Set(exception_causing_basic_blocks.front()->key, nullptr);
+      }
+
+      translator.SetExceptionBase(new_exception_base);
+    }
   }
 
   void ClearICache() override {
@@ -138,6 +150,19 @@ private:
     translator.Translate(*basic_block);
     Optimize(basic_block);
 
+    if (basic_block->uses_exception_base) {
+      exception_causing_basic_blocks.push_back(basic_block);
+
+      basic_block->RegisterReleaseCallback([this](BasicBlock const& block) {
+        auto match = std::find(
+          exception_causing_basic_blocks.begin(), exception_causing_basic_blocks.end(), &block);
+
+        if (match != exception_causing_basic_blocks.end()) {
+          exception_causing_basic_blocks.erase(match);
+        }
+      });
+    }
+
     backend.Compile(*basic_block);
     block_cache.Set(block_key, basic_block);
     basic_block->micro_blocks.clear();
@@ -203,6 +228,7 @@ private:
   BasicBlockCache block_cache;
   X64Backend backend;
   std::vector<std::unique_ptr<IRPass>> passes;
+  std::vector<BasicBlock*> exception_causing_basic_blocks;
 };
 
 auto CreateCPU(CPU::Descriptor const& descriptor) -> std::unique_ptr<CPU> {

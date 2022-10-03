@@ -111,6 +111,7 @@ struct BasicBlock : PoolObject {
 
   u32 hash = 0;
   bool enable_fast_dispatch = true;
+  bool uses_exception_base = false;
 
 private:
   std::vector<std::function<void(BasicBlock const&)>> release_callbacks;

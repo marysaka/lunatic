@@ -15,6 +15,8 @@ auto Translator::Handle(ARMException const& opcode) -> Status {
   auto exception = opcode.exception;
   u32 branch_address = exception_base + static_cast<u32>(exception) + sizeof(u32) * 2;
 
+  basic_block->uses_exception_base = true;
+
   switch (exception) {
     case Exception::Supervisor:
       new_mode = Mode::Supervisor;

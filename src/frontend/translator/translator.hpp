@@ -27,6 +27,10 @@ enum class Status {
 struct Translator final : ARMDecodeClient<Status> {
   Translator(CPU::Descriptor const& descriptor);
 
+  void SetExceptionBase(u32 new_exception_base) {
+    exception_base = new_exception_base;
+  }
+
   void Translate(BasicBlock& basic_block);
 
   auto Handle(ARMDataProcessing const& opcode) -> Status override;
