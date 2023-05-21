@@ -310,6 +310,9 @@ void X64Backend::EmitConditionalBranch(Condition condition, Xbyak::Label& label_
     case Condition::NV:
       code->jmp(label_skip, Xbyak::CodeGenerator::T_NEAR);
       break;
+    default:
+      fmt::print("Unsupported Condition {}\n", condition);
+      std::abort();
   }
 }
 
