@@ -168,7 +168,7 @@ struct IRStoreGPR final : IROpcodeBase<IROpcodeClass::StoreGPR> {
   void PropagateConstant(
     IRVariable const& var,
     IRConstant const& constant
-  ) {
+  ) override {
     value.PropagateConstant(var, constant);
   }
 
@@ -241,7 +241,7 @@ struct IRStoreSPSR final : IROpcodeBase<IROpcodeClass::StoreSPSR> {
   void PropagateConstant(
     IRVariable const& var,
     IRConstant const& constant
-  ) {
+  ) override {
     value.PropagateConstant(var, constant);  
   }
 
@@ -303,7 +303,7 @@ struct IRStoreCPSR final : IROpcodeBase<IROpcodeClass::StoreCPSR> {
   void PropagateConstant(
     IRVariable const& var,
     IRConstant const& constant
-  ) {
+  ) override {
     value.PropagateConstant(var, constant);  
   }
 
@@ -481,7 +481,7 @@ struct IRShifterBase : IROpcodeBase<_klass> {
   void PropagateConstant(
     IRVariable const& var,
     IRConstant const& constant
-  ) {
+  ) override {
     // TODO: this is unsafe, because shifter behaviour is different for
     // shift-by-register vs shift-by-immediate instructions.
     //amount.PropagateConstant(var, constant);
@@ -587,7 +587,7 @@ struct IRBinaryOpBase : IROpcodeBase<_klass> {
   void PropagateConstant(
     IRVariable const& var,
     IRConstant const& constant
-  ) {
+  ) override {
     rhs.PropagateConstant(var, constant);  
   }
 };
@@ -765,7 +765,7 @@ struct IRMov final : IROpcodeBase<IROpcodeClass::MOV> {
   void PropagateConstant(
     IRVariable const& var,
     IRConstant const& constant
-  ) {
+  ) override {
     source.PropagateConstant(var, constant);  
   }
 
@@ -812,7 +812,7 @@ struct IRMvn final : IROpcodeBase<IROpcodeClass::MVN> {
   void PropagateConstant(
     IRVariable const& var,
     IRConstant const& constant
-  ) {
+  ) override {
     source.PropagateConstant(var, constant);
   }
 
@@ -1363,7 +1363,7 @@ struct IRWriteCoprocessorRegister final : IROpcodeBase<IROpcodeClass::MCR> {
   void PropagateConstant(
     IRVariable const& var,
     IRConstant const& constant
-  ) {
+  ) override {
     value.PropagateConstant(var, constant); 
   }
 
