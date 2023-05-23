@@ -507,5 +507,12 @@ auto X64Backend::GetUsedHostRegsFromList(
   return regs_used;
 }
 
+std::unique_ptr<Backend> Backend::CreateBackend(CPU::Descriptor const& descriptor,
+                                                State& state,
+                                                BasicBlockCache& block_cache,
+                                                bool const& irq_line) {
+  return std::make_unique<X64Backend>(descriptor, state, block_cache, irq_line);
+}
+
 } // namespace lunatic::backend
 } // namespace lunatic

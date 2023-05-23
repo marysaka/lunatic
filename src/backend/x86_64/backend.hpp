@@ -33,8 +33,8 @@ struct X64Backend : Backend {
 
  ~X64Backend();
 
-  void Compile(BasicBlock& basic_block);
-  int Call(BasicBlock const& basic_block, int max_cycles);
+  void Compile(BasicBlock& basic_block) override;
+  int Call(frontend::BasicBlock const& basic_block, int max_cycles) override;
 
 private:
   static constexpr size_t kCodeBufferSize = 32 * 1024 * 1024;
