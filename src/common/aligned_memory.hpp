@@ -170,7 +170,7 @@ namespace memory {
 
     bool ProtectForWrite() {
       #if defined(__APPLE__) && defined(__aarch64__)
-      pthread_jit_write_protect_np(1);
+      pthread_jit_write_protect_np(0);
       return true;
       #else
       return memory_block.Protect(static_cast<MemoryProtection>(MemoryProtection_Read | MemoryProtection_Write));
@@ -179,7 +179,7 @@ namespace memory {
 
     bool ProtectForExecute() {
       #if defined(__APPLE__) && defined(__aarch64__)
-      pthread_jit_write_protect_np(0);
+      pthread_jit_write_protect_np(1);
       return true;
       #else
       return memory_block.Protect(static_cast<MemoryProtection>(MemoryProtection_Read | MemoryProtection_Execute));
