@@ -27,6 +27,25 @@ if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
     backend/x86_64/register_allocator.hpp
     backend/x86_64/vtune.hpp
   )
+elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64")
+  set(ARCH_SPECIFIC_SOURCES
+    backend/arm64/backend.cpp
+    backend/arm64/compile_alu.cpp
+    backend/arm64/compile_context.cpp
+    backend/arm64/compile_coprocessor.cpp
+    backend/arm64/compile_flags.cpp
+    backend/arm64/compile_flush.cpp
+    backend/arm64/compile_memory.cpp
+    backend/arm64/compile_multiply.cpp
+    backend/arm64/compile_shift.cpp
+    backend/arm64/register_allocator.cpp
+  )
+
+  set(ARCH_SPECIFIC_HEADERS
+    backend/arm64/backend.hpp
+    backend/arm64/common.hpp
+    backend/arm64/register_allocator.hpp
+  )
 else()
   message(FATAL_ERROR "Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
@@ -132,6 +151,8 @@ if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
   if (LUNATIC_INCLUDE_XBYAK_FROM_DIRECTORY)
     target_compile_definitions(lunatic PRIVATE LUNATIC_INCLUDE_XBYAK_FROM_DIRECTORY)
   endif()
+elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm64")
+  target_link_libraries(lunatic PRIVATE oaknut)
 endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")

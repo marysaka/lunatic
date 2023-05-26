@@ -5,3 +5,7 @@ endif()
 if (NOT TARGET xbyak)
   add_subdirectory(xbyak)
 endif()
+
+if (NOT TARGET oaknut)
+  add_subdirectory(oaknut)
+endif()
