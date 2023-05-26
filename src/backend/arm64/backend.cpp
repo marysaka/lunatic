@@ -394,7 +394,6 @@ void ARM64Backend::UpdateHostFlagsFromSystem(CompileContext const& context, uint
   code.MVN(mask_reg, mask_reg);
   code.AND(HostFlagsReg, HostFlagsReg, mask_reg);
   code.ORR(HostFlagsReg, HostFlagsReg, tmp_reg0);
-
 }
 
 

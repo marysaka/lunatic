@@ -166,6 +166,10 @@ void ARM64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRi
     if (amount.IsConstant()) {
       auto amount_value = amount.GetConst().value;
 
+      if (amount_value == 0) {
+        amount_value = 32;
+      }
+
       code.ASR(result_reg, result_reg, std::max(amount_value, 31U));
     } else {
       auto amount_reg = reg_alloc.GetVariableHostReg(amount.GetVar());
@@ -183,7 +187,14 @@ void ARM64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRi
 
     if (amount.IsConstant()) {
       amount_reg = reg_alloc.GetTemporaryHostReg();
-      code.MOV(amount_reg, amount.GetConst().value);
+
+      auto amount_value = amount.GetConst().value;
+
+      if (amount_value == 0) {
+        amount_value = 32;
+      }
+
+      code.MOV(amount_reg, amount_value);
     } else {
       amount_reg = reg_alloc.GetVariableHostReg(amount.GetVar());
     }
@@ -193,23 +204,24 @@ void ARM64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRi
 
     auto tmp_reg0 = reg_alloc.GetTemporaryHostReg();
     auto tmp_reg1 = reg_alloc.GetTemporaryHostReg();
+    auto carry_out = reg_alloc.GetTemporaryHostReg();
 
     code.ANDS(tmp_reg0, amount_reg, 0xFF);
     code.B(oaknut::Cond::EQ, zero_returned);
 
-    code.MOV(tmp_reg1, 63);
+    code.MOV(tmp_reg1, 31);
     code.CMP(tmp_reg0, tmp_reg1);
     code.CSEL(tmp_reg0, tmp_reg0, tmp_reg1, LS);
 
     code.SXTW(result_reg.toX(), operand_reg);
     code.SUB(tmp_reg1, tmp_reg0, 1);
-    code.ASR(tmp_reg1.toX(), result_reg.toX(), tmp_reg1.toX());
+    code.ASR(carry_out.toX(), result_reg.toX(), tmp_reg1.toX());
     code.ASR(result_reg.toX(), result_reg.toX(), tmp_reg0.toX());
-    code.UBFIZ(tmp_reg1, tmp_reg1, 29, 1);
+    code.UBFIZ(carry_out, carry_out, 29, 1);
 
     // Update carry flag
     code.AND(HostFlagsReg, HostFlagsReg, ~(1 << 29));
-    code.ORR(HostFlagsReg, HostFlagsReg, tmp_reg1.toX());
+    code.ORR(HostFlagsReg, HostFlagsReg, carry_out.toX());
 
     code.B(end);
 
