@@ -45,7 +45,7 @@ struct ARM64Backend : Backend {
   void Compile(BasicBlock& basic_block) override;
   int Call(frontend::BasicBlock const& basic_block, int max_cycles) override;
   static void UpdateSystemFlags(CompileContext const& context, oaknut::XReg value_reg, uint32_t mask);
-  static void UpdateHostFlagsFromSystem(CompileContext const& context);
+  static void UpdateHostFlagsFromSystem(CompileContext const& context, uint32_t mask);
 
 private:
   static constexpr size_t kCodeBufferSize = 32 * 1024 * 1024;

@@ -73,9 +73,6 @@ void ARM64Backend::CompileLSL(CompileContext const& context, IRLogicalShiftLeft*
     code.AND(HostFlagsReg, HostFlagsReg, ~(1 << 29));
     code.ORR(HostFlagsReg, HostFlagsReg, tmp_reg1.toX());
 
-    // Reflect update on the actual system register.
-    UpdateSystemFlags(context, HostFlagsReg, 0xD0000000);
-
     code.B(end);
 
     code.l(zero_returned);
@@ -144,9 +141,6 @@ void ARM64Backend::CompileLSR(CompileContext const& context, IRLogicalShiftRight
     // Update carry flag
     code.AND(HostFlagsReg, HostFlagsReg, ~(1 << 29));
     code.ORR(HostFlagsReg, HostFlagsReg, tmp_reg1.toX());
-
-    // Reflect update on the actual system register.
-    UpdateSystemFlags(context, HostFlagsReg, 0xD0000000);
 
     code.B(end);
 
@@ -217,9 +211,6 @@ void ARM64Backend::CompileASR(CompileContext const& context, IRArithmeticShiftRi
     code.AND(HostFlagsReg, HostFlagsReg, ~(1 << 29));
     code.ORR(HostFlagsReg, HostFlagsReg, tmp_reg1.toX());
 
-    // Reflect update on the actual system register.
-    UpdateSystemFlags(context, HostFlagsReg, 0xD0000000);
-
     code.B(end);
 
     code.l(zero_returned);
@@ -270,9 +261,6 @@ void ARM64Backend::CompileROR(CompileContext const& context, IRRotateRight* op) 
     // Update carry flag
     code.AND(HostFlagsReg, HostFlagsReg, ~(1 << 29));
     code.ORR(HostFlagsReg, HostFlagsReg, tmp_reg0.toX());
-
-    // Reflect update on the actual system register.
-    UpdateSystemFlags(context, HostFlagsReg, 0xD0000000);
   }
 }
 

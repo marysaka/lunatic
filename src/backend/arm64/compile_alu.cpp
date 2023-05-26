@@ -11,7 +11,7 @@
 namespace lunatic::backend {
 
 template<typename Fn1, typename Fn2>
-static void EmitALUOp(ARM64Backend::CompileContext const& context, Optional<IRVariable const&> &result, IRVarRef const& lhs, IRAnyRef const& rhs, bool update_host_flags, Fn1 op, Fn2 op_with_flags) {
+static void EmitALUOp(ARM64Backend::CompileContext const& context, Optional<IRVariable const&> &result, IRVarRef const& lhs, IRAnyRef const& rhs, bool update_host_flags, Fn1 op, Fn2 op_with_flags, uint32_t mask) {
   DESTRUCTURE_CONTEXT;
 
   auto& lhs_var = lhs.Get();
@@ -69,7 +69,7 @@ static void EmitALUOp(ARM64Backend::CompileContext const& context, Optional<IRVa
   }
 
   if (update_host_flags) {
-    ARM64Backend::UpdateHostFlagsFromSystem(context);
+    ARM64Backend::UpdateHostFlagsFromSystem(context, mask);
   }
 }
 
@@ -77,13 +77,15 @@ static void EmitALUOp(ARM64Backend::CompileContext const& context, Optional<IRVa
 void ARM64Backend::CompileAND(CompileContext const& context, IRBitwiseAND* op) {
   EmitALUOp(context, op->result, op->lhs, op->rhs, op->update_host_flags,
             [&](auto const& context, auto& result, auto& a, auto& b) { code->AND(result, a, b); },
-            [&](auto const& context, auto& result, auto& a, auto& b) { code->ANDS(result, a, b); });
+            [&](auto const& context, auto& result, auto& a, auto& b) { code->ANDS(result, a, b); },
+            0xC0000000);
 }
 
 void ARM64Backend::CompileBIC(CompileContext const& context, IRBitwiseBIC* op) { 
   EmitALUOp(context, op->result, op->lhs, op->rhs, op->update_host_flags,
             [&](auto const& context, auto& result, auto& a, auto& b) { code->BIC(result, a, b); },
-            [&](auto const& context, auto& result, auto& a, auto& b) { code->BICS(result, a, b); });
+            [&](auto const& context, auto& result, auto& a, auto& b) { code->BICS(result, a, b); },
+            0xC0000000);
 }
 
 void ARM64Backend::CompileEOR(CompileContext const& context, IRBitwiseEOR* op) {
@@ -92,13 +94,15 @@ void ARM64Backend::CompileEOR(CompileContext const& context, IRBitwiseEOR* op) {
             [&](auto const& context, auto& result, auto& a, auto& b) {
               code->EOR(result, a, b);
               code->TST(result, result);
-            });
+            },
+            0xC0000000);
 }
 
 void ARM64Backend::CompileSUB(CompileContext const& context, IRSub* op) { 
   EmitALUOp(context, op->result, op->lhs, op->rhs, op->update_host_flags,
             [&](auto const& context, auto& result, auto& a, auto& b) { code->SUB(result, a, b); },
-            [&](auto const& context, auto& result, auto& a, auto& b) { code->SUBS(result, a, b); });
+            [&](auto const& context, auto& result, auto& a, auto& b) { code->SUBS(result, a, b); },
+            0xF0000000);
 }
 
 void ARM64Backend::CompileRSB(CompileContext const& context, IRRsb* op) { NOT_IMPLEMENTED_OP(op); }
@@ -106,19 +110,22 @@ void ARM64Backend::CompileRSB(CompileContext const& context, IRRsb* op) { NOT_IM
 void ARM64Backend::CompileADD(CompileContext const& context, IRAdd* op) {
   EmitALUOp(context, op->result, op->lhs, op->rhs, op->update_host_flags,
             [&](auto const& context, auto& result, auto& a, auto& b) { code->ADD(result, a, b); },
-            [&](auto const& context, auto& result, auto& a, auto& b) { code->ADDS(result, a, b); });
+            [&](auto const& context, auto& result, auto& a, auto& b) { code->ADDS(result, a, b); },
+            0xF0000000);
 }
 
 void ARM64Backend::CompileADC(CompileContext const& context, IRAdc* op) {
   EmitALUOp(context, op->result, op->lhs, op->rhs, op->update_host_flags,
             [&](auto const& context, auto& result, auto& a, auto& b) { code->ADC(result, a, b); },
-            [&](auto const& context, auto& result, auto& a, auto& b) { code->ADCS(result, a, b); });
+            [&](auto const& context, auto& result, auto& a, auto& b) { code->ADCS(result, a, b); },
+            0xF0000000);
 }
 
 void ARM64Backend::CompileSBC(CompileContext const& context, IRSbc* op) {
   EmitALUOp(context, op->result, op->lhs, op->rhs, op->update_host_flags,
             [&](auto const& context, auto& result, auto& a, auto& b) { code->SBC(result, a, b); },
-            [&](auto const& context, auto& result, auto& a, auto& b) { code->SBCS(result, a, b); });
+            [&](auto const& context, auto& result, auto& a, auto& b) { code->SBCS(result, a, b); },
+            0xF0000000);
 }
 
 void ARM64Backend::CompileRSC(CompileContext const& context, IRRsc* op) { NOT_IMPLEMENTED_OP(op); }
@@ -129,7 +136,8 @@ void ARM64Backend::CompileORR(CompileContext const& context, IRBitwiseORR* op) {
             [&](auto const& context, auto& result, auto& a, auto& b) {
               code->ORR(result, a, b);
               code->TST(result, result);
-            });
+            },
+            0xC0000000);
 }
 
 void ARM64Backend::CompileMOV(CompileContext const& context, IRMov* op) {
@@ -157,7 +165,7 @@ void ARM64Backend::CompileMOV(CompileContext const& context, IRMov* op) {
 
   if (op->update_host_flags) {
     code.TST(result_reg, result_reg);
-    UpdateHostFlagsFromSystem(context);
+    UpdateHostFlagsFromSystem(context, 0xC0000000);
   }
 }
 
@@ -185,7 +193,7 @@ void ARM64Backend::CompileMVN(CompileContext const& context, IRMvn* op) {
 
   if (op->update_host_flags) {
     code.TST(result_reg, result_reg);
-    UpdateHostFlagsFromSystem(context);
+    UpdateHostFlagsFromSystem(context, 0xC0000000);
   }
 }
 

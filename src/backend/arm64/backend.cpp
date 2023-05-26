@@ -382,17 +382,19 @@ void ARM64Backend::UpdateSystemFlags(CompileContext const& context, oaknut::XReg
 }
 
 
-void ARM64Backend::UpdateHostFlagsFromSystem(CompileContext const& context) {
+void ARM64Backend::UpdateHostFlagsFromSystem(CompileContext const& context, uint32_t mask) {
   auto& [code, reg_alloc, _] = context;
 
-  auto tmp_reg = reg_alloc.GetTemporaryHostReg();
+  auto tmp_reg0 = reg_alloc.GetTemporaryHostReg().toX();
+  auto mask_reg = reg_alloc.GetTemporaryHostReg().toX();
 
-  code.MRS(HostFlagsReg, oaknut::SystemReg::NZCV);
+  code.MOV(mask_reg, mask);
+  code.MRS(tmp_reg0, oaknut::SystemReg::NZCV);
+  code.AND(tmp_reg0, tmp_reg0, mask_reg);
+  code.MVN(mask_reg, mask_reg);
+  code.AND(HostFlagsReg, HostFlagsReg, mask_reg);
+  code.ORR(HostFlagsReg, HostFlagsReg, tmp_reg0);
 
-  // Update Q flag.
-  code.AND(tmp_reg, HostFlagsReg.toW(), 1 << 28);
-  code.LSR(tmp_reg, tmp_reg, 1);
-  code.ORR(HostFlagsReg.toW(), HostFlagsReg.toW(), tmp_reg);
 }
 
 
